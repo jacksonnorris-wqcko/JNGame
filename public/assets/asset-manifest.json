@@ -133,7 +133,7 @@
       "skin_count": 1
     },
     {
-      "asset": "Polyfork Bolt-Action Rifle",
+      "asset": "Polyfork Bolt-Action Rifle (legacy fallback)",
       "status": "already-present",
       "path": "weapons/bolt-action-rifle.glb",
       "bytes": 77240,
@@ -148,6 +148,35 @@
       "animation_names": [],
       "mesh_count": 2,
       "material_count": 1,
+      "skin_count": 0
+    },
+    {
+      "asset": "Marksman Rifle and Bipod (FPS Survival Forest Outpost)",
+      "status": "downloaded",
+      "path": "weapons/marksman-rifle.glb",
+      "bytes": 129468,
+      "license": "CC0 1.0 Universal",
+      "source": "https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2",
+      "node_names": [
+        "weapon-marksman-rifle",
+        "weapon-marksman-rifle_0",
+        "weapon-marksman-rifle_1",
+        "weapon-marksman-rifle_2",
+        "weapon-marksman-rifle_3",
+        "weapon-marksman-rifle_4",
+        "magazine/gunmetal",
+        "magazine",
+        "magazine/steel",
+        "bolt"
+      ],
+      "animation_names": [
+        "magazine-open",
+        "magazine-close",
+        "bolt-open",
+        "bolt-close"
+      ],
+      "mesh_count": 8,
+      "material_count": 5,
       "skin_count": 0
     }
   ]
