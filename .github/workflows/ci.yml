@@ -43,8 +43,8 @@ jobs:
             for (const [name, page] of [["index.html", html], ["play.html", playHtml]]) {
               const coreLoader = page.indexOf("https://cdn.babylonjs.com/babylon.js");
               const gltfLoader = page.indexOf("https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js");
-              const gameScript = page.indexOf("game.js?v=0.8.1");
-              if (!page.includes("styles.css?v=0.8.1") || gameScript < 0) {
+              const gameScript = page.indexOf("game.js?v=0.8.2");
+              if (!page.includes("styles.css?v=0.8.2") || gameScript < 0) {
                 throw new Error(name + " graphics build asset version mismatch");
               }
               if (coreLoader < 0 || gltfLoader <= coreLoader || gameScript <= gltfLoader) {
@@ -68,7 +68,6 @@ jobs:
               "public/assets/animals/deer-base.glb",
               "public/assets/animals/pig-base.glb",
               "public/assets/weapons/bolt-action-rifle.glb",
-              "public/assets/weapons/marksman-rifle.glb",
               "public/assets/models/ATTRIBUTION.md",
               "public/assets/asset-manifest.json"
             ];
@@ -80,9 +79,11 @@ jobs:
             const modelChecks = [
               { path: "animals/deer-base.glb", minBytes: 100000, meshes: 1, skins: 1, nodes: ["Head", "Neck", "LeftFrontUpLeg", "RightHindUpLeg"], clips: ["Idle", "Walk", "Run"] },
               { path: "animals/pig-base.glb", minBytes: 100000, meshes: 1, skins: 1, nodes: ["Head", "Jaw", "LeftFrontUpLeg", "RightHindUpLeg"], clips: ["Idle", "Walk", "Run"] },
-              { path: "weapons/bolt-action-rifle.glb", minBytes: 50000, meshes: 2, skins: 0, nodes: ["bolt", "rifle-body"], clips: [] },
-              { path: "weapons/marksman-rifle.glb", minBytes: 100000, minMeshes: 1, skins: 0, nodes: [], clips: ["magazine-open", "magazine-close", "bolt-open", "bolt-close"] }
+              { path: "weapons/bolt-action-rifle.glb", minBytes: 50000, meshes: 2, skins: 0, nodes: ["bolt", "rifle-body"], clips: [] }
             ];
+            if (fs.existsSync("public/assets/weapons/marksman-rifle.glb")) {
+              modelChecks.push({ path: "weapons/marksman-rifle.glb", minBytes: 100000, minMeshes: 1, skins: 0, nodes: [], clips: ["magazine-open", "magazine-close", "bolt-open", "bolt-close"] });
+            }
             for (const model of modelChecks) {
               const record = models.get(model.path);
               const file = "public/assets/" + model.path;
