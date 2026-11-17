@@ -1,0 +1,14 @@
+{
+  "name": "JNGame - Mythvale Online",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Mythvale Online",
+      "onAutoForward": "openBrowser",
+      "visibility": "private"
+    }
+  },
+  "postCreateCommand": "npm install",
+  "postStartCommand": "bash -lc 'if ! curl -fsS http://127.0.0.1:3000/health >/dev/null 2>&1; then nohup npm run dev > /tmp/mythvale-dev.log 2>&1 < /dev/null & fi'"
+}
