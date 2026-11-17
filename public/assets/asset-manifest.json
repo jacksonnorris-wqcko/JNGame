@@ -152,7 +152,7 @@
     },
     {
       "asset": "Marksman Rifle and Bipod (FPS Survival Forest Outpost)",
-      "status": "downloaded",
+      "status": "already-present",
       "path": "weapons/marksman-rifle.glb",
       "bytes": 129468,
       "license": "CC0 1.0 Universal",
