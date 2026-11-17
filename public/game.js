@@ -766,7 +766,9 @@
     createCabin();
     createWildlife();
 
-    camera = new BABYLON.UniversalCamera("field camera", new BABYLON.Vector3(state.x || 0, heightAt(state.x || 0, state.z || 19) + 1.72, state.z || 19), scene);
+    const spawnX = Number.isFinite(state.x) ? state.x : 0;
+    const spawnZ = Number.isFinite(state.z) ? state.z : 19;
+    camera = new BABYLON.UniversalCamera("field camera", new BABYLON.Vector3(spawnX, heightAt(spawnX, spawnZ) + 1.72, spawnZ), scene);
     camera.rotation.y = Number(state.yaw) || 0;
     camera.minZ = 0.08;
     camera.maxZ = 240;
@@ -1337,6 +1339,13 @@
       createScene();
       window.addEventListener("resize", () => engine.resize());
     }
+    if (camera) {
+      const spawnX = Number.isFinite(state.x) ? state.x : 0;
+      const spawnZ = Number.isFinite(state.z) ? state.z : 19;
+      camera.position.set(spawnX, heightAt(spawnX, spawnZ) + 1.72, spawnZ);
+      camera.rotation.y = Number(state.yaw) || 0;
+      camera.rotation.x = 0;
+    }
     gameStarted = true;
     paused = false;
     $("start-screen").style.display = "none";
@@ -1480,13 +1489,35 @@
     button.addEventListener("touchend", () => touchKeys.delete(direction));
     button.addEventListener("touchcancel", () => touchKeys.delete(direction));
   });
-  $("mini-map").addEventListener("click", () => { $("map-screen").classList.add("open"); paused = true; drawWorldMap(); document.exitPointerLock?.(); });
+  $("map-button").addEventListener("click", () => {
+    if (!gameStarted) return;
+    $("map-screen").classList.add("open");
+    paused = true;
+    drawWorldMap();
+    document.exitPointerLock?.();
+  });
+  $("mini-map").addEventListener("click", () => {
+    if (!gameStarted) return;
+    $("map-screen").classList.add("open");
+    paused = true;
+    drawWorldMap();
+    document.exitPointerLock?.();
+  });
 
   function boot() {
     loadSave();
     if (localStorage.getItem(SAVE_KEY)) $("continue-button").style.display = "block";
     else $("continue-button").style.display = "none";
-    // The title screen remains interactive while the local scene is prepared only after Play.
+    // Prepare the valley behind the title screen. Everything runs locally; no server is contacted.
+    try {
+      engine = new BABYLON.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: false, adaptToDeviceRatio: true });
+      createScene();
+      window.addEventListener("resize", () => engine.resize());
+    } catch (error) {
+      console.error("Wildrange could not initialise its 3D scene:", error);
+      $("center-message").textContent = "3D setup failed. Refresh the page and check that WebGL is enabled.";
+      $("center-message").classList.add("show");
+    }
   }
 
   window.addEventListener("beforeunload", () => saveGame(false));
