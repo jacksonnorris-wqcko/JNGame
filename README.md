@@ -6,10 +6,12 @@
 
 - First-person 3D world rendered with Babylon.js.
 - Pinecrest Valley: a small backcountry hunting region with forest, clearings, a trail, Stillwater Lake and a lodge outpost.
-- WASD movement, mouse look, sprinting, aiming, rifle fire and reloading.
-- Whitetail deer, bucks and wild boar with simple wildlife wandering and flee behaviour.
-- Raycast shooting, animal hits, clean takedowns and harvest interactions.
-- Wildlife tracking sense with nearby-animal direction/range and visible hoof tracks.
+- WASD movement, mouse look, sprinting, crouching, aiming, rifle fire and reloading.
+- Whitetail deer, bucks and wild boar with species-specific awareness and flee behaviour.
+- Fieldcraft: crouching reduces movement noise and detection range; trail scent masks the hunter for 45 seconds.
+- Tracking follows actual hoof-sign positions, displays sign freshness, and lets old tracks fade.
+- Raycast shooting, shot distance and placement reports, plus a first-shot headshot clean-harvest bonus.
+- Wildlife tracking sense with direction, range and visible hoof tracks.
 - First Harvest contract, hunter XP/levels, funds and harvest inventory.
 - Outfitter for ammunition, field kits and trail scent.
 - Harvest station for selling hides and meat.
@@ -42,7 +44,9 @@ The first load needs an internet connection because the prototype loads Babylon.
 | Aim | Hold right mouse button |
 | Fire | Left mouse click |
 | Reload | R |
-| Track nearby wildlife | Q |
+| Track recent hoof-signs | Q |
+| Crouch / move quietly | C |
+| Use trail scent (one vial, 45 seconds) | G |
 | Interact / harvest / use stations | E |
 | Sprint | Hold Shift |
 | Use field kit | F |
@@ -72,4 +76,4 @@ This is a playable prototype foundation, not a finished hunting simulator. It cu
 
 ## First-run help
 
-When you start a new hunt, you begin at Pinecrest Outpost beside the contract board. Press **E** to accept the First Harvest contract. Then walk out into the valley, press **Q** for tracking sense, aim with the right mouse button, fire with the left mouse button, and approach a downed animal to harvest it with **E**. Return to the harvest station to sell your hides and meat. Press **M** for the field map and **Escape** to close it.
+When you start a new hunt, you begin at Pinecrest Outpost beside the contract board. Press **E** to accept the First Harvest contract. Head into the valley, use **C** to crouch before approaching wildlife, and press **Q** to inspect recent hoof-signs. Buy trail scent at the outfitter and press **G** to use a vial when you need extra cover. Aim with the right mouse button and fire with the left mouse button. A first-shot headshot earns a clean-harvest bonus. Approach a downed animal and press **E** to harvest it, then return to the harvest station to sell your hides and meat. Press **M** for the field map and **Escape** to close it.
