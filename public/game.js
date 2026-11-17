@@ -328,6 +328,15 @@ function drawPlayer(person, isSelf) {
   ctx.fillStyle = "#493b2d"; ctx.fillRect(-7, -5, 4, 9); ctx.fillRect(3, -5, 4, 9);
   ctx.restore();
   drawNameplate(person.name, person.level, x, y - 2, isSelf ? "#f2d49a" : "#c6dfd0");
+  if (person.emoteUntil > Date.now()) {
+    ctx.save();
+    ctx.fillStyle = "rgba(19,29,25,.92)";
+    ctx.strokeStyle = "rgba(226,202,150,.65)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(x - 15, y - 62, 30, 19, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#f0d7a0"; ctx.font = "bold 9px DM Sans, sans-serif"; ctx.textAlign = "center"; ctx.fillText("HI!", x, y - 49);
+    ctx.restore();
+  }
 }
 
 function drawNpc(npc) {
@@ -419,6 +428,7 @@ function worldPointFromEvent(event) {
 
 document.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
+  if (document.activeElement === $("chat-input") || document.activeElement === $("name-input")) return;
   if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) {
     if (document.activeElement === $("chat-input") || document.activeElement === $("name-input")) return;
     event.preventDefault(); keys.add(key);
@@ -428,6 +438,7 @@ document.addEventListener("keydown", (event) => {
   if (key === "e") doAction("interact");
   if (key === "1") doAction("potion");
   if (key === "i") openModal("inventory-modal");
+  if (key === "g") doAction("wave");
   if (key === "escape") document.querySelectorAll(".modal-backdrop.open").forEach((modal) => modal.classList.remove("open"));
 });
 document.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
@@ -443,7 +454,7 @@ $("reconnect-button").addEventListener("click", connect);
 $("attack-button").addEventListener("click", () => doAction("attack"));
 $("interact-button").addEventListener("click", () => doAction("interact"));
 $("potion-button").addEventListener("click", () => doAction("potion"));
-$("emote-button").addEventListener("click", () => showToast("You wave to the world.", "normal"));
+$("emote-button").addEventListener("click", () => doAction("wave"));
 $("inventory-button").addEventListener("click", () => openModal("inventory-modal"));
 $("profile-button").addEventListener("click", () => openModal("profile-modal"));
 $("map-button").addEventListener("click", () => { drawBigMap(); openModal("map-modal"); });

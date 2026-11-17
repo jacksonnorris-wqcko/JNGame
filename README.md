@@ -44,6 +44,7 @@ A Render Blueprint is included as render.yaml. Connect this repository to Render
 | Talk / interact | E |
 | Use health potion | 1 |
 | Inventory | I |
+| Wave | G / Wave button |
 
 On touch devices, use the action buttons and tap the world to move.
 

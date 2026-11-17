@@ -93,7 +93,7 @@ function createPlayer(id, requestedName, socket) {
       claimed: Boolean(saved?.quest?.claimed)
     },
     move: { x: 0, y: 0 }, target: null, attackReadyAt: 0, potionReadyAt: 0,
-    lastChatAt: 0, respawnAt: 0, socket
+    lastChatAt: 0, respawnAt: 0, emoteUntil: 0, socket
   };
   player.hp = Math.min(player.hp, player.maxHp);
   activePlayers.set(id, player);
@@ -105,7 +105,7 @@ function xpToNext(player) { return 100 + (player.level - 1) * 65; }
 function publicPlayer(player) {
   return {
     id: player.id, name: player.name, x: Math.round(player.x), y: Math.round(player.y),
-    direction: player.direction, level: player.level, hp: player.hp, maxHp: player.maxHp
+    direction: player.direction, level: player.level, hp: player.hp, maxHp: player.maxHp, emoteUntil: player.emoteUntil
   };
 }
 function send(socket, payload) {
@@ -261,6 +261,7 @@ function handleMessage(player, raw) {
     if (data.action === "attack") attack(player);
     if (data.action === "interact") interact(player);
     if (data.action === "potion") usePotion(player);
+    if (data.action === "wave") player.emoteUntil = Date.now() + 1600;
   } else if (data.type === "chat") {
     const now = Date.now();
     if (now - player.lastChatAt < 850) return;
