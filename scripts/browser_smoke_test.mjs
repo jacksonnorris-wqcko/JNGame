@@ -127,8 +127,8 @@ try {
   await page.waitForFunction(() => window.WildrangeDiagnostics?.().playerGrounded, { timeout: 15000 });
   const landed = await page.evaluate(() => window.WildrangeDiagnostics());
   if (landed.jumpCount !== jumpsBefore + 1) throw new Error("Jump was not counted exactly once");
-  if (failures.length) throw new Error(failures.join("\\n"));
-  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, airborne, landed, failures }, null, 2));
+  if (failures.length) throw new Error(failures.join("\\n") + "\\nConsole: " + consoleErrors.join("\\n"));
+  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, airborne, landed, failures, consoleErrors }, null, 2));
 
 } finally {
   await browser.close();
