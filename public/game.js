@@ -298,7 +298,7 @@
       const sizes = [1.65, 1.3, 0.95];
       for (let i = 0; i < 3; i++) {
         const crown = BABYLON.MeshBuilder.CreatePolyhedron("broadleaf-crown", {
-          type: 1, size: sizes[i] * scale
+          type: 4, size: sizes[i] * scale
         }, scene);
         crown.position.set(rand(-0.25, 0.25) * scale, (2.5 + i * 0.7) * scale, rand(-0.18, 0.18) * scale);
         crown.rotation.y = rand(0, Math.PI * 2);
@@ -325,7 +325,7 @@
   }
 
   function createRock(x, z, scale) {
-    const rock = BABYLON.MeshBuilder.CreatePolyhedron("valley-rock", { type: 1, size: scale }, scene);
+    const rock = BABYLON.MeshBuilder.CreatePolyhedron("valley-rock", { type: 4, size: scale }, scene);
     rock.position.set(x, heightAt(x, z) + scale * 0.38, z);
     rock.scaling.set(1.1, 0.75, 0.9);
     rock.rotation.set(rand(-0.15, 0.15), rand(0, Math.PI), rand(-0.15, 0.15));
@@ -528,7 +528,9 @@
     mesh.parent = parent;
     mesh.material = material;
     mesh.isPickable = true;
-    mesh.metadata = { animalId: parent.metadata.animalId, animalPart: part || "body" };
+    let animalRoot = parent;
+    while (animalRoot && !(animalRoot.metadata && animalRoot.metadata.animalId)) animalRoot = animalRoot.parent;
+    mesh.metadata = { animalId: animalRoot && animalRoot.metadata ? animalRoot.metadata.animalId : null, animalPart: part || "body" };
     if (lights.shadows) {
       try { lights.shadows.addShadowCaster(mesh); } catch (error) { /* optional */ }
     }
