@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.12&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.13&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -85,7 +85,8 @@ try {
   const closedDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
   const cabinCollision = await page.evaluate(() => ({
     interiorWalkableWithDoorClosed: window.WildrangeQA.canStandAt(-14, 43),
-    doorwayBlockedWithDoorClosed: !window.WildrangeQA.canStandAt(-14, 38.7)
+    doorwayBlockedWithDoorClosed: !window.WildrangeQA.canStandAt(-14, 38.7),
+    hingeUpdates: window.WildrangeDiagnostics().cabinDoorUpdateCount
   }));
   if (!cabinCollision.interiorWalkableWithDoorClosed || !cabinCollision.doorwayBlockedWithDoorClosed) {
     throw new Error("Cabin interior/doorway collision failed: " + JSON.stringify(cabinCollision));
