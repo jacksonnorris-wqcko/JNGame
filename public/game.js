@@ -894,6 +894,39 @@
     lanternGlass.material.emissiveColor = hex("#e6a04c");
     const lanternLight = new BABYLON.PointLight("warm porch lantern light", new BABYLON.Vector3(-12.3, 3.6, 38.1), scene);
     lanternLight.diffuse = hex("#f1bd78"); lanternLight.intensity = 0.24; lanternLight.range = 10;
+    // Small trailhead details make the spawn feel like a working ranger outpost.
+    const flagPole = BABYLON.MeshBuilder.CreateCylinder("outpost flag pole", { height: 7.2, diameter: 0.12, tessellation: 10 }, scene);
+    flagPole.parent = root; flagPole.position.set(5.35, 4.45, -7.0); flagPole.material = mat.black; flagPole.isPickable = false;
+    const flag = box("Pinecrest outpost flag", { width: 1.65, height: 0.92, depth: 0.055 }, new BABYLON.Vector3(4.55, 7.05, -7.0), mat.sign, root);
+    flag.rotation.y = -0.08;
+    const flagMark = box("outpost flag gold stripe", { width: 1.18, height: 0.09, depth: 0.025 }, new BABYLON.Vector3(4.55, 7.05, -7.04), mat.gold, root);
+    const fireRing = BABYLON.MeshBuilder.CreateTorus("outpost fire ring", { diameter: 2.25, thickness: 0.28, tessellation: 18 }, scene);
+    fireRing.parent = root; fireRing.rotation.x = Math.PI / 2; fireRing.position.set(1.9, 1.14, -9.1); fireRing.material = mat.stone; fireRing.isPickable = false;
+    for (let stone = 0; stone < 9; stone++) {
+      const angle = stone / 9 * Math.PI * 2;
+      const rock = BABYLON.MeshBuilder.CreateIcoSphere("fire ring fieldstone", { radius: 0.3, subdivisions: 1 }, scene);
+      rock.parent = root; rock.position.set(1.9 + Math.cos(angle) * 1.05, 1.22, -9.1 + Math.sin(angle) * 1.05);
+      rock.scaling.set(1.1, 0.72, 0.9); rock.material = mat.stoneDark; rock.isPickable = false;
+    }
+    for (let log = 0; log < 3; log++) {
+      const emberLog = BABYLON.MeshBuilder.CreateCylinder("campfire split log", { height: 1.5, diameter: 0.2, tessellation: 9 }, scene);
+      emberLog.parent = root; emberLog.rotation.z = Math.PI / 2; emberLog.rotation.y = log * Math.PI / 3;
+      emberLog.position.set(1.9, 1.35 + log * 0.04, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
+    }
+    const fireGlow = BABYLON.MeshBuilder.CreateSphere("outpost fire glow", { diameter: 0.48, segments: 10 }, scene);
+    fireGlow.parent = root; fireGlow.position.set(1.9, 1.52, -9.1); fireGlow.material = mat.gold; fireGlow.material.emissiveColor = hex("#f28b32"); fireGlow.isPickable = false;
+    const fireLight = new BABYLON.PointLight("outpost firelight", new BABYLON.Vector3(-12.1, 1.9, 33.9), scene);
+    fireLight.diffuse = hex("#ff9a48"); fireLight.intensity = 0.48; fireLight.range = 11;
+    const crate = (name, x, y, z, size) => box(name, size, new BABYLON.Vector3(x, y, z), mat.wood, root);
+    crate("outpost supply crate", 5.9, 1.35, -1.4, { width: 1.25, height: 0.72, depth: 1.0 });
+    crate("outpost stacked crate", 5.9, 2.08, -1.4, { width: 1.05, height: 0.68, depth: 0.88 });
+    const supplyBarrel = BABYLON.MeshBuilder.CreateCylinder("outpost supply barrel", { height: 1.25, diameter: 0.78, tessellation: 12 }, scene);
+    supplyBarrel.parent = root; supplyBarrel.position.set(6.35, 1.65, 1.15); supplyBarrel.material = mat.wood; supplyBarrel.isPickable = false;
+    for (const y of [1.2, 2.1]) {
+      const hoop = BABYLON.MeshBuilder.CreateTorus("barrel iron hoop", { diameter: 0.8, thickness: 0.045, tessellation: 12 }, scene);
+      hoop.parent = root; hoop.position.set(6.35, y, 1.15); hoop.rotation.x = Math.PI / 2; hoop.material = mat.black; hoop.isPickable = false;
+    }
+
     box("outpost bench seat", { width: 2.0, height: 0.18, depth: 0.5 }, new BABYLON.Vector3(-3.4, 1.62, -5.7), mat.wood, root);
     for (const x of [-4.15, -2.65]) box("bench leg", { width: 0.16, height: 0.72, depth: 0.16 }, new BABYLON.Vector3(x, 1.22, -5.7), mat.bark, root);
     for (let log = 0; log < 5; log++) {
@@ -3107,6 +3140,9 @@
     mergedSceneryBatchCount,
     mergedScenerySourceMeshCount,
     aiming,
+    cabinDoorOpen,
+    cabinDoorReady: Boolean(cabinDoorPivot),
+    contractBoardReady: Boolean(contractBoardTexture),
     scopeZoom: scopeMagnifications[scopeZoomIndex],
     scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")
   });
