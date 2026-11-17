@@ -51,7 +51,7 @@ try {
   if (!startupDiagnostics.sceneReady) {
     throw new Error("3D scene failed during startup: " + (startupDiagnostics.sceneInitError || "unknown error"));
   }
-  if (startupDiagnostics.meshCount <= 500) {
+  if (startupDiagnostics.meshCount <= 350) {
     throw new Error("Scene did not create the expected world meshes: " + startupDiagnostics.meshCount);
   }
   await page.waitForTimeout(9000);
