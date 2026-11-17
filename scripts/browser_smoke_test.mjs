@@ -27,7 +27,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.0", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -63,10 +63,12 @@ try {
       diagnostics.animalHeadRigCount < 9 || diagnostics.animalAnimationClipCount < 27) {
     throw new Error("Imported wildlife rigs or animations are incomplete: " + JSON.stringify(diagnostics));
   }
+  const weaponClips = (diagnostics.weaponAnimationClipNames || []).map((name) => name.toLowerCase());
   if (!diagnostics.weaponModelReady || diagnostics.weaponModelFailed ||
-      diagnostics.weaponAssetMeshCount < 2 || !diagnostics.weaponBoltReady ||
-      diagnostics.weaponScopePartCount < 12) {
-    throw new Error("Imported rifle, hinged bolt or optic assembly is incomplete: " + JSON.stringify(diagnostics));
+      diagnostics.weaponAssetMeshCount < 1 || !diagnostics.weaponBoltReady ||
+      !diagnostics.weaponHasIntegratedScope || diagnostics.weaponAnimationClipCount < 4 ||
+      !["magazine-open", "magazine-close", "bolt-open", "bolt-close"].every((clip) => weaponClips.some((name) => name.includes(clip)))) {
+    throw new Error("Imported marksman rifle, optic or native bolt/magazine clips are incomplete: " + JSON.stringify(diagnostics));
   }
   if (diagnostics.modelLoadFailures?.length) {
     throw new Error("One or more GLB models failed to load: " + diagnostics.modelLoadFailures.join("; "));
