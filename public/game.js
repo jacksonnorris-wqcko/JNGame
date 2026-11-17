@@ -2189,6 +2189,16 @@
     }
   }
 
+  window.WildrangeDiagnostics = () => ({
+    engineReady: Boolean(engine && engine.getRenderingCanvas()),
+    sceneReady: Boolean(scene && camera),
+    environmentReady: Boolean(lights.environment && lights.environment.isReady && lights.environment.isReady()),
+    meshCount: scene ? scene.meshes.length : 0,
+    pbrMaterialCount: scene ? scene.materials.filter((material) => material.getClassName() === "PBRMaterial").length : 0,
+    textureCount: scene ? scene.textures.length : 0,
+    readyTextureCount: scene ? scene.textures.filter((texture) => texture.isReady()).length : 0
+  });
+
   window.addEventListener("beforeunload", () => saveGame(false));
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) saveGame(false);

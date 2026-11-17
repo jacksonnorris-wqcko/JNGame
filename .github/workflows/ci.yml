@@ -61,3 +61,35 @@ jobs:
             }
             console.log("Wildrange browser build validation passed.");
           '
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start the static game server
+        run: |
+          mkdir -p artifacts
+          python3 -m http.server 8000 --directory public > /tmp/wildrange-http.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/play.html > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/wildrange-http.log
+          exit 1
+      - name: Open Wildrange in headless Chrome
+        run: node scripts/browser_smoke_test.mjs
+      - name: Upload browser screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wildrange-0.4.0-chrome-smoke
+          path: artifacts/
+          if-no-files-found: warn
