@@ -70,3 +70,18 @@ Suggested next milestones:
 - data/characters.json — generated character save file (not committed).
 
 Built for JNGame. Alpha 0.1.0.
+
+
+## Test in your browser with GitHub Codespaces
+
+No local Node.js installation is required.
+
+1. Open the repository on GitHub: https://github.com/jacksonnorris-wqcko/JNGame
+2. Select the green **Code** button, then open the **Codespaces** tab.
+3. Select **Create codespace on main**.
+4. The Codespace installs the project dependencies and starts the game server.
+5. When port **3000** is detected, Codespaces opens the Mythvale game in a browser tab. If it does not open automatically, select the **Ports** panel, then open the forwarded port 3000.
+
+The forwarded port is private to your Codespace by default. Use the same browser to open another tab/window if you want to check the game again; to test multiplayer with two separate characters, use a second browser profile or a separate player ID.
+
+Codespaces has usage quotas and may require billing depending on your account and usage.
