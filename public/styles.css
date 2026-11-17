@@ -31,3 +31,8 @@
 
 .map-modal .modal-close{right:12px;top:12px;width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(222,205,158,.26);border-radius:6px;background:rgba(255,255,255,.07);z-index:3;color:#eee4c9;font-size:22px}
 .map-close-action{display:block;margin-top:13px;max-width:260px;margin-left:auto;margin-right:auto}
+
+/* Startup safety: modal dialogs must never cover the title screen unless explicitly opened. */
+.modal-overlay:not(.open){display:none!important;pointer-events:none!important}
+#map-screen:not(.open){display:none!important;visibility:hidden!important}
+#map-screen.open{display:flex!important;visibility:visible!important;pointer-events:auto!important}

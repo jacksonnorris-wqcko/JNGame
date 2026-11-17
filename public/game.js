@@ -1521,6 +1521,9 @@
   });
 
   function boot() {
+    // Always enter through the title screen. Never restore an open modal from a stale page session.
+    ["map-screen", "pause-screen", "harvest-screen", "supplies-screen"].forEach((id) => $(id).classList.remove("open"));
+    $("start-screen").style.display = "flex";
     loadSave();
     if (localStorage.getItem(SAVE_KEY)) $("continue-button").style.display = "block";
     else $("continue-button").style.display = "none";
