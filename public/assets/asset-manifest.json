@@ -133,6 +133,21 @@
       "skin_count": 1
     },
     {
+      "asset": "White-Tailed Deer, high-detail static source (Grab3D)",
+      "status": "downloaded",
+      "path": "animals/deer-high-detail-source.glb",
+      "bytes": 11345744,
+      "license": "CC0 1.0 Universal",
+      "source": "https://grab3d.com/models/animals/deer/",
+      "node_names": [
+        "deer"
+      ],
+      "animation_names": [],
+      "mesh_count": 1,
+      "material_count": 1,
+      "skin_count": 0
+    },
+    {
       "asset": "Forest Boar, Jointed (FPS Survival Forest Outpost)",
       "status": "already-present",
       "path": "animals/forest-boar.glb",
