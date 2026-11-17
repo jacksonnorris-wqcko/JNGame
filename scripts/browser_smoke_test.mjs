@@ -1,6 +1,7 @@
 import { chromium } from "playwright";
 
 const failures = [];
+const consoleErrors = [];
 const browser = await chromium.launch({
   headless: true,
   args: [
@@ -16,6 +17,7 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
   page.on("pageerror", (error) => failures.push("pageerror: " + error.message));
+  page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("requestfailed", (request) => {
     if (request.url().includes("/assets/") || request.url().includes("babylon.js")) {
       failures.push("request failed: " + request.url() + " (" + request.failure()?.errorText + ")");
@@ -27,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.9", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.10&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -43,8 +45,15 @@ try {
   await page.locator("#start-button").click();
   await page.waitForFunction(() => {
     const diagnostics = window.WildrangeDiagnostics?.();
-    return diagnostics && diagnostics.sceneReady && diagnostics.meshCount > 500;
+    return diagnostics && (diagnostics.sceneReady || diagnostics.sceneInitError);
   }, { timeout: 45000 });
+  const startupDiagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (!startupDiagnostics.sceneReady) {
+    throw new Error("3D scene failed during startup: " + (startupDiagnostics.sceneInitError || "unknown error"));
+  }
+  if (startupDiagnostics.meshCount <= 500) {
+    throw new Error("Scene did not create the expected world meshes: " + startupDiagnostics.meshCount);
+  }
   await page.waitForTimeout(9000);
   await page.waitForFunction(() => {
     const state = window.WildrangeDiagnostics?.();
@@ -54,6 +63,23 @@ try {
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
   if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
+  if (diagnostics.boardTextureUScale !== -1 || diagnostics.boardTextureVScale !== 1) {
+    throw new Error("Contract notice UV orientation is not configured for a readable front-facing board: " + JSON.stringify(diagnostics));
+  }
+
+  const teleported = await page.evaluate(() => window.WildrangeQA?.teleportIntoCabin());
+  if (!teleported) throw new Error("Could not position the test hunter inside the lodge");
+  await page.waitForTimeout(250);
+  const cabinFloor = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (Math.abs(cabinFloor.playerHeight) > 0.08) {
+    throw new Error("Hunter is not standing on the cabin floor: " + JSON.stringify(cabinFloor));
+  }
+  await page.evaluate(() => window.WildrangeQA.setDoor(true));
+  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle() - 1.48) < 0.025, { timeout: 5000 });
+  const openDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
+  await page.evaluate(() => window.WildrangeQA.setDoor(false));
+  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle()) < 0.025, { timeout: 5000 });
+  const closedDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
   if (diagnostics.pbrMaterialCount < 15) throw new Error("PBR materials were not created (" + diagnostics.pbrMaterialCount + ")");
   if (diagnostics.readyTextureCount < 12) throw new Error("Too few textures finished loading (" + diagnostics.readyTextureCount + ")");
   if (!diagnostics.canvasWidth || !diagnostics.canvasHeight || !diagnostics.webglEnabled) {
