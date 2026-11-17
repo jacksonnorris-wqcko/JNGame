@@ -538,6 +538,14 @@
     return Math.hypot(x, z - 31) < 22;
   }
 
+  // Keep tall trees and large undergrowth out of the Pinecrest lodge and its yard.
+  // The wider clearance accounts for the tree crowns, not just their trunk positions.
+  function isPinecrestCompoundClearance(x, z) {
+    const localX = x + 14;
+    const localZ = z - 43;
+    return Math.abs(localX) < 24 && localZ > -24 && localZ < 22;
+  }
+
   function makeTerrain() {
     const ground = BABYLON.MeshBuilder.CreateGround("Pinecrest terrain", {
       width: 280, height: 280, subdivisions: 150, updatable: true
@@ -1122,6 +1130,7 @@
       const x = rand(-125, 125);
       const z = rand(-124, 125);
       if (flatArea(x, z)) continue;
+      if (isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot(x, z - 31) < 21) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 27) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
@@ -1139,7 +1148,7 @@
       const x = Math.cos(angle) * radius;
       const z = 19 + Math.sin(angle) * radius;
       if (flatArea(x, z)) continue;
-      if (Math.hypot(x + 14, z - 43) < 18) continue;
+      if (isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 29) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 9 && z > 25 && z < 108) continue;
@@ -1149,7 +1158,8 @@
     }
     for (let i = 0; i < 50; i++) {
       const x = rand(-115, 115), z = rand(-115, 120);
-      if (flatArea(x, z) || (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 24)) continue;
+      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) ||
+          (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 24)) continue;
       createRock(x, z, rand(0.45, 1.25));
     }
     // Dense ground cover and undergrowth are built after trees and rocks are placed.
@@ -1746,7 +1756,7 @@
     while (placed < 1480 && attempts < 5200) {
       attempts++;
       const x = rand(-132, 132), z = rand(-132, 132);
-      if (flatArea(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) || Math.hypot(x, z - 31) < 24) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 25) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
@@ -1806,7 +1816,7 @@
     while (placed < 34 && attempts < 280) {
       attempts++;
       const x = rand(-120, 120), z = rand(-120, 120);
-      if (flatArea(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) || Math.hypot(x, z - 31) < 24) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 26) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.5 && z > 25 && z < 108) continue;
@@ -2163,7 +2173,10 @@
     // Compound rails are solid boundaries, with a deliberately open front gate.
     const onSideFence = Math.abs(Math.abs(localX) - 13) < 0.48 && localZ >= -12.2 && localZ <= 12.2;
     const onNorthFence = Math.abs(localZ - 12) < 0.48 && Math.abs(localX) <= 13.2;
-    const onSouthFence = Math.abs(localZ + 14) < 0.48 && (localX < -3.35 || localX > 3.35);
+    // Only collide with the two visible south fence rails. The old test had no
+    // X bounds, creating an invisible wall that stretched across the whole map.
+    const onSouthFence = Math.abs(localZ + 14) < 0.48 &&
+      ((localX >= -13.25 && localX <= -6.25) || (localX >= 6.25 && localX <= 13.25));
     if (onSideFence || onNorthFence || onSouthFence) return false;
     const insideRoom = Math.abs(localX) < 5.2 && localZ > -4.0 && localZ < 4.5;
     const onDeck = Math.abs(localX) <= 3.65 && localZ >= -6.65 && localZ <= -4.0;
@@ -3341,6 +3354,9 @@
     boardBackReady: Boolean(contractBoardBackTexture && contractBoardBackTexture.isReady()),
     boardFrontReady: Boolean(contractBoardTexture && contractBoardTexture.isReady()),
     sceneInitError,
+    outpostTreeIntrusionCount: scene ? scene.transformNodes.filter((node) =>
+      node.name === "forest-tree-root" && isPinecrestCompoundClearance(node.position.x, node.position.z)
+    ).length : 0,
     jumpMaxHeight,
     fps: Math.round(smoothedFps),
     averageFrameMs: Number(averageFrameMs.toFixed(2)),
