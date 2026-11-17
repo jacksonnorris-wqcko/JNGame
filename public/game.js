@@ -856,6 +856,7 @@
     box("door lintel", { width: 2.25, height: 0.22, depth: 0.3 }, new BABYLON.Vector3(0, 4.48, -4.22), mat.woodLight, root);
     cabinDoorPivot = new BABYLON.TransformNode("Lodge door hinge", scene);
     cabinDoorPivot.parent = root;
+    cabinDoorPivot.rotationQuaternion = null;
     cabinDoorPivot.position.set(-0.88, 1.12, -4.12);
     const doorLeaf = box("hinged lodge door", { width: 1.76, height: 3.02, depth: 0.16 }, new BABYLON.Vector3(0.88, 1.5, 0), mat.roofLight, cabinDoorPivot);
     doorLeaf.receiveShadows = true;
@@ -868,6 +869,7 @@
     handle.parent = cabinDoorPivot; handle.position.set(1.48, 1.5, -0.2); handle.material = mat.gold; handle.isPickable = false;
     const latch = BABYLON.MeshBuilder.CreateTorus("door iron latch", { diameter: 0.18, thickness: 0.035, tessellation: 12 }, scene);
     latch.parent = cabinDoorPivot; latch.position.set(1.48, 1.5, -0.28); latch.rotation.x = Math.PI / 2; latch.material = mat.black; latch.isPickable = false;
+    cabinDoorPivot.getChildMeshes().forEach((mesh) => { if (mesh.isWorldMatrixFrozen) mesh.unfreezeWorldMatrix(); });
 
     for (const x of [-3.45, 3.45]) {
       box("window recess", { width: 1.55, height: 1.55, depth: 0.15 }, new BABYLON.Vector3(x, 3.95, -4.21), mat.black, root);
@@ -2016,7 +2018,7 @@
     const inCabinFootprint = Math.abs(x + 14) < 6.5 && Math.abs(z - 43) < 5.1;
     if (inCabinFootprint) {
       const inDoorway = Math.abs(x + 14) < 1.18 && z > 37.0 && z < 40.2;
-      const insideRoom = Math.abs(x + 14) < 5.0 && z > 39.3 && z < 47.2;
+      const insideRoom = Math.abs(x + 14) < 5.2 && z > 39.0 && z < 47.4;
       if (!cabinDoorOpen || (!inDoorway && !insideRoom)) return false;
     }
     return true;
