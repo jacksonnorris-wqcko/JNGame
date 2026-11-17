@@ -180,6 +180,80 @@
     return material;
   }
 
+  function makePbrSurface(name, slug, tiling, tint, detailMaps) {
+    const material = new BABYLON.PBRMaterial(name, scene);
+    material.albedoColor = hex(tint || "#ffffff");
+    material.metallic = 0;
+    material.roughness = 1;
+    material.environmentIntensity = 0.78;
+    material.directIntensity = 1.05;
+    const prefix = "./assets/pbr/" + slug + "/" + slug + "_";
+    const texture = (suffix) => {
+      const map = new BABYLON.Texture(prefix + suffix + ".jpg", scene, false, false, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+      map.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+      map.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+      map.uScale = tiling || 1;
+      map.vScale = tiling || 1;
+      map.anisotropicFilteringLevel = 8;
+      return map;
+    };
+    material.albedoTexture = texture("albedo");
+    if (detailMaps !== false) {
+      material.bumpTexture = texture("normal");
+      material.roughnessTexture = texture("roughness");
+      material.ambientTexture = texture("ao");
+      material.useAmbientInGrayScale = true;
+    }
+    return material;
+  }
+
+  function createFurTexture(name, baseColor, highlightColor) {
+    const size = 512;
+    const texture = new BABYLON.DynamicTexture(name, { width: size, height: size }, scene, true);
+    const ctx = texture.getContext();
+    let seed = name.split("").reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 811);
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(0, 0, size, size);
+    for (let i = 0; i < 900; i++) {
+      const x = random() * size, y = random() * size, r = 3 + random() * 22;
+      const g = ctx.createRadialGradient(x, y, 1, x, y, r);
+      g.addColorStop(0, random() > 0.5 ? highlightColor : "rgba(34,25,18,.16)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * (0.3 + random() * 0.45), random() * Math.PI, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let i = 0; i < 42000; i++) {
+      const x = random() * size, y = random() * size;
+      ctx.strokeStyle = random() > 0.56 ? highlightColor : "rgba(24,20,16,.22)";
+      ctx.globalAlpha = 0.08 + random() * 0.2;
+      ctx.lineWidth = 0.45 + random() * 1.05;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (random() - 0.5) * 1.8, y + 2 + random() * 8);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.anisotropicFilteringLevel = 8;
+    texture.update(false);
+    return texture;
+  }
+
+  function makeFurMaterial(name, baseColor, highlightColor) {
+    const material = new BABYLON.PBRMaterial(name, scene);
+    material.albedoTexture = createFurTexture(name + "-coat-texture", baseColor, highlightColor);
+    material.metallic = 0;
+    material.roughness = 0.94;
+    material.environmentIntensity = 0.48;
+    material.directIntensity = 1.1;
+    return material;
+  }
+
   function createProceduralSurfaceTexture(name, kind) {
     const size = 512;
     const texture = new BABYLON.DynamicTexture(name, { width: size, height: size }, scene, true);
@@ -257,76 +331,72 @@
   }
 
   function createMaterials() {
-    mat.grass = makeMaterial("meadow-grass", "#758d58");
-    mat.grassLight = makeMaterial("sunlit-grass", "#89a46a");
-    mat.grassDark = makeMaterial("deep-grass", "#5f7950");
-    mat.dirt = makeMaterial("trail-dirt", "#aa9169");
-    mat.dirtLight = makeMaterial("trail-edge", "#c4a77a");
-    mat.water = makeMaterial("stillwater", "#67969a", 0.35);
-    mat.water.alpha = 0.88;
-    mat.bark = makeMaterial("tree-bark", "#74543a");
-    mat.pine1 = makeMaterial("pine-canopy-1", "#315b44");
-    mat.pine2 = makeMaterial("pine-canopy-2", "#416e4d");
-    mat.pine3 = makeMaterial("pine-canopy-3", "#527b50");
-    mat.leaf1 = makeMaterial("broadleaf-1", "#467450");
-    mat.leaf2 = makeMaterial("broadleaf-2", "#618655");
-    mat.leaf3 = makeMaterial("broadleaf-3", "#78945e");
-    mat.stone = makeMaterial("stone", "#8d9684");
-    mat.stoneDark = makeMaterial("stone-dark", "#667267");
-    mat.wood = makeMaterial("camp-wood", "#846747");
-    mat.woodLight = makeMaterial("camp-light-wood", "#ad8d5c");
-    mat.roof = makeMaterial("camp-roof", "#5c4a36");
-    mat.roofLight = makeMaterial("camp-roof-light", "#786044");
-    mat.window = makeMaterial("window-light", "#d9c38a", 0.5);
-    mat.metal = makeMaterial("rifle-metal", "#303d3c", 0.35);
-    mat.rifleWood = makeMaterial("rifle-stock", "#684a32");
-    mat.black = makeMaterial("dark-metal", "#17201e", 0.45);
-    mat.gold = makeMaterial("brass", "#c59b54", 0.4);
-    mat.antler = makeMaterial("antler", "#d8c6a0");
-    mat.hoof = makeMaterial("hoof", "#3c3931");
-    mat.track = makeMaterial("animal-track", "#d5c49a");
-    mat.bloodless = makeMaterial("harvest-marker", "#e3c68c");
-    mat.fence = makeMaterial("fence-wood", "#8d704c");
-    mat.sign = makeMaterial("signboard", "#544532");
-    mat.boar = makeMaterial("boar-coat", "#554b3d");
-    mat.boarLight = makeMaterial("boar-face", "#70604b");
-    mat.boarTusks = makeMaterial("boar-tusk", "#e5d7b6");
-    mat.deer = makeMaterial("deer-coat", "#a87548");
-    mat.deerLight = makeMaterial("deer-light", "#c58a53");
-    mat.deerDark = makeMaterial("deer-dark", "#755033");
-    mat.fawn = makeMaterial("fawn-coat", "#b88758");
-    mat.white = makeMaterial("wildlife-cream", "#eadbb9");
-    mat.eye = makeMaterial("wildlife-eye", "#211d18");
-    mat.grassBlade = makeMaterial("grass-blade", "#ffffff");
+    mat.grass = makePbrSurface("Pinecrest meadow grass", "grass", 68, "#dce8cf");
+    mat.grassLight = mat.grass;
+    mat.grassDark = mat.grass;
+    mat.dirt = makePbrSurface("Forest-floor trail", "forest_floor", 26, "#d1c0a0");
+    mat.dirtLight = makePbrSurface("Trail shoulder", "forest_floor", 18, "#e0d2b5");
+    mat.water = makeMaterial("Stillwater lake water", "#6f9ba1", 0.16);
+    mat.water.alpha = 0.94;
+    mat.water.specularColor = new BABYLON.Color3(0.78, 0.86, 0.9);
+    mat.water.specularPower = 128;
+    mat.bark = makePbrSurface("Photographic tree bark", "bark", 2.4, "#d4c1a5");
+    mat.pine1 = makePbrSurface("Pine needles dark", "leaf_set", 3, "#8aa77a", false);
+    mat.pine2 = makePbrSurface("Pine needles mid", "leaf_set", 3, "#9ab68a", false);
+    mat.pine3 = makePbrSurface("Pine needles sunlit", "leaf_set", 3, "#b1c397", false);
+    mat.leaf1 = makePbrSurface("Broadleaf foliage dark", "leaf_set", 2.5, "#7b9870", false);
+    mat.leaf2 = makePbrSurface("Broadleaf foliage mid", "leaf_set", 2.5, "#98ac7e", false);
+    mat.leaf3 = makePbrSurface("Broadleaf foliage light", "leaf_set", 2.5, "#b7c895", false);
+    mat.stone = makePbrSurface("Mossy fieldstone", "rock", 2.6, "#c9c7b2");
+    mat.stoneDark = makePbrSurface("Shaded fieldstone", "rock", 2.1, "#8d9486");
+    mat.wood = makePbrSurface("Weathered timber boards", "wood_planks", 3.4, "#e1c59f");
+    mat.woodLight = makePbrSurface("Pinecrest exterior siding", "wood_siding", 3.2, "#e1d4ba");
+    mat.roof = makePbrSurface("Weathered roof shingles", "wood_planks", 5, "#8f8067");
+    mat.roofLight = makePbrSurface("Roof edge timber", "wood_planks", 2.5, "#bba27d");
+    mat.rifleWood = makePbrSurface("Rifle walnut furniture", "wood_planks", 1.8, "#a37a50");
+    mat.metal = new BABYLON.PBRMaterial("Blued rifle steel", scene);
+    mat.metal.albedoColor = hex("#303a39");
+    mat.metal.metallic = 0.86;
+    mat.metal.roughness = 0.32;
+    mat.black = new BABYLON.PBRMaterial("Blackened rifle metal", scene);
+    mat.black.albedoColor = hex("#101918");
+    mat.black.metallic = 0.82;
+    mat.black.roughness = 0.4;
+    mat.gold = new BABYLON.PBRMaterial("Brass hardware", scene);
+    mat.gold.albedoColor = hex("#9c7b42");
+    mat.gold.metallic = 0.78;
+    mat.gold.roughness = 0.34;
+    mat.window = makeMaterial("Warm cabin glass", "#d9b879", 0.25);
+    mat.window.emissiveColor = hex("#8d5b2e");
+    mat.window.specularColor = new BABYLON.Color3(0.7, 0.62, 0.42);
+    mat.antler = makeMaterial("Antler ivory", "#c8b996", 0.75);
+    mat.hoof = makeMaterial("Hoof keratin", "#28231e", 0.52);
+    mat.track = makeMaterial("Fresh hoof sign", "#c7b58d");
+    mat.bloodless = makeMaterial("Harvest marker", "#e3c68c");
+    mat.fence = mat.wood;
+    mat.sign = mat.wood;
+    mat.boar = makeFurMaterial("Wild boar coarse coat", "#534638", "rgba(181,145,104,.34)");
+    mat.boarLight = makeFurMaterial("Wild boar face", "#76634e", "rgba(207,177,139,.26)");
+    mat.boarTusks = makeMaterial("Boar ivory", "#e4d9bd", 0.28);
+    mat.deer = makeFurMaterial("Whitetail coat", "#98704b", "rgba(222,173,113,.3)");
+    mat.deerLight = makeFurMaterial("Deer warm coat", "#b98758", "rgba(236,205,157,.34)");
+    mat.deerDark = makeFurMaterial("Buck dark coat", "#6c4c34", "rgba(180,127,76,.32)");
+    mat.fawn = makeFurMaterial("Doe and fawn coat", "#b88b5c", "rgba(241,211,164,.34)");
+    mat.white = makeMaterial("Wildlife cream", "#e4d8c1");
+    mat.eye = new BABYLON.PBRMaterial("Wildlife eyes", scene);
+    mat.eye.albedoColor = hex("#171512");
+    mat.eye.metallic = 0.02;
+    mat.eye.roughness = 0.18;
+    mat.grassBlade = makeMaterial("Meadow grass blades", "#ffffff");
     mat.grassBlade.useVertexColors = true;
     mat.grassBlade.backFaceCulling = false;
-    mat.grassBlade.specularColor = new BABYLON.Color3(0.015, 0.02, 0.012);
-    mat.shore = makeMaterial("lake-sand", "#bca77d");
-    mat.waterRipple = makeMaterial("lake-ripple", "#c5e0db");
-    mat.waterRipple.alpha = 0.18;
+    mat.grassBlade.specularColor = new BABYLON.Color3(0.01, 0.018, 0.008);
+    mat.shore = makePbrSurface("Lake gravel and shore", "rock", 4, "#b9af93");
+    mat.waterRipple = makeMaterial("Lake water glints", "#c5e0db");
+    mat.waterRipple.alpha = 0.16;
     mat.waterRipple.disableLighting = true;
-    mat.mountain1 = makeMaterial("distant-ridge-1", "#4f6859");
-    mat.mountain2 = makeMaterial("distant-ridge-2", "#617665");
-    mat.mountain3 = makeMaterial("distant-ridge-3", "#72836d");
-    mat.flowerGold = makeMaterial("meadow-flower-gold", "#e6c77b");
-    mat.flowerCream = makeMaterial("meadow-flower-cream", "#e7e4ca");
-    mat.grass.diffuseTexture = createProceduralSurfaceTexture("pinecrest-grass-texture", "grass");
-    mat.grass.diffuseColor = hex("#e2e9d2");
-    mat.grass.specularColor = new BABYLON.Color3(0.025, 0.035, 0.018);
-    mat.dirt.diffuseTexture = createProceduralSurfaceTexture("pinecrest-earth-texture", "dirt");
-    mat.dirt.diffuseColor = hex("#eee0c6");
-    mat.water.diffuseTexture = createProceduralSurfaceTexture("stillwater-ripple-texture", "water");
-    mat.water.diffuseColor = hex("#d7e7e6");
-    mat.water.alpha = 0.96;
-    mat.water.specularColor = new BABYLON.Color3(0.68, 0.8, 0.84);
-    mat.water.specularPower = 96;
-    mat.bark.diffuseTexture = createProceduralSurfaceTexture("pinecrest-bark-texture", "bark");
-    mat.bark.diffuseColor = hex("#ead7bd");
-    mat.rifleWood.diffuseTexture = createProceduralSurfaceTexture("rifle-walnut-texture", "bark");
-    mat.rifleWood.diffuseColor = hex("#e8d8c3");
-    [mat.pine1, mat.pine2, mat.pine3, mat.leaf1, mat.leaf2, mat.leaf3].forEach((material) => {
-      material.specularColor = new BABYLON.Color3(0.025, 0.04, 0.025);
-    });
+    mat.flowerGold = makeMaterial("Meadow flowers gold", "#e6c77b");
+    mat.flowerCream = makeMaterial("Meadow flowers cream", "#e7e4ca");
   }
 
   function heightAt(x, z) {
@@ -399,75 +469,93 @@
   }
 
   function createTree(x, z, scale, broadleaf) {
-    const root = new BABYLON.TransformNode("tree-root", scene);
+    const root = new BABYLON.TransformNode("forest-tree-root", scene);
     root.position.set(x, heightAt(x, z), z);
     root.rotation.y = rand(0, Math.PI * 2);
-    const trunk = BABYLON.MeshBuilder.CreateCylinder("tree-trunk", {
-      height: 3.65 * scale, diameterTop: 0.19 * scale, diameterBottom: 0.52 * scale, tessellation: 7
+    const height = (broadleaf ? 6.8 : 8.4) * scale;
+    const trunk = BABYLON.MeshBuilder.CreateCylinder("photographic-bark-trunk", {
+      height, diameterTop: 0.18 * scale, diameterBottom: 0.56 * scale, tessellation: 12
     }, scene);
-    trunk.position.y = 1.78 * scale;
     trunk.parent = root;
+    trunk.position.y = height * 0.48;
     trunk.material = mat.bark;
     trunk.isPickable = false;
     trunk.receiveShadows = true;
-    if (lights.shadows) {
-      try { lights.shadows.addShadowCaster(trunk); } catch (error) { /* optional */ }
-    }
+    if (lights.shadows) { try { lights.shadows.addShadowCaster(trunk); } catch (error) { /* optional */ } }
+
     if (broadleaf) {
-      const leaves = [mat.leaf1, mat.leaf2, mat.leaf3, mat.leaf2, mat.leaf1];
-      const sizes = [1.72, 1.45, 1.2, 0.95, 0.72];
-      for (let i = 0; i < sizes.length; i++) {
-        const crown = BABYLON.MeshBuilder.CreatePolyhedron("broadleaf-crown", {
-          type: 4, size: sizes[i] * scale
+      const clusters = [
+        [-0.72, 4.4, -0.2, 1.55], [0.62, 4.75, 0.35, 1.72],
+        [-0.38, 5.65, 0.48, 1.5], [0.18, 6.1, -0.4, 1.42],
+        [0.9, 4.0, -0.42, 1.24], [-0.88, 3.75, 0.5, 1.15],
+        [0.05, 4.75, 0.0, 1.68]
+      ];
+      clusters.forEach((entry, index) => {
+        const crown = BABYLON.MeshBuilder.CreateIcoSphere("photographic broadleaf crown", {
+          radius: entry[3] * scale, subdivisions: 2
         }, scene);
-        crown.position.set(rand(-0.48, 0.48) * scale, (2.35 + i * 0.47) * scale, rand(-0.42, 0.42) * scale);
-        crown.rotation.y = rand(0, Math.PI * 2);
         crown.parent = root;
-        crown.material = leaves[i];
+        crown.position.set(entry[0] * scale, entry[1] * scale, entry[2] * scale);
+        crown.scaling.set(rand(0.82, 1.18), rand(0.78, 1.08), rand(0.86, 1.16));
+        crown.rotation.set(rand(-0.12, 0.12), rand(0, Math.PI * 2), rand(-0.12, 0.12));
+        crown.material = [mat.leaf1, mat.leaf2, mat.leaf3][index % 3];
         crown.isPickable = false;
         crown.receiveShadows = true;
-        if (i === 0) {
-          if (lights.shadows) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
-          windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
-        }
-      }
+        if (lights.shadows && index < 2) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
+        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+      });
     } else {
-      const layers = [mat.pine1, mat.pine2, mat.pine3, mat.pine2];
-      const widths = [4.25, 3.6, 2.9, 2.1];
-      for (let i = 0; i < layers.length; i++) {
-        const crown = BABYLON.MeshBuilder.CreateCylinder("pine-crown", {
-          height: 2.95 * scale, diameterTop: 0.03 * scale, diameterBottom: widths[i] * scale, tessellation: 7
+      const whorls = [
+        { y: 2.65, r: 2.35, h: 1.9 }, { y: 3.72, r: 2.12, h: 1.82 },
+        { y: 4.78, r: 1.82, h: 1.65 }, { y: 5.75, r: 1.5, h: 1.45 },
+        { y: 6.58, r: 1.14, h: 1.28 }, { y: 7.34, r: 0.72, h: 1.0 }
+      ];
+      whorls.forEach((whorl, index) => {
+        const crown = BABYLON.MeshBuilder.CreateIcoSphere("pine needle bough cluster", {
+          radius: whorl.r * scale, subdivisions: 2
         }, scene);
-        crown.position.y = (2.25 + i * 0.73) * scale;
         crown.parent = root;
-        crown.material = layers[i];
+        crown.position.set(rand(-0.15, 0.15) * scale, whorl.y * scale, rand(-0.15, 0.15) * scale);
+        crown.scaling.set(1.03, whorl.h / whorl.r, 1.0);
+        crown.rotation.y = rand(0, Math.PI * 2);
+        crown.material = [mat.pine1, mat.pine2, mat.pine3, mat.pine2][index % 4];
         crown.isPickable = false;
         crown.receiveShadows = true;
-        if (i === 0) {
-          if (lights.shadows) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
-          windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
-        }
+        if (lights.shadows && index < 2) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
+        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+      });
+      for (let branch = 0; branch < 7; branch++) {
+        const angle = branch / 7 * Math.PI * 2 + rand(-0.15, 0.15);
+        const y = rand(2.3, 4.7) * scale;
+        const limb = BABYLON.MeshBuilder.CreateCylinder("pine branch", {
+          height: rand(1.15, 1.75) * scale,
+          diameterTop: 0.045 * scale,
+          diameterBottom: 0.13 * scale,
+          tessellation: 7
+        }, scene);
+        limb.parent = root;
+        limb.rotation.z = Math.PI / 2 - 0.32;
+        limb.rotation.y = angle;
+        limb.position.set(Math.cos(angle) * 0.65 * scale, y, Math.sin(angle) * 0.65 * scale);
+        limb.material = mat.bark;
+        limb.isPickable = false;
       }
-      const leader = BABYLON.MeshBuilder.CreateCylinder("pine leader", {
-        height: 1.55 * scale, diameterTop: 0, diameterBottom: 1.25 * scale, tessellation: 7
-      }, scene);
-      leader.position.y = 5.12 * scale;
-      leader.parent = root;
-      leader.material = mat.pine1;
-      leader.isPickable = false;
     }
-    obstacles.push({ x, z, radius: broadleaf ? 1.28 * scale : 0.72 * scale });
+    obstacles.push({ x, z, radius: broadleaf ? 1.35 * scale : 0.82 * scale });
     return root;
   }
 
   function createRock(x, z, scale) {
-    const rock = BABYLON.MeshBuilder.CreatePolyhedron("valley-rock", { type: 4, size: scale }, scene);
-    rock.position.set(x, heightAt(x, z) + scale * 0.38, z);
-    rock.scaling.set(1.1, 0.75, 0.9);
-    rock.rotation.set(rand(-0.15, 0.15), rand(0, Math.PI), rand(-0.15, 0.15));
-    rock.material = Math.random() > 0.5 ? mat.stone : mat.stoneDark;
+    const rock = BABYLON.MeshBuilder.CreateIcoSphere("weathered fieldstone", {
+      radius: scale, subdivisions: 2
+    }, scene);
+    rock.position.set(x, heightAt(x, z) + scale * 0.36, z);
+    rock.scaling.set(rand(0.95, 1.35), rand(0.62, 0.88), rand(0.82, 1.18));
+    rock.rotation.set(rand(-0.22, 0.22), rand(0, Math.PI), rand(-0.2, 0.2));
+    rock.material = Math.random() > 0.45 ? mat.stone : mat.stoneDark;
     rock.isPickable = false;
-    obstacles.push({ x, z, radius: scale * 0.8 });
+    rock.receiveShadows = true;
+    obstacles.push({ x, z, radius: scale * 0.85 });
   }
 
   function createPinecrestLake() {
@@ -517,45 +605,163 @@
   }
 
   function createCabin() {
-    const root = new BABYLON.TransformNode("Pinecrest Outpost", scene);
+    const root = new BABYLON.TransformNode("Pinecrest timber lodge", scene);
     root.position.set(-14, 0, 43);
-    box("cabin-floor", { width: 12, height: 0.45, depth: 9 }, new BABYLON.Vector3(0, 0.35, 0), mat.wood, root);
-    box("cabin-body", { width: 11, height: 5.5, depth: 8 }, new BABYLON.Vector3(0, 3.15, 0), mat.woodLight, root);
-    const roof = BABYLON.MeshBuilder.CreateCylinder("cabin-roof", { height: 11.8, diameterTop: 0, diameterBottom: 9.4, tessellation: 4 }, scene);
-    roof.rotation.z = Math.PI / 2;
-    roof.scaling.y = 0.76;
-    roof.position.set(0, 6.35, 0);
-    roof.parent = root;
-    roof.material = mat.roof;
-    roof.isPickable = false;
-    const door = box("cabin-door", { width: 1.55, height: 3.0, depth: 0.2 }, new BABYLON.Vector3(0, 1.9, -4.11), mat.roof, root);
-    const step = box("cabin-step", { width: 2.4, height: 0.3, depth: 1.0 }, new BABYLON.Vector3(0, 0.25, -4.7), mat.stoneDark, root);
-    for (const x of [-3.3, 3.3]) {
-      const win = box("cabin-window", { width: 1.25, height: 1.2, depth: 0.15 }, new BABYLON.Vector3(x, 3.7, -4.12), mat.window, root);
-      const frame = box("window-frame", { width: 1.5, height: 1.45, depth: 0.18 }, new BABYLON.Vector3(x, 3.7, -4.2), mat.wood, root);
-      win.position.z = -4.32;
+
+    box("lodge stone foundation", { width: 12.1, height: 0.72, depth: 9.1 }, new BABYLON.Vector3(0, 0.48, 0), mat.stoneDark, root);
+    box("lodge timber floor", { width: 11.8, height: 0.22, depth: 8.8 }, new BABYLON.Vector3(0, 0.91, 0), mat.wood, root);
+    box("lodge wall core", { width: 11.1, height: 5.0, depth: 8.1 }, new BABYLON.Vector3(0, 3.55, 0), mat.woodLight, root);
+
+    for (let row = 0; row < 10; row++) {
+      const y = 1.28 + row * 0.46;
+      const front = BABYLON.MeshBuilder.CreateCylinder("front log course", {
+        height: 11.7, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
+      }, scene);
+      front.parent = root; front.rotation.z = Math.PI / 2; front.position.set(0, y, -4.08);
+      front.material = mat.bark; front.isPickable = false; front.receiveShadows = true;
+      const rear = BABYLON.MeshBuilder.CreateCylinder("rear log course", {
+        height: 11.7, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
+      }, scene);
+      rear.parent = root; rear.rotation.z = Math.PI / 2; rear.position.set(0, y, 4.08);
+      rear.material = mat.bark; rear.isPickable = false; rear.receiveShadows = true;
+      for (const side of [-1, 1]) {
+        const wall = BABYLON.MeshBuilder.CreateCylinder("side log course", {
+          height: 8.6, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
+        }, scene);
+        wall.parent = root; wall.rotation.x = Math.PI / 2; wall.position.set(side * 5.55, y, 0);
+        wall.material = mat.bark; wall.isPickable = false; wall.receiveShadows = true;
+      }
     }
-    const chimney = BABYLON.MeshBuilder.CreateCylinder("chimney", { height: 3.7, diameter: 1.1, tessellation: 6 }, scene);
-    chimney.position.set(3.5, 7.2, 1.3);
-    chimney.parent = root;
-    chimney.material = mat.stoneDark;
-    chimney.isPickable = false;
+
+    for (const x of [-5.5, 5.5]) for (const z of [-4.05, 4.05]) {
+      const post = box("lodge corner timber", { width: 0.48, height: 5.55, depth: 0.48 }, new BABYLON.Vector3(x, 3.45, z), mat.wood, root);
+      post.rotation.y = rand(-0.02, 0.02);
+    }
+    for (const y of [1.22, 5.7]) {
+      box("lodge front cross beam", { width: 11.8, height: 0.28, depth: 0.34 }, new BABYLON.Vector3(0, y, -4.16), mat.wood, root);
+      box("lodge rear cross beam", { width: 11.8, height: 0.28, depth: 0.34 }, new BABYLON.Vector3(0, y, 4.16), mat.wood, root);
+    }
+
+    for (const z of [-4.12, 4.12]) {
+      const gable = new BABYLON.Mesh("lodge timber gable", scene);
+      const vertexData = new BABYLON.VertexData();
+      const direction = z < 0 ? -1 : 1;
+      vertexData.positions = [-5.55, 5.75, z, 5.55, 5.75, z, 0, 7.5, z];
+      vertexData.indices = direction < 0 ? [0, 1, 2] : [1, 0, 2];
+      const normals = [];
+      BABYLON.VertexData.ComputeNormals(vertexData.positions, vertexData.indices, normals);
+      vertexData.normals = normals;
+      vertexData.applyToMesh(gable);
+      gable.parent = root;
+      gable.material = mat.woodLight;
+      gable.isPickable = false;
+      gable.receiveShadows = true;
+    }
+
+    const roofPitch = 0.43;
+    for (const side of [-1, 1]) {
+      const roofPanel = box("lodge pitched roof", { width: 12.9, height: 0.24, depth: 5.75 }, new BABYLON.Vector3(0, 6.38, side * 2.26), mat.roof, root);
+      roofPanel.rotation.x = side * roofPitch;
+      for (let row = 0; row < 6; row++) {
+        const z = side * (0.55 + row * 0.78);
+        const y = 7.22 - row * 0.31;
+        for (let column = 0; column < 7; column++) {
+          const x = -5.45 + column * 1.82 + (row % 2 ? 0.48 : 0);
+          const shingle = box("individual roof shingle", { width: 1.74, height: 0.075, depth: 0.94 }, new BABYLON.Vector3(x, y, z), row % 2 ? mat.roof : mat.roofLight, root);
+          shingle.rotation.x = side * roofPitch;
+        }
+      }
+      const fascia = box("roof fascia", { width: 12.9, height: 0.36, depth: 0.28 }, new BABYLON.Vector3(0, 5.1, side * 4.95), mat.wood, root);
+      fascia.rotation.x = side * roofPitch;
+    }
+    box("roof ridge cap", { width: 12.95, height: 0.28, depth: 0.38 }, new BABYLON.Vector3(0, 7.5, 0), mat.roofLight, root);
+    for (let x = -5.1; x <= 5.1; x += 1.7) {
+      for (const side of [-1, 1]) {
+        const rafter = box("exposed roof rafter", { width: 0.22, height: 0.34, depth: 5.7 }, new BABYLON.Vector3(x, 6.25, side * 2.1), mat.wood, root);
+        rafter.rotation.x = side * roofPitch;
+      }
+    }
+
+    box("lodge porch platform", { width: 8.8, height: 0.34, depth: 2.4 }, new BABYLON.Vector3(0, 1.1, -5.35), mat.wood, root);
+    for (let board = 0; board < 12; board++) {
+      box("porch deck board", { width: 8.65, height: 0.07, depth: 0.18 }, new BABYLON.Vector3(0, 1.3, -6.34 + board * 0.18), mat.woodLight, root);
+    }
+    for (const x of [-4.0, 0, 4.0]) {
+      box("porch support post", { width: 0.24, height: 3.0, depth: 0.24 }, new BABYLON.Vector3(x, 2.55, -6.25), mat.bark, root);
+      box("porch post cap", { width: 0.4, height: 0.18, depth: 0.4 }, new BABYLON.Vector3(x, 4.08, -6.25), mat.woodLight, root);
+    }
+    box("porch canopy", { width: 9.1, height: 0.2, depth: 2.75 }, new BABYLON.Vector3(0, 4.05, -5.65), mat.roof, root);
+    for (const x of [-4.0, 4.0]) {
+      box("porch handrail", { width: 0.14, height: 0.14, depth: 1.9 }, new BABYLON.Vector3(x, 2.0, -5.45), mat.woodLight, root);
+      for (let slat = 0; slat < 5; slat++) {
+        box("porch baluster", { width: 0.09, height: 0.85, depth: 0.09 }, new BABYLON.Vector3(x, 1.62, -6.22 + slat * 0.38), mat.wood, root);
+      }
+    }
+
+    box("lodge door recess", { width: 1.82, height: 3.25, depth: 0.12 }, new BABYLON.Vector3(0, 2.66, -4.2), mat.black, root);
+    box("lodge door leaf", { width: 1.55, height: 3.0, depth: 0.14 }, new BABYLON.Vector3(0, 2.6, -4.32), mat.roofLight, root);
+    for (let plank = 0; plank < 5; plank++) {
+      box("door vertical plank", { width: 0.27, height: 2.82, depth: 0.04 }, new BABYLON.Vector3(-0.54 + plank * 0.27, 2.6, -4.42), mat.wood, root);
+    }
+    box("door cross brace", { width: 1.36, height: 0.14, depth: 0.06 }, new BABYLON.Vector3(0, 1.68, -4.46), mat.wood, root);
+    for (const x of [-0.94, 0.94]) box("door jamb", { width: 0.18, height: 3.4, depth: 0.22 }, new BABYLON.Vector3(x, 2.65, -4.3), mat.woodLight, root);
+    box("door lintel", { width: 2.1, height: 0.2, depth: 0.24 }, new BABYLON.Vector3(0, 4.35, -4.3), mat.woodLight, root);
+    const handle = BABYLON.MeshBuilder.CreateSphere("door iron handle", { diameter: 0.12, segments: 10 }, scene);
+    handle.parent = root; handle.position.set(0.52, 2.55, -4.5); handle.material = mat.gold; handle.isPickable = false;
+
+    for (const x of [-3.45, 3.45]) {
+      box("window recess", { width: 1.55, height: 1.55, depth: 0.15 }, new BABYLON.Vector3(x, 3.95, -4.21), mat.black, root);
+      const glass = box("window glazed pane", { width: 1.18, height: 1.2, depth: 0.055 }, new BABYLON.Vector3(x, 3.95, -4.31), mat.window, root);
+      glass.material.emissiveColor = hex("#c18a4c");
+      for (const dx of [-0.68, 0.68]) box("window upright", { width: 0.16, height: 1.56, depth: 0.15 }, new BABYLON.Vector3(x + dx, 3.95, -4.38), mat.woodLight, root);
+      for (const dy of [-0.68, 0.68]) box("window cross rail", { width: 1.5, height: 0.16, depth: 0.15 }, new BABYLON.Vector3(x, 3.95 + dy, -4.38), mat.woodLight, root);
+      box("window mullion", { width: 0.08, height: 1.15, depth: 0.08 }, new BABYLON.Vector3(x, 3.95, -4.43), mat.wood, root);
+      box("window transom", { width: 1.12, height: 0.08, depth: 0.08 }, new BABYLON.Vector3(x, 3.95, -4.43), mat.wood, root);
+      box("window sill", { width: 1.8, height: 0.18, depth: 0.42 }, new BABYLON.Vector3(x, 3.12, -4.42), mat.wood, root);
+      for (const side of [-1, 1]) {
+        box("window shutter", { width: 0.42, height: 1.35, depth: 0.13 }, new BABYLON.Vector3(x + side * 1.05, 3.95, -4.27), mat.roofLight, root);
+      }
+    }
+
+    for (let course = 0; course < 7; course++) {
+      for (let stoneIndex = 0; stoneIndex < 3; stoneIndex++) {
+        const stone = box("chimney stone", { width: 0.45 + rand(0, 0.12), height: 0.42, depth: 0.48 }, new BABYLON.Vector3(3.65 + (stoneIndex - 1) * 0.34, 6.2 + course * 0.44, 1.35), mat.stoneDark, root);
+        stone.rotation.y = rand(-0.08, 0.08);
+      }
+    }
+    box("chimney flue", { width: 0.52, height: 0.25, depth: 0.55 }, new BABYLON.Vector3(3.65, 9.25, 1.35), mat.black, root);
+    box("chimney cap", { width: 1.2, height: 0.16, depth: 1.1 }, new BABYLON.Vector3(3.65, 9.45, 1.35), mat.stone, root);
+
+    const lantern = BABYLON.MeshBuilder.CreateBox("porch lantern", { width: 0.28, height: 0.42, depth: 0.24 }, scene);
+    lantern.parent = root; lantern.position.set(1.7, 3.65, -4.62); lantern.material = mat.gold; lantern.isPickable = false;
+    const lanternGlass = box("lantern warm glass", { width: 0.18, height: 0.28, depth: 0.16 }, new BABYLON.Vector3(1.7, 3.65, -4.76), mat.window, root);
+    lanternGlass.material.emissiveColor = hex("#e6a04c");
+    const lanternLight = new BABYLON.PointLight("warm porch lantern light", new BABYLON.Vector3(-12.3, 3.6, 38.1), scene);
+    lanternLight.diffuse = hex("#f1bd78"); lanternLight.intensity = 0.24; lanternLight.range = 10;
+    box("outpost bench seat", { width: 2.0, height: 0.18, depth: 0.5 }, new BABYLON.Vector3(-3.4, 1.62, -5.7), mat.wood, root);
+    for (const x of [-4.15, -2.65]) box("bench leg", { width: 0.16, height: 0.72, depth: 0.16 }, new BABYLON.Vector3(x, 1.22, -5.7), mat.bark, root);
+    for (let log = 0; log < 5; log++) {
+      const firewood = BABYLON.MeshBuilder.CreateCylinder("stacked firewood", { height: 1.2, diameter: 0.22, tessellation: 9 }, scene);
+      firewood.parent = root; firewood.rotation.z = Math.PI / 2;
+      firewood.position.set(4.1 + (log % 2) * 0.12, 0.75 + Math.floor(log / 2) * 0.23, -5.4 - (log % 2) * 0.3);
+      firewood.material = mat.bark; firewood.isPickable = false;
+    }
+
     obstacles.push({ x: -14, z: 43, radius: 6.4 });
     makeInteractable("OUTFITTERS", "Open the supply counter", -6.8, 27.5, "shop", "ammo");
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -5.1, 22.4, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
-    const board = box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
-    const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.5, diameter: 0.18, tessellation: 5 }, scene);
-    boardPost.position.set(-5.1, 0.95, 22.4);
-    boardPost.material = mat.wood;
-    const paper = box("board-paper", { width: 1.35, height: 1.0, depth: 0.06 }, new BABYLON.Vector3(-5.1, 1.8, 22.22), mat.window);
-    const table = box("harvest-table", { width: 4, height: 1.1, depth: 1.7 }, new BABYLON.Vector3(-20.7, 0.75, 40.5), mat.wood);
-    const counter = box("supply-counter", { width: 2.6, height: 1.2, depth: 1.0 }, new BABYLON.Vector3(-6.8, 0.85, 27.5), mat.woodLight);
+    box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
+    const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.5, diameter: 0.18, tessellation: 8 }, scene);
+    boardPost.position.set(-5.1, 0.95, 22.4); boardPost.material = mat.bark;
+    box("board-paper", { width: 1.35, height: 1.0, depth: 0.06 }, new BABYLON.Vector3(-5.1, 1.8, 22.22), mat.window);
+    box("harvest-table", { width: 4, height: 1.1, depth: 1.7 }, new BABYLON.Vector3(-20.7, 0.75, 40.5), mat.wood);
     for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7], [-8.2, 28], [-5.4, 28]]) {
-      const post = BABYLON.MeshBuilder.CreateCylinder("outpost-post", { height: 2.4, diameter: 0.16, tessellation: 5 }, scene);
-      post.position.set(x, 1.2, z);
-      post.material = mat.wood;
+      const post = BABYLON.MeshBuilder.CreateCylinder("outpost-post", { height: 2.4, diameter: 0.16, tessellation: 8 }, scene);
+      post.position.set(x, 1.2, z); post.material = mat.bark;
     }
+    box("harvest table top", { width: 4.2, height: 0.18, depth: 1.9 }, new BABYLON.Vector3(-20.7, 1.34, 40.5), mat.woodLight);
+    box("outfitter counter top", { width: 2.8, height: 0.16, depth: 1.2 }, new BABYLON.Vector3(-6.8, 1.49, 27.5), mat.wood);
   }
 
   function makeInteractable(name, description, x, z, action, target) {
@@ -614,7 +820,8 @@
   function createWeapon() {
     weaponRoot = new BABYLON.TransformNode("Ranger 308 first person model", scene);
     weaponRoot.parent = camera;
-    weaponRoot.position.set(0.36, -0.34, 0.72);
+    weaponRoot.position.set(0.31, -0.37, 0.78);
+    weaponRoot.scaling.set(0.82, 0.82, 0.82);
     const body = BABYLON.MeshBuilder.CreateBox("rifle-body", { width: 0.17, height: 0.19, depth: 0.9 }, scene);
     body.parent = weaponRoot;
     body.position.set(-0.06, 0, 0.18);
@@ -631,13 +838,13 @@
     barrel.position.set(-0.035, 0.045, 0.78);
     barrel.material = mat.metal;
     barrel.isPickable = false;
-    const muzzle = BABYLON.MeshBuilder.CreateCylinder("muzzle", { height: 0.16, diameter: 0.085, tessellation: 10 }, scene);
+    const muzzle = BABYLON.MeshBuilder.CreateCylinder("muzzle", { height: 0.14, diameter: 0.068, tessellation: 16 }, scene);
     muzzle.parent = weaponRoot;
     muzzle.rotation.x = Math.PI / 2;
     muzzle.position.set(-0.035, 0.045, 1.26);
     muzzle.material = mat.black;
     muzzle.isPickable = false;
-    const scope = BABYLON.MeshBuilder.CreateCylinder("rifle-scope", { height: 0.44, diameter: 0.105, tessellation: 12 }, scene);
+    const scope = BABYLON.MeshBuilder.CreateCylinder("rifle-scope", { height: 0.44, diameter: 0.09, tessellation: 16 }, scene);
     scope.parent = weaponRoot;
     scope.rotation.x = Math.PI / 2;
     scope.position.set(-0.06, 0.15, 0.18);
@@ -661,11 +868,11 @@
     sight.material = mat.gold;
     sight.isPickable = false;
     const scopeBands = [-0.19, 0.19].map((offset) => {
-      const band = BABYLON.MeshBuilder.CreateTorus("scope mounting ring", { diameter: 0.15, thickness: 0.025, tessellation: 12 }, scene);
+      const band = BABYLON.MeshBuilder.CreateTorus("scope mounting ring", { diameter: 0.145, thickness: 0.014, tessellation: 16 }, scene);
       band.parent = weaponRoot;
       band.rotation.x = Math.PI / 2;
       band.position.set(-0.06, 0.15, 0.18 + offset);
-      band.material = mat.gold;
+      band.material = mat.metal;
       band.isPickable = false;
       return band;
     });
@@ -932,60 +1139,32 @@
   }
 
   function createSkyDome() {
-    const canvasTexture = new BABYLON.DynamicTexture("pinecrest-sky-gradient", { width: 1024, height: 512 }, scene, true);
-    const ctx = canvasTexture.getContext();
-    const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, "#527b9a");
-    gradient.addColorStop(0.36, "#83a8b4");
-    gradient.addColorStop(0.58, "#c2d0c6");
-    gradient.addColorStop(0.76, "#e2d5b9");
-    gradient.addColorStop(1, "#75846b");
-    ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1024, 512);
-    for (let i = 0; i < 34; i++) {
-      const x = Math.random() * 1024, y = 135 + Math.random() * 180;
-      const w = 45 + Math.random() * 150, h = 9 + Math.random() * 23;
-      const cloud = ctx.createRadialGradient(x, y, 1, x, y, w);
-      cloud.addColorStop(0, "rgba(246,244,225,.27)");
-      cloud.addColorStop(0.55, "rgba(230,237,226,.12)");
-      cloud.addColorStop(1, "rgba(230,237,226,0)");
-      ctx.fillStyle = cloud; ctx.beginPath(); ctx.ellipse(x, y, w, h, (Math.random() - .5) * .12, 0, Math.PI * 2); ctx.fill();
+    try {
+      const environment = new BABYLON.HDRCubeTexture(
+        "./assets/nature_reserve_forest_1k.hdr",
+        scene,
+        128,
+        false,
+        true,
+        false,
+        true
+      );
+      environment.rotationY = Math.PI * 0.18;
+      scene.environmentTexture = environment;
+      const skybox = scene.createDefaultSkybox(environment, true, 1200, 0.02, false);
+      if (skybox) {
+        skybox.infiniteDistance = true;
+        skybox.isPickable = false;
+        skybox.applyFog = false;
+      }
+      lights.environment = environment;
+      lights.sky = skybox;
+      lights.skyMaterial = skybox ? skybox.material : null;
+      skySun = null;
+    } catch (error) {
+      console.warn("Forest HDR environment unavailable; using the scene fallback colour.", error);
+      scene.clearColor = new BABYLON.Color4(0.54, 0.67, 0.72, 1);
     }
-    const sunGlow = ctx.createRadialGradient(755, 224, 2, 755, 224, 190);
-    sunGlow.addColorStop(0, "rgba(255,240,204,.48)");
-    sunGlow.addColorStop(0.28, "rgba(255,235,197,.18)");
-    sunGlow.addColorStop(1, "rgba(255,235,197,0)");
-    ctx.fillStyle = sunGlow; ctx.fillRect(560, 40, 390, 370);
-    canvasTexture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
-    canvasTexture.update(false);
-
-    const sky = BABYLON.MeshBuilder.CreateSphere("Pinecrest sky dome", { diameter: 900, segments: 32 }, scene);
-    sky.infiniteDistance = true;
-    sky.isPickable = false;
-    sky.applyFog = false;
-    sky.renderingGroupId = 0;
-    const skyMaterial = new BABYLON.StandardMaterial("Pinecrest sky material", scene);
-    skyMaterial.backFaceCulling = false;
-    skyMaterial.disableLighting = true;
-    skyMaterial.fogEnabled = false;
-    skyMaterial.emissiveTexture = canvasTexture;
-    skyMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
-    skyMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-    skyMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-    sky.material = skyMaterial;
-    lights.sky = sky;
-    lights.skyMaterial = skyMaterial;
-
-    const sun = BABYLON.MeshBuilder.CreateSphere("distant sun", { diameter: 10, segments: 16 }, scene);
-    const sunMaterial = new BABYLON.StandardMaterial("distant sun material", scene);
-    sunMaterial.disableLighting = true;
-    sunMaterial.emissiveColor = hex("#ffe6b1");
-    sunMaterial.diffuseColor = hex("#ffe6b1");
-    sunMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-    sun.material = sunMaterial;
-    sun.isPickable = false;
-    sun.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
-    skySun = sun;
-    lights.sunDisc = sun;
   }
 
   function setupPostProcessing() {
@@ -1039,7 +1218,7 @@
   function createGroundCover() {
     const positions = [], indices = [], colors = [];
     let placed = 0, attempts = 0;
-    while (placed < 1050 && attempts < 3600) {
+    while (placed < 820 && attempts < 2900) {
       attempts++;
       const x = rand(-132, 132), z = rand(-132, 132);
       if (flatArea(x, z) || Math.hypot(x, z - 31) < 24) continue;
@@ -1147,7 +1326,6 @@
     scatterEnvironment();
     createGroundCover();
     scatterUndergrowth();
-    createHorizonRidges();
     createCabin();
     createWildlife();
 

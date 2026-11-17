@@ -37,6 +37,9 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
+Visual asset build: **0.4.0**. Game assets are stored under `public/assets/`.
+
+
 | Action | Control |
 | --- | --- |
 | Move | W A S D |
@@ -70,6 +73,13 @@ The 0.3.0 visual pass upgrades Pinecrest Valley without external paid assets:
 - More detail on the Ranger .308 scope and receiver.
 
 The graphics remain procedural and local: no paid texture packs, hosted art services or extra game server are required. The extra foliage and post-processing are intended for desktop Chrome; performance still needs confirmation on different hardware.
+
+
+## Real-environment graphics — 0.4.0
+
+The 0.4.0 pass replaces the simple gradient sky and cone mountain placeholders with a real forest HDR environment, image-based lighting and locally hosted PBR surface maps. The outpost is rebuilt with weathered siding, timber courses, a proper pitched shingle roof, framed windows, stone chimney, porch, lantern and camp details. Trees use fuller textured foliage clusters rather than stacked polygon cones, and fieldstones use smoother scanned-rock surfaces.
+
+The material and HDR downloads are imported by `.github/workflows/import-cc0-assets.yml` into `public/assets`. The textures are CC0 assets from ambientCG and the forest HDRI is from Poly Haven. The browser loads the files from the repository; no texture CDN, account, paid asset or runtime asset service is required.
 
 ## Cost
 

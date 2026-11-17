@@ -53,3 +53,7 @@
 .vignette{background:radial-gradient(ellipse at center,transparent 48%,rgba(8,17,13,.16) 100%)}
 .hud-panel{box-shadow:0 12px 34px rgba(5,12,8,.24),inset 0 1px rgba(255,255,255,.045)}
 .region-pill,.weather-pill{border-color:rgba(231,216,177,.2)}
+
+/* 0.4.0 — more natural field presentation */
+#render-canvas{filter:saturate(1.02) contrast(1.045)}
+.vignette{background:radial-gradient(ellipse at center,transparent 40%,rgba(7,13,10,.23) 100%)}
