@@ -71,6 +71,9 @@
   let cabinDoorPivot = null;
   let cabinDoorOpen = false;
   let contractBoardTexture = null;
+  let contractBoardMaterial = null;
+  let cabinFireFlame = null;
+  let sceneInitError = "";
   // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
   const playerForward = new BABYLON.Vector3(0, 0, 1);
   const playerRight = new BABYLON.Vector3(1, 0, 0);
@@ -901,8 +904,9 @@
     const flag = box("Pinecrest outpost flag", { width: 1.65, height: 0.92, depth: 0.055 }, new BABYLON.Vector3(4.55, 7.05, -7.0), mat.sign, root);
     flag.rotation.y = -0.08;
     const flagMark = box("outpost flag gold stripe", { width: 1.18, height: 0.09, depth: 0.025 }, new BABYLON.Vector3(4.55, 7.05, -7.04), mat.gold, root);
-    const fireRing = BABYLON.MeshBuilder.CreateTorus("outpost fire ring", { diameter: 2.25, thickness: 0.28, tessellation: 18 }, scene);
-    fireRing.parent = root; fireRing.position.set(1.9, 0.28, -9.1); fireRing.material = mat.stone; fireRing.isPickable = false;
+    // A shallow ash bed and individual stones sit directly on the level trailhead ground.
+    const fireAsh = BABYLON.MeshBuilder.CreateCylinder("campfire ash bed", { height: 0.055, diameter: 1.75, tessellation: 24 }, scene);
+    fireAsh.parent = root; fireAsh.position.set(1.9, 0.14, -9.1); fireAsh.material = mat.black; fireAsh.isPickable = false;
     for (let stone = 0; stone < 9; stone++) {
       const angle = stone / 9 * Math.PI * 2;
       const rock = BABYLON.MeshBuilder.CreateIcoSphere("fire ring fieldstone", { radius: 0.3, subdivisions: 1 }, scene);
@@ -914,10 +918,16 @@
       emberLog.parent = root; emberLog.rotation.z = Math.PI / 2; emberLog.rotation.y = log * Math.PI / 3;
       emberLog.position.set(1.9, 0.43 + log * 0.035, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
     }
-    const fireGlow = BABYLON.MeshBuilder.CreateSphere("outpost fire glow", { diameter: 0.48, segments: 10 }, scene);
-    fireGlow.parent = root; fireGlow.position.set(1.9, 0.62, -9.1);
-    const fireGlowMaterial = makeMaterial("Outpost ember glow", "#f28b32", 0.45);
-    fireGlowMaterial.emissiveColor = hex("#f28b32"); fireGlow.material = fireGlowMaterial; fireGlow.isPickable = false;
+    cabinFireFlame = BABYLON.MeshBuilder.CreateCylinder("outpost campfire flame", { height: 0.62, diameterTop: 0.035, diameterBottom: 0.34, tessellation: 10 }, scene);
+    cabinFireFlame.parent = root; cabinFireFlame.position.set(1.9, 0.49, -9.1);
+    const fireGlowMaterial = makeMaterial("Outpost flame material", "#e87928", 0.45);
+    fireGlowMaterial.emissiveColor = hex("#f18a32"); fireGlowMaterial.disableLighting = true;
+    cabinFireFlame.material = fireGlowMaterial; cabinFireFlame.isPickable = false;
+    const fireCore = BABYLON.MeshBuilder.CreateCylinder("campfire yellow core", { height: 0.38, diameterTop: 0.015, diameterBottom: 0.18, tessellation: 9 }, scene);
+    fireCore.parent = root; fireCore.position.set(1.9, 0.39, -9.1);
+    const fireCoreMaterial = makeMaterial("Campfire core material", "#ffc45e", 0.4);
+    fireCoreMaterial.emissiveColor = hex("#ffc45e"); fireCoreMaterial.disableLighting = true;
+    fireCore.material = fireCoreMaterial; fireCore.isPickable = false;
     const fireLight = new BABYLON.PointLight("outpost firelight", new BABYLON.Vector3(-12.1, 0.9, 33.9), scene);
     fireLight.diffuse = hex("#ff9a48"); fireLight.intensity = 0.48; fireLight.range = 11;
     const crate = (name, x, y, z, size) => box(name, size, new BABYLON.Vector3(x, y, z), mat.wood, root);
@@ -939,29 +949,36 @@
       firewood.material = mat.bark; firewood.isPickable = false;
     }
 
-    makeInteractable("LODGE DOOR", "Open or close the Pinecrest cabin door", -14, 37.2, "cabin", "door");
+    makeInteractable("LODGE DOOR", "Open or close the Pinecrest cabin door", -14, 38.7, "cabin", "door");
     makeInteractable("OUTFITTERS", "Open the supply counter", -11.8, 27.5, "shop", "ammo");
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -5.1, 22.4, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
     box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
     const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.5, diameter: 0.18, tessellation: 8 }, scene);
     boardPost.position.set(-5.1, 0.95, 22.4); boardPost.material = mat.bark;
-    const boardPaper = box("board-paper", { width: 1.35, height: 1.0, depth: 0.06 }, new BABYLON.Vector3(-5.1, 1.8, 22.22), mat.window);
+    const boardPaper = BABYLON.MeshBuilder.CreatePlane("board-paper", { width: 1.48, height: 1.22, sideOrientation: BABYLON.Mesh.FRONTSIDE }, scene);
+    boardPaper.position.set(-5.1, 1.8, 22.22);
+    // Aim the plane toward hunters approaching from the south; compensate its local X reversal only.
+    boardPaper.rotation.y = Math.PI;
+    boardPaper.isPickable = false;
     contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice", { width: 512, height: 384 }, scene, true);
-    const boardMaterial = new BABYLON.StandardMaterial("contract notice ink", scene);
-    boardMaterial.diffuseTexture = contractBoardTexture;
-    boardMaterial.diffuseTexture.uScale = -1; boardMaterial.diffuseTexture.uOffset = 1;
-    boardMaterial.diffuseTexture.vScale = -1; boardMaterial.diffuseTexture.vOffset = 1;
-    boardMaterial.emissiveColor = hex("#fff4d6"); boardMaterial.backFaceCulling = false;
-    boardPaper.material = boardMaterial;
+    contractBoardMaterial = new BABYLON.StandardMaterial("contract notice ink", scene);
+    contractBoardMaterial.diffuseTexture = contractBoardTexture;
+    contractBoardMaterial.diffuseTexture.uScale = -1; contractBoardMaterial.diffuseTexture.uOffset = 1;
+    contractBoardMaterial.diffuseTexture.vScale = 1; contractBoardMaterial.diffuseTexture.vOffset = 0;
+    contractBoardMaterial.emissiveColor = hex("#fff4d6"); contractBoardMaterial.backFaceCulling = true;
+    boardPaper.material = contractBoardMaterial;
     updateContractBoard();
     box("harvest-table", { width: 4, height: 1.1, depth: 1.7 }, new BABYLON.Vector3(-20.7, 0.75, 40.5), mat.wood);
-    for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7], [-13.2, 28], [-10.4, 28]]) {
+    for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7]]) {
       const post = BABYLON.MeshBuilder.CreateCylinder("outpost-post", { height: 2.4, diameter: 0.16, tessellation: 8 }, scene);
       post.position.set(x, 1.2, z); post.material = mat.bark;
     }
     box("harvest table top", { width: 4.2, height: 0.18, depth: 1.9 }, new BABYLON.Vector3(-20.7, 1.34, 40.5), mat.woodLight);
     box("outfitter counter top", { width: 2.8, height: 0.16, depth: 1.2 }, new BABYLON.Vector3(-11.8, 1.49, 27.5), mat.wood);
+    for (const x of [-12.9, -10.7]) for (const z of [27.05, 27.95]) {
+      box("outfitter counter leg", { width: 0.14, height: 1.45, depth: 0.14 }, new BABYLON.Vector3(x, 0.78, z), mat.bark);
+    }
   }
 
   function makeInteractable(name, description, x, z, action, target) {
@@ -1951,7 +1968,7 @@
     if (canStandAt(camera.position.x, nextZ)) camera.position.z = nextZ;
     else playerVelocity.z = 0;
 
-    const insideCabin = Math.abs(camera.position.x + 14) < 5.0 && camera.position.z > 39.3 && camera.position.z < 47.2;
+    const insideCabin = Math.abs(camera.position.x + 14) < 5.2 && camera.position.z > 39.0 && camera.position.z < 47.4;
     const groundSurfaceY = insideCabin ? 1.02 : heightAt(camera.position.x, camera.position.z);
     const groundY = groundSurfaceY + (crouched ? 1.12 : 1.72);
     if (playerGrounded) {
@@ -2375,7 +2392,7 @@
     ctx.fillText("for your field payment.", 58, 235);
     ctx.font = "bold 18px Georgia"; ctx.fillText(state.contractComplete ? "✓ CONTRACT COMPLETE" : state.contractAccepted ? "IN PROGRESS  " + state.contractProgress + " / 3" : "AVAILABLE · ACCEPT AT BOARD", 58, 281);
     ctx.font = "bold 17px Georgia"; ctx.fillText("REWARD  $250  +  180 XP", 58, 322);
-    contractBoardTexture.update(false);
+    contractBoardTexture.update(true);
   }
 
   function setCabinDoor(open) {
@@ -2391,6 +2408,7 @@
     const difference = target - cabinDoorPivot.rotation.y;
     if (Math.abs(difference) < 0.002) cabinDoorPivot.rotation.y = target;
     else cabinDoorPivot.rotation.y += difference * Math.min(1, dt * 7.5);
+    cabinDoorPivot.computeWorldMatrix(true);
   }
 
   function updateInteraction() {
@@ -3103,6 +3121,7 @@
       createScene();
       window.addEventListener("resize", () => engine.resize());
     } catch (error) {
+      sceneInitError = error && (error.stack || error.message) ? String(error.stack || error.message) : String(error);
       console.error("Wildrange could not initialise its 3D scene:", error);
       $("center-message").textContent = "3D setup failed. Refresh the page and check that WebGL is enabled.";
       $("center-message").classList.add("show");
@@ -3145,7 +3164,11 @@
     modelLoadFailures: modelLoadFailures.slice(),
     jumpCount,
     playerGrounded,
-    playerHeight: camera ? camera.position.y - heightAt(camera.position.x, camera.position.z) - (crouched ? 1.12 : 1.72) : 0,
+    playerHeight: camera ? camera.position.y - ((Math.abs(camera.position.x + 14) < 5.2 && camera.position.z > 39.0 && camera.position.z < 47.4) ? 1.02 : heightAt(camera.position.x, camera.position.z)) - (crouched ? 1.12 : 1.72) : 0,
+    cabinDoorAngle: cabinDoorPivot ? Number(cabinDoorPivot.rotation.y.toFixed(3)) : null,
+    boardTextureUScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.uScale : null,
+    boardTextureVScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.vScale : null,
+    sceneInitError,
     jumpMaxHeight,
     fps: Math.round(smoothedFps),
     averageFrameMs: Number(averageFrameMs.toFixed(2)),
@@ -3161,6 +3184,24 @@
     scopeZoom: scopeMagnifications[scopeZoomIndex],
     scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")
   });
+
+  // Deterministic hooks are available only to the automated browser smoke test.
+  if (new URLSearchParams(window.location.search).has("qa")) {
+    window.WildrangeQA = {
+      setDoor: (open) => setCabinDoor(Boolean(open)),
+      doorAngle: () => cabinDoorPivot ? cabinDoorPivot.rotation.y : null,
+      teleportIntoCabin: () => {
+        if (!camera) return false;
+        camera.position.set(-14, 2.74, 43);
+        camera.rotation.set(0, 0, 0);
+        playerVelocity.set(0, 0, 0);
+        verticalVelocity = 0;
+        playerGrounded = true;
+        updateInteraction();
+        return true;
+      }
+    };
+  }
 
   window.addEventListener("beforeunload", () => saveGame(false));
   document.addEventListener("visibilitychange", () => {
