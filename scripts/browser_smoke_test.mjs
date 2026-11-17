@@ -48,18 +48,16 @@ try {
   await page.waitForTimeout(9000);
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
-  const canvas = await page.locator("#render-canvas").evaluate((el) => ({
-    width: el.width,
-    height: el.height,
-    webgl2: Boolean(el.getContext("webgl2"))
-  }));
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
   if (diagnostics.pbrMaterialCount < 15) throw new Error("PBR materials were not created (" + diagnostics.pbrMaterialCount + ")");
   if (diagnostics.readyTextureCount < 12) throw new Error("Too few textures finished loading (" + diagnostics.readyTextureCount + ")");
-  if (!canvas.width || !canvas.height || !canvas.webgl2) throw new Error("3D WebGL2 canvas is unavailable");
-  if (failures.length) throw new Error(failures.join("\n"));
+  if (!diagnostics.canvasWidth || !diagnostics.canvasHeight || !diagnostics.webglEnabled) {
+    throw new Error("3D WebGL renderer is unavailable");
+  }
+  if (failures.length) throw new Error(failures.join("\\n"));
 
-  console.log(JSON.stringify({ titleVisible, diagnostics, canvas, failures }, null, 2));
+  console.log(JSON.stringify({ titleVisible, diagnostics, failures }, null, 2));
+  await page.evaluate(() => window.WildrangeFreezeRender?.());
   await page.screenshot({
     path: "artifacts/wildrange-0.4.0-chrome.png",
     timeout: 90000,

@@ -2196,8 +2196,14 @@
     meshCount: scene ? scene.meshes.length : 0,
     pbrMaterialCount: scene ? scene.materials.filter((material) => material.getClassName() === "PBRMaterial").length : 0,
     textureCount: scene ? scene.textures.length : 0,
-    readyTextureCount: scene ? scene.textures.filter((texture) => texture.isReady()).length : 0
+    readyTextureCount: scene ? scene.textures.filter((texture) => texture.isReady()).length : 0,
+    canvasWidth: canvas ? canvas.width : 0,
+    canvasHeight: canvas ? canvas.height : 0,
+    webglEnabled: Boolean(engine && engine.getCaps && engine.getCaps().maxTextureSize > 0)
   });
+  window.WildrangeFreezeRender = () => {
+    if (engine) engine.stopRenderLoop();
+  };
 
   window.addEventListener("beforeunload", () => saveGame(false));
   document.addEventListener("visibilitychange", () => {
