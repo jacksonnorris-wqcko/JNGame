@@ -34,7 +34,7 @@ jobs:
             for (const id of ["render-canvas", "start-button", "continue-button", "interaction-prompt", "health-fill", "ammo-current", "contract-progress", "map-close-button"]) {
               if (!html.includes(id)) throw new Error("Missing UI reference " + id);
             }
-            for (const feature of ["makePbrSurface", "makeFoliageMaterial", "createSkyDome", "createDistantRidgeBands", "createCabin", "createGroundCover", "setupPostProcessing", "animateWorld", "createFurTexture", "createWeapon", "getAnimalModelContainer", "attachAnimalModel", "setAnimalAnimation", "createDeer", "createBoar", "adjustScopeZoom"]) {
+            for (const feature of ["makePbrSurface", "makeFoliageMaterial", "createSkyDome", "createDistantRidgeBands", "createCabin", "createGroundCover", "setupPostProcessing", "animateWorld", "createFurTexture", "createWeapon", "getAnimalModelContainer", "attachAnimalModel", "setAnimalAnimation", "createDeer", "createBoar", "adjustScopeZoom", "updateCabinDoor", "updateContractBoard"]) {
               if (!js.includes("function " + feature + "(")) throw new Error("Missing graphics system " + feature);
             }
             for (const cssRule of [".quick-actions", ".hud-panel"]) {
@@ -43,8 +43,10 @@ jobs:
             for (const [name, page] of [["index.html", html], ["play.html", playHtml]]) {
               const coreLoader = page.indexOf("https://cdn.babylonjs.com/babylon.js");
               const gltfLoader = page.indexOf("https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js");
-              const gameScript = page.indexOf("game.js?v=0.8.2");
-              if (!page.includes("styles.css?v=0.8.2") || gameScript < 0) {
+              const gameAsset = /game\\.js\\?v=([0-9.]+)/.exec(page);
+              const styleAsset = /styles\\.css\\?v=([0-9.]+)/.exec(page);
+              const gameScript = gameAsset ? page.indexOf(gameAsset[0]) : -1;
+              if (!gameAsset || !styleAsset || gameAsset[1] !== styleAsset[1] || gameScript < 0) {
                 throw new Error(name + " graphics build asset version mismatch");
               }
               if (coreLoader < 0 || gltfLoader <= coreLoader || gameScript <= gltfLoader) {
