@@ -95,6 +95,10 @@ Deer and boars have upgraded body proportions, articulated two-section legs, vis
 
 This update adds Space-to-jump with gravity, landing detection and a mobile jump button. Movement uses acceleration/deceleration and axis sliding. The renderer will also receive a fixed-step physics update and static-scene optimizations in this release.
 
+## Performance optimization — 0.7.0
+
+The game now uses fixed 60Hz simulation steps, a capped high-DPI render scale, static world transform freezing, lower shadow-map resolution and disabled bloom to reduce frame pacing spikes and GPU work. Performance remains dependent on the PC and browser.
+
 ## Cost
 
 The solo prototype can be developed and hosted as a public GitHub Pages project without a paid game server. Babylon.js is open source. Any future paid art/audio assets or optional hosted services would be a separate decision; nothing paid is required to test this solo alpha.

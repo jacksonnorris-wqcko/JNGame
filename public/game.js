@@ -64,6 +64,11 @@
   let lastGroundedAt = 0;
   let jumpCount = 0;
   let jumpMaxHeight = 0;
+  let simulationAccumulator = 0;
+  let simulationClock = 0;
+  let smoothedFps = 60;
+  let averageFrameMs = 16.67;
+  let frozenStaticMeshCount = 0;
   let keys = new Set();
   let touchKeys = new Set();
   let currentTarget = null;
@@ -910,9 +915,9 @@
     lights.hemi = hemi;
     lights.sun = sun;
     try {
-      const shadows = new BABYLON.ShadowGenerator(1024, sun);
+      const shadows = new BABYLON.ShadowGenerator(512, sun);
       shadows.useBlurExponentialShadowMap = true;
-      shadows.blurKernel = 18;
+      shadows.blurKernel = 12;
       shadows.bias = 0.00045;
       shadows.normalBias = 0.025;
       shadows.darkness = 0.26;
@@ -1560,7 +1565,7 @@
       if (!BABYLON.DefaultRenderingPipeline) return;
       const pipeline = new BABYLON.DefaultRenderingPipeline("Wildrange cinematic pipeline", true, scene, [camera]);
       pipeline.fxaaEnabled = true;
-      pipeline.bloomEnabled = true;
+      pipeline.bloomEnabled = false;
       pipeline.bloomThreshold = 1.22;
       pipeline.bloomWeight = 0.045;
       pipeline.bloomKernel = 48;
@@ -1672,6 +1677,31 @@
     }
   }
 
+  function freezeStaticWorld() {
+    const dynamicRoots = new Set(animals.map((animal) => animal.root));
+    if (weaponRoot) dynamicRoots.add(weaponRoot);
+    const dynamicMeshes = new Set(waterRipples.map((item) => item.mesh));
+    let frozen = 0;
+    for (const mesh of scene.meshes) {
+      if (!mesh || mesh.isDisposed() || dynamicMeshes.has(mesh)) continue;
+      let node = mesh;
+      let dynamic = false;
+      while (node) {
+        if (dynamicRoots.has(node)) { dynamic = true; break; }
+        node = node.parent;
+      }
+      if (dynamic || mesh.isWorldMatrixFrozen) continue;
+      try {
+        mesh.freezeWorldMatrix();
+        frozen++;
+      } catch (error) {
+        // Unsupported meshes stay on the regular transform path.
+      }
+    }
+    frozenStaticMeshCount = frozen;
+    return frozen;
+  }
+
   function createScene() {
     scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color4(0.67, 0.79, 0.82, 1);
@@ -1699,22 +1729,46 @@
     camera.minZ = 0.08;
     camera.maxZ = 430;
     camera.fov = 1.04;
-    camera.inertia = 0.08;
+    camera.inertia = 0.035;
     camera.angularSensibility = 2400;
     camera.speed = 0;
     camera.attachControl(canvas, true);
     try { camera.inputs.removeByType("FreeCameraKeyboardMoveInput"); } catch (error) { /* no keyboard-driven camera translation */ }
     createWeapon();
     setupPostProcessing();
+    freezeStaticWorld();
+    simulationClock = performance.now();
+    simulationAccumulator = 0;
     miniMapCtx = $("mini-map").getContext("2d");
     worldMapCtx = $("world-map").getContext("2d");
     drawWorldMap();
     updateHud();
+    let previousFrameAt = performance.now();
     engine.runRenderLoop(() => {
       if (!scene) return;
+      const frameAt = performance.now();
+      const frameMs = Math.max(0.1, frameAt - previousFrameAt);
+      previousFrameAt = frameAt;
+      averageFrameMs += (frameMs - averageFrameMs) * 0.08;
+      smoothedFps += (1000 / frameMs - smoothedFps) * 0.06;
       if (camera) camera.rotation.x = clamp(camera.rotation.x, -0.25, 0.34);
-      const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
-      if (gameStarted && !paused) updateGame(dt);
+
+      const elapsed = Math.min(engine.getDeltaTime() / 1000, 0.1);
+      if (gameStarted && !paused) {
+        simulationAccumulator += elapsed;
+        const step = 1 / 60;
+        let steps = 0;
+        while (simulationAccumulator >= step && steps < 6) {
+          simulationClock += step * 1000;
+          updateGame(step, simulationClock);
+          simulationAccumulator -= step;
+          steps++;
+        }
+        if (steps === 6) simulationAccumulator = Math.min(simulationAccumulator, step);
+      } else {
+        simulationAccumulator = 0;
+        simulationClock = frameAt;
+      }
       scene.render();
     });
   }
@@ -2435,7 +2489,8 @@
     scentActiveUntil = 0;
     $("game-shell").classList.remove("crouched");
     if (!scene) {
-      engine = new BABYLON.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: false, adaptToDeviceRatio: true });
+      engine = new BABYLON.Engine(canvas, true, { stencil: false, preserveDrawingBuffer: false, adaptToDeviceRatio: false });
+      engine.setHardwareScalingLevel(Math.max(1, (window.devicePixelRatio || 1) / 1.25));
       createScene();
       window.addEventListener("resize", () => engine.resize());
     }
@@ -2657,7 +2712,8 @@
     else $("continue-button").style.display = "none";
     // Prepare the valley behind the title screen. Everything runs locally; no server is contacted.
     try {
-      engine = new BABYLON.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: false, adaptToDeviceRatio: true });
+      engine = new BABYLON.Engine(canvas, true, { stencil: false, preserveDrawingBuffer: false, adaptToDeviceRatio: false });
+      engine.setHardwareScalingLevel(Math.max(1, (window.devicePixelRatio || 1) / 1.25));
       createScene();
       window.addEventListener("resize", () => engine.resize());
     } catch (error) {
