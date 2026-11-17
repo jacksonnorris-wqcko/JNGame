@@ -57,12 +57,12 @@ GAME_MODELS = [
         "source": "https://polyfork.dev/asset/pig-base",
     },
     {
-        "asset": "Straight Pull Rifle, Scoped (Mega Weapon Pack)",
-        "path": "weapons/straight-pull-rifle-scoped.glb",
-        "url": "https://cdn.3dassets.dev/assets/33108/v1/model.glb",
-        "minimum_bytes": 100_000,
-        "license": "CC0 1.0 Universal",
-        "source": "https://3dassets.dev/assets/mega-weapon-pack-straight-pull-rifle-scoped-7c27fb1e",
+        "asset": "Polyfork Bolt-Action Rifle",
+        "path": "weapons/bolt-action-rifle.glb",
+        "url": "https://polyfork.dev/cdn/bolt-action-rifle-2f1793.glb",
+        "minimum_bytes": 50_000,
+        "license": "CC BY 4.0",
+        "source": "https://polyfork.dev/asset/bolt-action-rifle-2f1793",
     },
 ]
 ATTRIBUTION_PATH = ROOT / "public" / "assets" / "models" / "ATTRIBUTION.md"
@@ -217,9 +217,7 @@ def write_model_attributions() -> None:
         "- Deer by Polyfork (https://polyfork.dev/asset/deer-base), CC BY 4.0.\n"
         "- Pig by Polyfork (https://polyfork.dev/asset/pig-base), CC BY 4.0. "
         "Recoloured and adapted with additional boar details for Wildrange.\n"
-        "- Straight Pull Rifle, Scoped (Mega Weapon Pack), 3D Assets "
-        "(https://3dassets.dev/assets/mega-weapon-pack-bolt-sniper-classic-scoped-379f5378), "
-        "CC0 1.0 Universal.\n",
+        "- Bolt-Action Rifle by Polyfork (https://polyfork.dev/asset/bolt-action-rifle-2f1793), CC BY 4.0.\n",
         encoding="utf-8",
     )
 
