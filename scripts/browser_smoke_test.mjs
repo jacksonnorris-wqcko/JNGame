@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.11&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.12&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -83,6 +83,17 @@ try {
   await page.evaluate(() => window.WildrangeQA.setDoor(false));
   await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle()) < 0.025, null, { timeout: 5000 });
   const closedDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
+  const cabinCollision = await page.evaluate(() => ({
+    interiorWalkableWithDoorClosed: window.WildrangeQA.canStandAt(-14, 43),
+    doorwayBlockedWithDoorClosed: !window.WildrangeQA.canStandAt(-14, 38.7)
+  }));
+  if (!cabinCollision.interiorWalkableWithDoorClosed || !cabinCollision.doorwayBlockedWithDoorClosed) {
+    throw new Error("Cabin interior/doorway collision failed: " + JSON.stringify(cabinCollision));
+  }
+  await page.evaluate(() => window.WildrangeQA.setDoor(true));
+  const openDoorwayWalkable = await page.evaluate(() => window.WildrangeQA.canStandAt(-14, 38.7));
+  if (!openDoorwayWalkable) throw new Error("Open cabin doorway remains blocked");
+  await page.evaluate(() => window.WildrangeQA.setDoor(false));
   if (diagnostics.pbrMaterialCount < 15) throw new Error("PBR materials were not created (" + diagnostics.pbrMaterialCount + ")");
   if (diagnostics.readyTextureCount < 12) throw new Error("Too few textures finished loading (" + diagnostics.readyTextureCount + ")");
   if (!diagnostics.canvasWidth || !diagnostics.canvasHeight || !diagnostics.webglEnabled) {
@@ -131,7 +142,7 @@ try {
   const landed = await page.evaluate(() => window.WildrangeDiagnostics());
   if (landed.jumpCount !== jumpsBefore + 1) throw new Error("Jump was not counted exactly once");
   if (failures.length) throw new Error(failures.join("\\n") + "\\nConsole: " + consoleErrors.join("\\n"));
-  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, airborne, landed, failures, consoleErrors }, null, 2));
+  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, cabinCollision, openDoorwayWalkable, airborne, landed, failures, consoleErrors }, null, 2));
 
 } finally {
   await browser.close();
