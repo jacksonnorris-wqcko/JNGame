@@ -68,6 +68,9 @@
   let nearestInteraction = null;
   let audioContext = null;
   let playerVelocity = new BABYLON.Vector3(0, 0, 0);
+  let cabinDoorPivot = null;
+  let cabinDoorOpen = false;
+  let contractBoardTexture = null;
   // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
   const playerForward = new BABYLON.Vector3(0, 0, 1);
   const playerRight = new BABYLON.Vector3(1, 0, 0);
@@ -727,15 +730,22 @@
 
     box("lodge stone foundation", { width: 12.1, height: 0.72, depth: 9.1 }, new BABYLON.Vector3(0, 0.48, 0), mat.stoneDark, root);
     box("lodge timber floor", { width: 11.8, height: 0.22, depth: 8.8 }, new BABYLON.Vector3(0, 0.91, 0), mat.wood, root);
-    box("lodge wall core", { width: 11.1, height: 5.0, depth: 8.1 }, new BABYLON.Vector3(0, 3.55, 0), mat.woodLight, root);
+    // Build separate interior wall panels so the lodge has a real walkable room.
+    box("lodge interior left wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(-5.42, 3.55, 0), mat.woodLight, root);
+    box("lodge interior right wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(5.42, 3.55, 0), mat.woodLight, root);
+    box("lodge interior rear wall", { width: 10.8, height: 4.9, depth: 0.24 }, new BABYLON.Vector3(0, 3.55, 3.94), mat.woodLight, root);
+    box("lodge interior front lintel", { width: 11.0, height: 1.15, depth: 0.24 }, new BABYLON.Vector3(0, 5.35, -3.96), mat.woodLight, root);
 
     for (let row = 0; row < 10; row++) {
       const y = 1.28 + row * 0.46;
-      const front = BABYLON.MeshBuilder.CreateCylinder("front log course", {
-        height: 11.7, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
-      }, scene);
-      front.parent = root; front.rotation.z = Math.PI / 2; front.position.set(0, y, -4.08);
-      front.material = mat.bark; front.isPickable = false; front.receiveShadows = true;
+      const frontSegments = y < 4.05 ? [[-3.25, 5.2], [3.25, 5.2]] : [[0, 11.7]];
+      for (const [frontX, frontLength] of frontSegments) {
+        const front = BABYLON.MeshBuilder.CreateCylinder("front log course", {
+          height: frontLength, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
+        }, scene);
+        front.parent = root; front.rotation.z = Math.PI / 2; front.position.set(frontX, y, -4.08);
+        front.material = mat.bark; front.isPickable = false; front.receiveShadows = true;
+      }
       const rear = BABYLON.MeshBuilder.CreateCylinder("rear log course", {
         height: 11.7, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
       }, scene);
@@ -749,6 +759,28 @@
         wall.material = mat.bark; wall.isPickable = false; wall.receiveShadows = true;
       }
     }
+
+    // A lived-in ranger cabin: bunk, writing desk, stove, shelves and warm interior light.
+    box("cabin woven rug", { width: 4.0, height: 0.035, depth: 3.0 }, new BABYLON.Vector3(0.5, 1.04, 1.0), mat.sign, root);
+    box("ranger bunk frame", { width: 2.5, height: 0.42, depth: 3.4 }, new BABYLON.Vector3(-3.55, 1.28, 1.55), mat.wood, root);
+    box("ranger bunk mattress", { width: 2.35, height: 0.3, depth: 3.15 }, new BABYLON.Vector3(-3.55, 1.62, 1.55), mat.roofLight, root);
+    box("folded blanket", { width: 2.36, height: 0.13, depth: 1.25 }, new BABYLON.Vector3(-3.55, 1.84, 2.35), mat.sign, root);
+    box("bunk pillow", { width: 1.0, height: 0.22, depth: 0.58 }, new BABYLON.Vector3(-3.55, 1.83, 0.35), mat.window, root);
+    box("writing desk", { width: 2.7, height: 0.16, depth: 1.05 }, new BABYLON.Vector3(2.75, 2.05, 2.65), mat.woodLight, root);
+    for (const x of [1.65, 3.85]) for (const z of [2.3, 3.0]) box("desk leg", { width: 0.13, height: 1.95, depth: 0.13 }, new BABYLON.Vector3(x, 1.05, z), mat.bark, root);
+    box("field journal", { width: 0.62, height: 0.1, depth: 0.46 }, new BABYLON.Vector3(2.35, 2.18, 2.55), mat.roof, root);
+    box("oil lamp base", { width: 0.22, height: 0.12, depth: 0.22 }, new BABYLON.Vector3(3.35, 2.18, 2.55), mat.black, root);
+    const cabinLamp = BABYLON.MeshBuilder.CreateSphere("cabin desk lamp", { diameter: 0.22, segments: 10 }, scene);
+    cabinLamp.parent = root; cabinLamp.position.set(3.35, 2.38, 2.55); cabinLamp.material = mat.gold; cabinLamp.isPickable = false;
+    const interiorLight = new BABYLON.PointLight("warm cabin interior", new BABYLON.Vector3(-14, 4.1, 44.5), scene);
+    interiorLight.diffuse = hex("#f6c887"); interiorLight.intensity = 0.42; interiorLight.range = 13;
+    box("cabin stove body", { width: 1.05, height: 1.55, depth: 0.95 }, new BABYLON.Vector3(3.75, 1.82, -2.65), mat.black, root);
+    const stoveDoor = box("cabin stove iron door", { width: 0.58, height: 0.65, depth: 0.06 }, new BABYLON.Vector3(3.75, 1.7, -3.15), mat.stone, root);
+    stoveDoor.material.emissiveColor = hex("#5b2815");
+    const stovePipe = BABYLON.MeshBuilder.CreateCylinder("cabin stove flue", { height: 3.1, diameter: 0.18, tessellation: 12 }, scene);
+    stovePipe.parent = root; stovePipe.position.set(3.75, 4.0, -2.65); stovePipe.material = mat.black; stovePipe.isPickable = false;
+    box("wall shelf", { width: 3.0, height: 0.14, depth: 0.48 }, new BABYLON.Vector3(-1.5, 4.65, 3.72), mat.wood, root);
+    for (let book = 0; book < 4; book++) box("field guide book", { width: 0.32, height: 0.62, depth: 0.34 }, new BABYLON.Vector3(-2.4 + book * 0.48, 5.02, 3.62), [mat.roof, mat.sign, mat.woodLight, mat.black][book], root);
 
     for (const x of [-5.5, 5.5]) for (const z of [-4.05, 4.05]) {
       const post = box("lodge corner timber", { width: 0.48, height: 5.55, depth: 0.48 }, new BABYLON.Vector3(x, 3.45, z), mat.wood, root);
@@ -815,16 +847,23 @@
       }
     }
 
-    box("lodge door recess", { width: 1.82, height: 3.25, depth: 0.12 }, new BABYLON.Vector3(0, 2.66, -4.2), mat.black, root);
-    box("lodge door leaf", { width: 1.55, height: 3.0, depth: 0.14 }, new BABYLON.Vector3(0, 2.6, -4.32), mat.roofLight, root);
-    for (let plank = 0; plank < 5; plank++) {
-      box("door vertical plank", { width: 0.27, height: 2.82, depth: 0.04 }, new BABYLON.Vector3(-0.54 + plank * 0.27, 2.6, -4.42), mat.wood, root);
+    box("lodge door recess", { width: 2.0, height: 3.35, depth: 0.16 }, new BABYLON.Vector3(0, 2.68, -4.13), mat.black, root);
+    for (const x of [-1.02, 1.02]) box("door jamb", { width: 0.22, height: 3.55, depth: 0.3 }, new BABYLON.Vector3(x, 2.72, -4.22), mat.woodLight, root);
+    box("door lintel", { width: 2.25, height: 0.22, depth: 0.3 }, new BABYLON.Vector3(0, 4.48, -4.22), mat.woodLight, root);
+    cabinDoorPivot = new BABYLON.TransformNode("Lodge door hinge", scene);
+    cabinDoorPivot.parent = root;
+    cabinDoorPivot.position.set(-0.88, 1.12, -4.12);
+    const doorLeaf = box("hinged lodge door", { width: 1.76, height: 3.02, depth: 0.16 }, new BABYLON.Vector3(0.88, 1.5, 0), mat.roofLight, cabinDoorPivot);
+    doorLeaf.receiveShadows = true;
+    for (let plank = 0; plank < 6; plank++) {
+      box("door vertical plank", { width: 0.25, height: 2.84, depth: 0.045 }, new BABYLON.Vector3(0.18 + plank * 0.28, 1.5, -0.105), mat.wood, cabinDoorPivot);
     }
-    box("door cross brace", { width: 1.36, height: 0.14, depth: 0.06 }, new BABYLON.Vector3(0, 1.68, -4.46), mat.wood, root);
-    for (const x of [-0.94, 0.94]) box("door jamb", { width: 0.18, height: 3.4, depth: 0.22 }, new BABYLON.Vector3(x, 2.65, -4.3), mat.woodLight, root);
-    box("door lintel", { width: 2.1, height: 0.2, depth: 0.24 }, new BABYLON.Vector3(0, 4.35, -4.3), mat.woodLight, root);
-    const handle = BABYLON.MeshBuilder.CreateSphere("door iron handle", { diameter: 0.12, segments: 10 }, scene);
-    handle.parent = root; handle.position.set(0.52, 2.55, -4.5); handle.material = mat.gold; handle.isPickable = false;
+    box("door cross brace", { width: 1.55, height: 0.15, depth: 0.06 }, new BABYLON.Vector3(0.88, 0.58, -0.14), mat.wood, cabinDoorPivot);
+    box("door upper brace", { width: 1.55, height: 0.15, depth: 0.06 }, new BABYLON.Vector3(0.88, 2.4, -0.14), mat.wood, cabinDoorPivot);
+    const handle = BABYLON.MeshBuilder.CreateSphere("door iron handle", { diameter: 0.13, segments: 12 }, scene);
+    handle.parent = cabinDoorPivot; handle.position.set(1.48, 1.5, -0.2); handle.material = mat.gold; handle.isPickable = false;
+    const latch = BABYLON.MeshBuilder.CreateTorus("door iron latch", { diameter: 0.18, thickness: 0.035, tessellation: 12 }, scene);
+    latch.parent = cabinDoorPivot; latch.position.set(1.48, 1.5, -0.28); latch.rotation.x = Math.PI / 2; latch.material = mat.black; latch.isPickable = false;
 
     for (const x of [-3.45, 3.45]) {
       box("window recess", { width: 1.55, height: 1.55, depth: 0.15 }, new BABYLON.Vector3(x, 3.95, -4.21), mat.black, root);
@@ -864,14 +903,19 @@
       firewood.material = mat.bark; firewood.isPickable = false;
     }
 
-    obstacles.push({ x: -14, z: 43, radius: 6.4 });
+    makeInteractable("LODGE DOOR", "Open or close the Pinecrest cabin door", -14, 37.2, "cabin", "door");
     makeInteractable("OUTFITTERS", "Open the supply counter", -6.8, 27.5, "shop", "ammo");
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -5.1, 22.4, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
     box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
     const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.5, diameter: 0.18, tessellation: 8 }, scene);
     boardPost.position.set(-5.1, 0.95, 22.4); boardPost.material = mat.bark;
-    box("board-paper", { width: 1.35, height: 1.0, depth: 0.06 }, new BABYLON.Vector3(-5.1, 1.8, 22.22), mat.window);
+    const boardPaper = box("board-paper", { width: 1.35, height: 1.0, depth: 0.06 }, new BABYLON.Vector3(-5.1, 1.8, 22.22), mat.window);
+    contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice", { width: 512, height: 384 }, scene, true);
+    const boardMaterial = new BABYLON.StandardMaterial("contract notice ink", scene);
+    boardMaterial.diffuseTexture = contractBoardTexture; boardMaterial.emissiveColor = hex("#fff4d6"); boardMaterial.backFaceCulling = false;
+    boardPaper.material = boardMaterial;
+    updateContractBoard();
     box("harvest-table", { width: 4, height: 1.1, depth: 1.7 }, new BABYLON.Vector3(-20.7, 0.75, 40.5), mat.wood);
     for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7], [-8.2, 28], [-5.4, 28]]) {
       const post = BABYLON.MeshBuilder.CreateCylinder("outpost-post", { height: 2.4, diameter: 0.16, tessellation: 8 }, scene);
@@ -1909,7 +1953,12 @@
     for (const item of obstacles) {
       if (Math.hypot(x - item.x, z - item.z) < item.radius + 0.48) return false;
     }
-    if (Math.abs(x + 14) < 6.5 && Math.abs(z - 43) < 5.1) return false;
+    const inCabinFootprint = Math.abs(x + 14) < 6.5 && Math.abs(z - 43) < 5.1;
+    if (inCabinFootprint) {
+      const inDoorway = Math.abs(x + 14) < 1.18 && z > 37.0 && z < 40.2;
+      const insideRoom = Math.abs(x + 14) < 5.0 && z > 39.3 && z < 47.2;
+      if (!cabinDoorOpen || (!inDoorway && !insideRoom)) return false;
+    }
     return true;
   }
 
@@ -2265,6 +2314,37 @@
     }
   }
 
+
+  function updateContractBoard() {
+    if (!contractBoardTexture) return;
+    const ctx = contractBoardTexture.getContext();
+    ctx.clearRect(0, 0, 512, 384);
+    ctx.fillStyle = "#e8d7ad"; ctx.fillRect(0, 0, 512, 384);
+    ctx.fillStyle = "#342b1e"; ctx.fillRect(12, 12, 488, 360);
+    ctx.fillStyle = "#d8c18c"; ctx.fillRect(22, 22, 468, 340);
+    ctx.fillStyle = "#3b3021"; ctx.textAlign = "center";
+    ctx.font = "bold 25px Georgia"; ctx.fillText("PINECREST OUTPOST", 256, 62);
+    ctx.font = "bold 17px Georgia"; ctx.fillText("HUNTERS' NOTICE BOARD", 256, 91);
+    ctx.strokeStyle = "#8a7045"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(54, 108); ctx.lineTo(458, 108); ctx.stroke();
+    ctx.textAlign = "left"; ctx.font = "bold 23px Georgia"; ctx.fillText("FIRST HARVEST", 58, 151);
+    ctx.font = "17px Georgia"; ctx.fillText("Whitetail deer · 3 required", 58, 183);
+    ctx.fillText("Return to the harvest station", 58, 210);
+    ctx.fillText("for your field payment.", 58, 235);
+    ctx.font = "bold 18px Georgia"; ctx.fillText(state.contractComplete ? "✓ CONTRACT COMPLETE" : state.contractAccepted ? "IN PROGRESS  " + state.contractProgress + " / 3" : "AVAILABLE · ACCEPT AT BOARD", 58, 281);
+    ctx.font = "bold 17px Georgia"; ctx.fillText("REWARD  $250  +  180 XP", 58, 322);
+    contractBoardTexture.update(false);
+  }
+
+  function setCabinDoor(open) {
+    cabinDoorOpen = Boolean(open);
+    if (cabinDoorPivot) {
+      cabinDoorPivot.rotation.y = cabinDoorOpen ? 1.48 : 0;
+    }
+    sound(cabinDoorOpen ? 180 : 145, 0.18, "triangle", 0.025);
+    announce(cabinDoorOpen ? "Pinecrest lodge door opened." : "Pinecrest lodge door closed.", 1500);
+    updateInteraction();
+  }
+
   function updateInteraction() {
     const px = camera.position.x, pz = camera.position.z;
     let found = null, closest = 7.0;
@@ -2293,6 +2373,7 @@
       if (found.kind === "shop") label = "OPEN OUTFITTERS";
       if (found.kind === "contract") label = state.contractAccepted ? "CHECK CONTRACT" : "ACCEPT HUNTING CONTRACT";
       if (found.kind === "sell") label = "SELL HARVEST";
+      if (found.kind === "cabin") label = cabinDoorOpen ? "CLOSE LODGE DOOR" : "OPEN LODGE DOOR";
       text("interaction-text", label);
     } else $("interaction-prompt").classList.remove("visible");
   }
@@ -2324,6 +2405,8 @@
       }
     } else if (nearestInteraction.kind === "sell") {
       sellHarvest();
+    } else if (nearestInteraction.kind === "cabin") {
+      setCabinDoor(!cabinDoorOpen);
     }
   }
 
@@ -2583,6 +2666,7 @@
     if (scentAction) scentAction.classList.toggle("active", scentSeconds > 0);
     text("scent-label", scentSeconds > 0 ? scentSeconds + "s LEFT" : "SCENT " + state.scent);
     text("contract-progress", state.contractProgress + " / 3");
+    updateContractBoard();
     $("contract-fill").style.width = (state.contractProgress / 3 * 100) + "%";
     if (state.contractComplete) {
       text("contract-title", "First Harvest · Complete");
