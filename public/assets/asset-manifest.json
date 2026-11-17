@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "license": "CC0 1.0 Universal",
+  "sources": {
+    "ambientCG": "https://ambientcg.com/",
+    "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest"
+  },
+  "assets": [
+    {
+      "asset": "Grass001",
+      "status": "downloaded",
+      "maps": [
+        "grass_roughness.jpg",
+        "grass_normal.jpg",
+        "grass_ao.jpg",
+        "grass_albedo.jpg"
+      ]
+    },
+    {
+      "asset": "Ground053",
+      "status": "downloaded",
+      "maps": [
+        "forest_floor_normal.jpg",
+        "forest_floor_ao.jpg",
+        "forest_floor_roughness.jpg",
+        "forest_floor_albedo.jpg"
+      ]
+    },
+    {
+      "asset": "WoodSiding001",
+      "status": "downloaded",
+      "maps": [
+        "wood_siding_roughness.jpg",
+        "wood_siding_normal.jpg",
+        "wood_siding_ao.jpg",
+        "wood_siding_albedo.jpg"
+      ]
+    },
+    {
+      "asset": "Wood001",
+      "status": "downloaded",
+      "maps": [
+        "wood_planks_albedo.jpg",
+        "wood_planks_roughness.jpg",
+        "wood_planks_normal.jpg"
+      ]
+    },
+    {
+      "asset": "Bark016",
+      "status": "downloaded",
+      "maps": [
+        "bark_roughness.jpg",
+        "bark_albedo.jpg",
+        "bark_normal.jpg",
+        "bark_ao.jpg"
+      ]
+    },
+    {
+      "asset": "Rock053",
+      "status": "downloaded",
+      "maps": [
+        "rock_ao.jpg",
+        "rock_albedo.jpg",
+        "rock_roughness.jpg",
+        "rock_normal.jpg"
+      ]
+    },
+    {
+      "asset": "LeafSet005",
+      "status": "downloaded",
+      "maps": [
+        "leaf_set_roughness.jpg",
+        "leaf_set_albedo.jpg",
+        "leaf_set_normal.jpg"
+      ]
+    },
+    {
+      "asset": "nature_reserve_forest",
+      "status": "downloaded",
+      "bytes": 1900770
+    }
+  ]
+}
