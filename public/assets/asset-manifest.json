@@ -134,7 +134,7 @@
     },
     {
       "asset": "White-Tailed Deer, high-detail static source (Grab3D)",
-      "status": "downloaded",
+      "status": "already-present",
       "path": "animals/deer-high-detail-source.glb",
       "bytes": 11345744,
       "license": "CC0 1.0 Universal",
