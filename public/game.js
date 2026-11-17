@@ -777,6 +777,15 @@
     box("ranger bunk mattress", { width: 2.35, height: 0.3, depth: 3.15 }, new BABYLON.Vector3(-3.55, 1.62, 1.55), mat.roofLight, root);
     box("folded blanket", { width: 2.36, height: 0.13, depth: 1.25 }, new BABYLON.Vector3(-3.55, 1.84, 2.35), mat.sign, root);
     box("bunk pillow", { width: 1.0, height: 0.22, depth: 0.58 }, new BABYLON.Vector3(-3.55, 1.83, 0.35), mat.window, root);
+    box("ranger bunk quilt", { width: 2.25, height: 0.09, depth: 2.18 }, new BABYLON.Vector3(-3.55, 1.82, 1.5), mat.sign, root);
+    for (const x of [-4.65, -2.45]) for (const z of [0.0, 3.1]) {
+      box("bunk timber leg", { width: 0.14, height: 0.86, depth: 0.14 }, new BABYLON.Vector3(x, 1.22, z), mat.bark, root);
+    }
+    box("bunk headboard", { width: 2.55, height: 1.12, depth: 0.16 }, new BABYLON.Vector3(-3.55, 1.72, 3.25), mat.woodLight, root);
+    box("bedside field chest", { width: 1.0, height: 0.68, depth: 0.82 }, new BABYLON.Vector3(-1.85, 1.36, 2.95), mat.wood, root);
+    box("bedside chest lid", { width: 1.08, height: 0.12, depth: 0.9 }, new BABYLON.Vector3(-1.85, 1.75, 2.95), mat.woodLight, root);
+    const chestLatch = BABYLON.MeshBuilder.CreateSphere("bedside chest brass latch", { diameter: 0.11, segments: 8 }, scene);
+    chestLatch.parent = root; chestLatch.position.set(-1.85, 1.52, 2.48); chestLatch.material = mat.gold; chestLatch.isPickable = false;
     box("writing desk", { width: 2.7, height: 0.16, depth: 1.05 }, new BABYLON.Vector3(2.75, 2.05, 2.65), mat.woodLight, root);
     for (const x of [1.65, 3.85]) for (const z of [2.3, 3.0]) box("desk leg", { width: 0.13, height: 1.95, depth: 0.13 }, new BABYLON.Vector3(x, 1.05, z), mat.bark, root);
     box("field journal", { width: 0.62, height: 0.1, depth: 0.46 }, new BABYLON.Vector3(2.35, 2.18, 2.55), mat.roof, root);
@@ -791,10 +800,33 @@
     const stoveDoor = box("cabin stove iron door", { width: 0.58, height: 0.65, depth: 0.06 }, new BABYLON.Vector3(3.75, 1.7, -3.15), mat.stone, root);
     const stoveDoorMaterial = makeMaterial("Cabin stove firebox", "#5b2815", 0.8);
     stoveDoorMaterial.emissiveColor = hex("#5b2815"); stoveDoor.material = stoveDoorMaterial;
+    const stoveWindow = box("stove ember viewing glass", { width: 0.4, height: 0.34, depth: 0.035 }, new BABYLON.Vector3(3.75, 1.74, -3.19), mat.gold, root);
+    const stoveEmbers = makeMaterial("Stove ember glow", "#d45d25", 0.55);
+    stoveEmbers.emissiveColor = hex("#c94a1b"); stoveWindow.material = stoveEmbers;
+    for (const x of [3.38, 4.12]) for (const z of [-2.95, -2.35]) {
+      box("iron stove foot", { width: 0.13, height: 0.38, depth: 0.13 }, new BABYLON.Vector3(x, 1.05, z), mat.black, root);
+    }
+    box("stove cooking plate", { width: 1.12, height: 0.13, depth: 1.02 }, new BABYLON.Vector3(3.75, 2.62, -2.65), mat.stone, root);
+    const stoveHandle = BABYLON.MeshBuilder.CreateCylinder("stove door handle", { height: 0.28, diameter: 0.07, tessellation: 10 }, scene);
+    stoveHandle.parent = root; stoveHandle.rotation.x = Math.PI / 2; stoveHandle.position.set(4.1, 1.7, -3.2); stoveHandle.material = mat.gold; stoveHandle.isPickable = false;
     const stovePipe = BABYLON.MeshBuilder.CreateCylinder("cabin stove flue", { height: 3.1, diameter: 0.18, tessellation: 12 }, scene);
     stovePipe.parent = root; stovePipe.position.set(3.75, 4.0, -2.65); stovePipe.material = mat.black; stovePipe.isPickable = false;
     box("wall shelf", { width: 3.0, height: 0.14, depth: 0.48 }, new BABYLON.Vector3(-1.5, 4.65, 3.72), mat.wood, root);
     for (let book = 0; book < 4; book++) box("field guide book", { width: 0.32, height: 0.62, depth: 0.34 }, new BABYLON.Vector3(-2.4 + book * 0.48, 5.02, 3.62), [mat.roof, mat.sign, mat.woodLight, mat.black][book], root);
+    for (let batten = 0; batten < 20; batten++) {
+      box("rear interior wall timber batten", { width: 0.11, height: 4.25, depth: 0.08 },
+        new BABYLON.Vector3(-5.0 + batten * 0.52, 3.45, 3.76), batten % 4 === 0 ? mat.woodLight : mat.wood, root);
+    }
+    for (const x of [-5.25, 5.25]) {
+      for (let batten = 0; batten < 12; batten++) {
+        box("side interior wall timber batten", { width: 0.08, height: 4.25, depth: 0.11 },
+          new BABYLON.Vector3(x, 3.45, -3.5 + batten * 0.64), mat.wood, root);
+      }
+    }
+    box("cabin mounted hunting rifle rack", { width: 2.25, height: 0.12, depth: 0.22 }, new BABYLON.Vector3(0.5, 3.5, -3.72), mat.wood, root);
+    for (const x of [-0.35, 0.5, 1.35]) box("rifle rack support", { width: 0.12, height: 0.45, depth: 0.14 }, new BABYLON.Vector3(x, 3.24, -3.7), mat.gold, root);
+    box("cabin framed wildlife photograph", { width: 1.35, height: 1.05, depth: 0.1 }, new BABYLON.Vector3(3.85, 4.25, 3.72), mat.woodLight, root);
+    box("cabin photograph print", { width: 1.12, height: 0.82, depth: 0.035 }, new BABYLON.Vector3(3.85, 4.25, 3.64), mat.sign, root);
 
     for (const x of [-5.5, 5.5]) for (const z of [-4.05, 4.05]) {
       const post = box("lodge corner timber", { width: 0.48, height: 5.55, depth: 0.48 }, new BABYLON.Vector3(x, 3.45, z), mat.wood, root);
@@ -873,6 +905,38 @@
     for (const x of [-3.8, 0, 3.8]) {
       box("porch footing", { width: 0.48, height: 0.42, depth: 0.48 }, new BABYLON.Vector3(x, 0.2, -6.25), mat.stoneDark, root);
       box("porch bearer", { width: 0.22, height: 0.24, depth: 2.1 }, new BABYLON.Vector3(x, 0.76, -5.45), mat.bark, root);
+    }
+    // Enclose the ranger compound with an open front gate and clear entry approach.
+    const fencePost = (x, z, name) => box(name, { width: 0.22, height: 1.8, depth: 0.22 },
+      new BABYLON.Vector3(x, 0.98, z), mat.bark, root);
+    for (const x of [-13, 13]) {
+      for (let z = -12; z <= 9; z += 3) fencePost(x, z, "compound perimeter fence post");
+      for (let z = -10.5; z <= 7.5; z += 3) {
+        box("compound side fence lower rail", { width: 0.14, height: 0.18, depth: 3.0 }, new BABYLON.Vector3(x, 0.72, z), mat.wood, root);
+        box("compound side fence upper rail", { width: 0.14, height: 0.18, depth: 3.0 }, new BABYLON.Vector3(x, 1.34, z), mat.woodLight, root);
+      }
+    }
+    for (let x = -13; x <= 13; x += 3.25) fencePost(x, 12, "compound north fence post");
+    for (let x = -11.375; x <= 11.375; x += 3.25) {
+      box("compound north fence lower rail", { width: 3.25, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(x, 0.72, 12), mat.wood, root);
+      box("compound north fence upper rail", { width: 3.25, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(x, 1.34, 12), mat.woodLight, root);
+    }
+    for (const x of [-13, -9.75, -6.5, 6.5, 9.75, 13]) fencePost(x, -14, "compound gate fence post");
+    for (const side of [-1, 1]) {
+      const centerX = side * 9.75;
+      box("compound gate lower rail", { width: 6.5, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(centerX, 0.72, -14), mat.wood, root);
+      box("compound gate upper rail", { width: 6.5, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(centerX, 1.34, -14), mat.woodLight, root);
+    }
+    box("Pinecrest entry gate lintel", { width: 6.7, height: 0.24, depth: 0.26 }, new BABYLON.Vector3(0, 3.15, -14), mat.woodLight, root);
+    box("Pinecrest entry gate sign", { width: 4.1, height: 0.9, depth: 0.18 }, new BABYLON.Vector3(0, 2.55, -14), mat.sign, root);
+    for (const x of [-5.7, 5.7]) {
+      const lampPole = BABYLON.MeshBuilder.CreateCylinder("compound entrance lantern post", { height: 3.4, diameter: 0.16, tessellation: 10 }, scene);
+      lampPole.parent = root; lampPole.position.set(x, 1.8, -11.5); lampPole.material = mat.bark; lampPole.isPickable = false;
+      const lampBox = box("compound entrance lantern", { width: 0.35, height: 0.46, depth: 0.35 }, new BABYLON.Vector3(x, 3.45, -11.5), mat.gold, root);
+      const lampGlass = box("compound lantern glass", { width: 0.22, height: 0.31, depth: 0.22 }, new BABYLON.Vector3(x, 3.45, -11.5), mat.window, root);
+      lampGlass.material.emissiveColor = hex("#f2bd75");
+      const gateLight = new BABYLON.PointLight("compound gate warm light", new BABYLON.Vector3(-14 + x, 3.2, 43 - 11.5), scene);
+      gateLight.diffuse = hex("#f0bc79"); gateLight.intensity = 0.22; gateLight.range = 9;
     }
     for (const x of [-4.0, 0, 4.0]) {
       box("porch support post", { width: 0.24, height: 3.0, depth: 0.24 }, new BABYLON.Vector3(x, 2.55, -6.25), mat.bark, root);
