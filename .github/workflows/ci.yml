@@ -84,6 +84,10 @@ jobs:
             if (fs.existsSync("public/assets/weapons/marksman-rifle.glb")) {
               modelChecks.push({ path: "weapons/marksman-rifle.glb", minBytes: 100000, minMeshes: 1, skins: 0, nodes: [], clips: ["magazine-open", "magazine-close", "bolt-open", "bolt-close"] });
             }
+            // The jointed CC0 boar is staged for rig inspection before it replaces the animated boar.
+            if (fs.existsSync("public/assets/animals/forest-boar.glb")) {
+              modelChecks.push({ path: "animals/forest-boar.glb", minBytes: 100000, minMeshes: 1, skins: 0, nodes: [], clips: [] });
+            }
             for (const model of modelChecks) {
               const record = models.get(model.path);
               const file = "public/assets/" + model.path;
