@@ -27,7 +27,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.7.3", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.0", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -46,6 +46,10 @@ try {
     return diagnostics && diagnostics.sceneReady && diagnostics.meshCount > 500;
   }, { timeout: 45000 });
   await page.waitForTimeout(9000);
+  await page.waitForFunction(() => {
+    const state = window.WildrangeDiagnostics?.();
+    return state && state.importedAnimalCount >= 9 && state.weaponModelReady;
+  }, { timeout: 45000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
@@ -54,10 +58,19 @@ try {
   if (!diagnostics.canvasWidth || !diagnostics.canvasHeight || !diagnostics.webglEnabled) {
     throw new Error("3D WebGL renderer is unavailable");
   }
-  if (diagnostics.animalCount < 9 || diagnostics.animalLegRigCount < 36 || diagnostics.animalHeadRigCount < 9) {
-    throw new Error("Wildlife rigs are incomplete: " + JSON.stringify(diagnostics));
+  if (diagnostics.animalCount < 9 || diagnostics.importedAnimalCount < 9 ||
+      diagnostics.animalRigSkinCount < 9 || diagnostics.animalLegRigCount < 36 ||
+      diagnostics.animalHeadRigCount < 9 || diagnostics.animalAnimationClipCount < 27) {
+    throw new Error("Imported wildlife rigs or animations are incomplete: " + JSON.stringify(diagnostics));
   }
-  if (diagnostics.riflePartCount < 35) throw new Error("Rifle detail model is incomplete (" + diagnostics.riflePartCount + ")");
+  if (!diagnostics.weaponModelReady || diagnostics.weaponModelFailed ||
+      diagnostics.weaponAssetMeshCount < 2 || !diagnostics.weaponBoltReady ||
+      diagnostics.weaponScopePartCount < 12) {
+    throw new Error("Imported rifle, hinged bolt or optic assembly is incomplete: " + JSON.stringify(diagnostics));
+  }
+  if (diagnostics.modelLoadFailures?.length) {
+    throw new Error("One or more GLB models failed to load: " + diagnostics.modelLoadFailures.join("; "));
+  }
 
   await page.mouse.move(800, 450);
   await page.mouse.down({ button: "right" });
