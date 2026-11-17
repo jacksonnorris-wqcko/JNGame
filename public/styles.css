@@ -39,3 +39,11 @@
 
 /* Native hidden state is authoritative for the field map on first load. */
 .modal-overlay[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+/* Fieldcraft update */
+.fieldcraft-line b{grid-column:auto;font-size:7px;letter-spacing:.15px;color:#d8c794}
+.quick-action.active{color:#f1dba4}
+.quick-action.active kbd{border-color:rgba(221,190,119,.62);background:rgba(213,180,111,.14);color:#f2dba5}
+.track-age{display:block;margin-top:2px;color:#d1b97e;font-size:7px;letter-spacing:.7px}
+.game-shell.crouched #crosshair{opacity:.72;transform:translate(-50%,-50%) scale(.88)}
+@media(max-width:720px){.quick-actions{gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 20px)}.quick-action{font-size:6px}.quick-action kbd{font-size:6px}.fieldcraft-line b{font-size:6px}}

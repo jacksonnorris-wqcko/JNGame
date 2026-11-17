@@ -21,7 +21,7 @@
 
   const defaults = {
     name: "Ranger", cash: 180, xp: 0, level: 1, ammo: 8, reserve: 40,
-    hides: 0, meat: 0, harvested: 0, deerHarvested: 0, contractAccepted: false,
+    hides: 0, meat: 0, harvested: 0, deerHarvested: 0, cleanKills: 0, contractAccepted: false,
     contractProgress: 0, contractComplete: false, health: 100, stamina: 100,
     medkits: 1, scent: 0, x: 0, z: 19, yaw: 0, unlocked: ["Pinecrest Valley"]
   };
@@ -40,6 +40,10 @@
   let aiming = false;
   let firing = false;
   let tracking = false;
+  let crouched = false;
+  let scentActiveUntil = 0;
+  let playerMoving = false;
+  let playerSprinting = false;
   let reloading = false;
   let reloadStarted = 0;
   let reloadDuration = 1450;
@@ -121,6 +125,10 @@
     state.stamina = 100;
     state.medkits = 1;
     state.scent = 0;
+    state.cleanKills = 0;
+    crouched = false;
+    scentActiveUntil = 0;
+    $("game-shell").classList.remove("crouched");
     updateHud();
     saveGame(false);
     toast("Fresh field record created.", "success");
@@ -634,6 +642,7 @@
     const animal = {
       id, species, info, root, legs, health: info.health, maxHealth: info.health,
       state: "graze", target: null, speed: 0, dead: false, harvested: false,
+      hitCount: 0, cleanKill: false, lastShotDistance: 0,
       alertUntil: 0, lastTrack: 0, lastAnim: rand(0, 6),
       spawn: { x, z }, respawnAt: 0, name: info.label
     };
@@ -683,6 +692,7 @@
     const animal = {
       id, species: "boar", info, root, legs, health: info.health, maxHealth: info.health,
       state: "graze", target: null, speed: 0, dead: false, harvested: false,
+      hitCount: 0, cleanKill: false, lastShotDistance: 0,
       alertUntil: 0, lastTrack: 0, lastAnim: rand(0, 6),
       spawn: { x, z }, respawnAt: 0, name: info.label, attackCooldown: 0
     };
@@ -714,7 +724,10 @@
       mark.material.alpha = 0.66;
       mark.isPickable = false;
       mark.setEnabled(tracking);
-      footprints.push({ mesh: mark, createdAt: performance.now(), animalId: animal.id });
+      footprints.push({
+        mesh: mark, createdAt: performance.now(), animalId: animal.id,
+        label: animal.info.label, x: mark.position.x, z: mark.position.z
+      });
     }
     if (footprints.length > 280) {
       const old = footprints.shift();
@@ -729,23 +742,29 @@
     $("tracking-panel").classList.toggle("tracking-active", tracking);
     for (const track of footprints) track.mesh.setEnabled(tracking);
     if (!tracking) {
-      $("tracker-content").innerHTML = "Press <kbd>Q</kbd> to focus on nearby animal signs.";
+      $("tracker-content").innerHTML = "Press <kbd>Q</kbd> to inspect recent hoof prints.";
       return;
     }
-    const near = animals.filter((animal) => !animal.dead && !animal.harvested)
-      .map((animal) => ({ animal, distance: distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z }) }))
-      .filter((item) => item.distance < 110)
+    const now = performance.now();
+    const latestByAnimal = new Map();
+    for (const track of footprints) {
+      const previous = latestByAnimal.get(track.animalId);
+      if (!previous || track.createdAt > previous.createdAt) latestByAnimal.set(track.animalId, track);
+    }
+    const player = { x: camera.position.x, z: camera.position.z };
+    const near = Array.from(latestByAnimal.values())
+      .map((track) => ({ track, distance: distance2D(player, { x: track.x, z: track.z }), age: Math.max(0, (now - track.createdAt) / 1000) }))
+      .filter((item) => item.distance < 110 && item.age < 75)
       .sort((a, b) => a.distance - b.distance).slice(0, 3);
     if (!near.length) {
-      $("tracker-content").textContent = "No fresh signs nearby. Move towards the meadow.";
+      $("tracker-content").textContent = "No recent tracks. Search the open meadows or forest edge.";
       return;
     }
     $("tracker-content").innerHTML = near.map((item) => {
-      const dx = item.animal.root.position.x - camera.position.x;
-      const dz = item.animal.root.position.z - camera.position.z;
-      let dir = Math.round(Math.atan2(dx, dz) * 180 / Math.PI);
-      dir = (dir + 360) % 360;
-      return '<div class="tracker-line"><span><strong>' + item.animal.info.label + '</strong></span><span>' + Math.round(item.distance) + 'm · ' + bearingName(dir) + '</span></div>';
+      const dx = item.track.x - camera.position.x, dz = item.track.z - camera.position.z;
+      const dir = (Math.round(Math.atan2(dx, dz) * 180 / Math.PI) + 360) % 360;
+      const freshness = item.age < 12 ? "FRESH" : item.age < 32 ? "WARM" : "OLD";
+      return '<div class="tracker-line"><span><strong>' + item.track.label + '</strong><small class="track-age">' + freshness + ' SIGN · ' + Math.round(item.age) + 's</small></span><span>' + Math.round(item.distance) + 'm · ' + bearingName(dir) + '</span></div>';
     }).join("");
   }
 
@@ -802,6 +821,12 @@
     animateWeapon(dt);
     updateDayCycle(dt);
     if (now - hudTimer > 180) {
+      const expiredTracks = footprints.filter((track) => now - track.createdAt > 75000);
+      if (expiredTracks.length) {
+        const expiredSet = new Set(expiredTracks);
+        expiredTracks.forEach((track) => track.mesh.dispose());
+        footprints = footprints.filter((track) => !expiredSet.has(track));
+      }
       updateHud();
       updateTracking();
       drawMiniMap();
@@ -824,8 +849,10 @@
     const rightInput = (keys.has("d") || keys.has("arrowright") || touchKeys.has("right") ? 1 : 0) -
       (keys.has("a") || keys.has("arrowleft") || touchKeys.has("left") ? 1 : 0);
     const moving = forwardInput !== 0 || rightInput !== 0;
-    const sprinting = (keys.has("shift") || touchKeys.has("sprint")) && state.stamina > 1 && moving;
-    const speed = sprinting ? 10.5 : 6.2;
+    const sprinting = !crouched && (keys.has("shift") || touchKeys.has("sprint")) && state.stamina > 1 && moving;
+    playerMoving = moving;
+    playerSprinting = sprinting;
+    const speed = crouched ? 2.8 : sprinting ? 10.5 : 6.2;
     let forward = camera.getDirection(BABYLON.Axis.Z);
     forward.y = 0;
     forward.normalize();
@@ -848,7 +875,8 @@
     camera.position.x = clamp(camera.position.x, -WORLD_LIMIT, WORLD_LIMIT);
     camera.position.z = clamp(camera.position.z, -WORLD_LIMIT, WORLD_LIMIT);
     const ground = heightAt(camera.position.x, camera.position.z);
-    camera.position.y += (ground + 1.72 - camera.position.y) * Math.min(1, dt * 8);
+    const eyeHeight = crouched ? 1.12 : 1.72;
+    camera.position.y += (ground + eyeHeight - camera.position.y) * Math.min(1, dt * 8);
     if (weaponRoot) weaponRoot.position.y = (aiming ? -0.24 : -0.34) - (moving ? Math.abs(Math.sin(performance.now() * (sprinting ? 0.014 : 0.01))) * 0.012 : 0);
   }
 
@@ -879,7 +907,11 @@
       const p = { x: camera.position.x, z: camera.position.z };
       const a = { x: animal.root.position.x, z: animal.root.position.z };
       const playerDistance = distance2D(p, a);
-      if (playerDistance < (animal.species === "boar" ? 15 : 20) || (shotAt > 0 && Date.now() - shotAt < 9000 && playerDistance < 65)) {
+      const baseSense = animal.species === "boar" ? 15 : animal.species === "buck" ? 23 : 20;
+      const movementNoise = crouched ? 0.36 : playerSprinting ? 1.42 : playerMoving ? 1 : 0.68;
+      const scentFactor = performance.now() < scentActiveUntil ? 0.62 : 1;
+      const detectionRadius = baseSense * movementNoise * scentFactor;
+      if (playerDistance < detectionRadius || (shotAt > 0 && Date.now() - shotAt < 9000 && playerDistance < 65)) {
         animal.state = "flee";
         animal.alertUntil = now + 8500;
       }
@@ -961,6 +993,9 @@
     animal.root.setEnabled(true);
     animal.target = null;
     animal.state = "graze";
+    animal.hitCount = 0;
+    animal.cleanKill = false;
+    animal.lastShotDistance = 0;
     animal.pauseUntil = performance.now() + rand(1000, 3000);
   }
 
@@ -1047,15 +1082,22 @@
     state.harvested += 1;
     state.xp += animal.info.xp;
     if (animal.species !== "boar") state.deerHarvested += 1;
-    if (state.contractAccepted && !state.contractComplete && animal.species !== "boar") {
-      state.contractProgress = Math.min(3, state.contractProgress + 1);
+    if (state.contractAccepted && !state.contractComplete && animal.species !== "boar") state.contractProgress = Math.min(3, state.contractProgress + 1);
+    const cleanBonus = Boolean(animal.cleanKill);
+    if (cleanBonus) {
+      state.cleanKills = (state.cleanKills || 0) + 1;
+      state.cash += 40;
+      state.xp += 30;
     }
     levelCheck();
     const rows = [
       ["Hides collected", "+" + animal.info.hide],
       ["Meat collected", "+" + animal.info.meat],
+      ["Shot placement", cleanBonus ? "CLEAN · FIRST-SHOT HEADSHOT" : (animal.hitCount > 1 ? "FOLLOW-UP SHOT" : "BODY SHOT")],
+      ["Shot distance", Math.round(animal.lastShotDistance || 0) + "m"],
       ["Experience earned", "+" + animal.info.xp + " XP"]
     ];
+    if (cleanBonus) rows.push(["Clean harvest bonus", "+$40 · +30 XP"]);
     $("harvest-rows").innerHTML = rows.map((row) => '<div class="harvest-row"><span>' + row[0] + '</span><strong>' + row[1] + '</strong></div>').join("");
     if (state.contractAccepted && state.contractProgress >= 3 && !state.contractComplete) {
       state.contractComplete = true;
@@ -1125,13 +1167,18 @@
     if (pick && pick.hit && pick.pickedMesh) {
       const animal = animals.find((item) => item.id === pick.pickedMesh.metadata.animalId);
       if (animal && !animal.dead && !animal.harvested) {
+        animal.hitCount = (animal.hitCount || 0) + 1;
+        animal.lastShotDistance = distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z });
         const damage = aiming ? 120 : 92;
         animal.health = Math.max(0, animal.health - damage);
         animal.state = "flee";
         animal.alertUntil = performance.now() + 10000;
         const hitPart = pick.pickedMesh.metadata.animalPart;
         const headshot = hitPart === "head";
-        if (headshot) animal.health = 0;
+        if (headshot) {
+          animal.health = 0;
+          animal.cleanKill = animal.hitCount === 1;
+        }
         showHitMarker();
         if (animal.health <= 0) {
           animal.dead = true;
@@ -1205,6 +1252,32 @@
     } else toast("Tracking sense disabled.", "");
   }
 
+  function toggleCrouch() {
+    crouched = !crouched;
+    $("game-shell").classList.toggle("crouched", crouched);
+    updateHud();
+    toast(crouched ? "Low profile. Wildlife will tolerate a closer approach." : "Standing upright. Your movement is easier to hear.", crouched ? "success" : "");
+    sound(crouched ? 240 : 360, 0.07, "triangle", 0.018);
+  }
+
+  function useScent() {
+    const now = performance.now();
+    if (now < scentActiveUntil) {
+      toast("Trail scent is already masking your approach.", "warning");
+      return;
+    }
+    if (state.scent < 1) {
+      toast("No trail scent available. Buy a vial at Pinecrest Outfitters.", "warning");
+      return;
+    }
+    state.scent -= 1;
+    scentActiveUntil = now + 45000;
+    updateHud();
+    saveGame(false);
+    toast("Trail scent applied. Wildlife detection is reduced for 45 seconds.", "success");
+    sound(590, 0.12, "sine", 0.025);
+  }
+
   function updateHud() {
     const rank = ["NOVICE", "SCOUT", "TRACKER", "RANGER", "STALKER", "WILDLANDER"][Math.min(5, Math.floor((state.level - 1) / 2))];
     text("hunter-name", state.name.toUpperCase());
@@ -1215,6 +1288,14 @@
     text("ammo-current", state.ammo);
     text("ammo-reserve", state.reserve);
     text("shop-cash", "$" + state.cash);
+    const scentSeconds = Math.max(0, Math.ceil((scentActiveUntil - performance.now()) / 1000));
+    text("fieldcraft-value", (crouched ? "CROUCHED" : "STANDING") + " · " + (scentSeconds > 0 ? "SCENT " + scentSeconds + "s" : "VIALS " + state.scent));
+    const crouchAction = $("crouch-action");
+    if (crouchAction) crouchAction.classList.toggle("active", crouched);
+    text("crouch-label", crouched ? "LOW PROFILE" : "CROUCH");
+    const scentAction = $("scent-action");
+    if (scentAction) scentAction.classList.toggle("active", scentSeconds > 0);
+    text("scent-label", scentSeconds > 0 ? scentSeconds + "s LEFT" : "SCENT " + state.scent);
     text("contract-progress", state.contractProgress + " / 3");
     $("contract-fill").style.width = (state.contractProgress / 3 * 100) + "%";
     if (state.contractComplete) {
@@ -1243,7 +1324,10 @@
         : (tracking
           ? "Tracking sense is active. Follow fresh hoof prints to locate wildlife."
           : "Look for deer beyond the outpost. Press Q to reveal nearby tracks.");
-    text("field-note-text", state.hides + " hides · " + state.meat + " meat. " + fieldTip);
+    const scentNoteSeconds = Math.max(0, Math.ceil((scentActiveUntil - performance.now()) / 1000));
+    const fieldcraftTip = crouched ? " You're crouched and quieter." : "";
+    const scentTip = scentNoteSeconds > 0 ? " Scent cover: " + scentNoteSeconds + "s." : "";
+    text("field-note-text", state.hides + " hides · " + state.meat + " meat. " + fieldTip + fieldcraftTip + scentTip);
   }
 
   function updateDayCycle(dt) {
@@ -1343,6 +1427,9 @@
       localStorage.removeItem(SAVE_KEY);
     }
     state.name = name;
+    crouched = false;
+    scentActiveUntil = 0;
+    $("game-shell").classList.remove("crouched");
     if (!scene) {
       engine = new BABYLON.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: false, adaptToDeviceRatio: true });
       createScene();
@@ -1460,6 +1547,8 @@
     if (key === "r") reload();
     if (key === "e") interact();
     if (key === "q") toggleTracking();
+    if (key === "c") toggleCrouch();
+    if (key === "g") useScent();
     if (key === "f") useMedkit();
     if (key === "m") openMap();
   }
@@ -1483,7 +1572,7 @@
     if (!pointerLocked && gameStarted && !paused && !$("supplies-screen").classList.contains("open") && !$("harvest-screen").classList.contains("open")) {
       $("bottom-tip").textContent = "CLICK THE WORLD TO FOCUS · ESC TO PAUSE";
     } else {
-      $("bottom-tip").textContent = "CLICK TO LOCK MOUSE · WASD TO MOVE · RMB TO AIM · LEFT CLICK TO FIRE";
+      $("bottom-tip").textContent = "CLICK TO FOCUS · WASD MOVE · C CROUCH · G SCENT · RMB AIM · LMB FIRE";
     }
   });
 
