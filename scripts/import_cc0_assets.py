@@ -70,13 +70,19 @@ def import_material(asset_id: str, slug: str) -> dict:
                         if not base.lower().endswith(".jpg"):
                             continue
                         for source_map, output_kind in MAPS.items():
-                            suffix = f"_1K_{source_map}.jpg"
-                            if base.lower().endswith(suffix.lower()):
+                            # AmbientCG includes the format in map filenames:
+                            # e.g. Grass001_1K-JPG_Color.jpg.
+                            suffix = f"_{source_map}.jpg"
+                            if (
+                                base.lower().startswith(asset_id.lower() + "_1k")
+                                and base.lower().endswith(suffix.lower())
+                            ):
                                 destination = folder / f"{slug}_{output_kind}.jpg"
                                 with archive.open(member) as source, destination.open("wb") as target:
                                     shutil.copyfileobj(source, target)
                 if not (folder / f"{slug}_albedo.jpg").exists():
-                    raise RuntimeError(f"{asset_id}: Color.jpg map not found in archive")
+                    found = [Path(name).name for name in names if name.lower().endswith(".jpg")]
+                    raise RuntimeError(f"{asset_id}: Color.jpg map not found. Archive files: {found[:20]}")
             return {
                 "asset": asset_id,
                 "status": "downloaded",
