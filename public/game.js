@@ -72,6 +72,7 @@
   let cabinDoorOpen = false;
   let cabinDoorUpdateCount = 0;
   let contractBoardTexture = null;
+  let contractBoardBackTexture = null;
   let contractBoardMaterial = null;
   let cabinFireFlame = null;
   let sceneInitError = "";
@@ -734,6 +735,12 @@
 
     box("lodge stone foundation", { width: 12.1, height: 0.72, depth: 9.1 }, new BABYLON.Vector3(0, 0.48, 0), mat.stoneDark, root);
     box("lodge timber floor", { width: 11.8, height: 0.22, depth: 8.8 }, new BABYLON.Vector3(0, 0.91, 0), mat.wood, root);
+    for (let board = 0; board < 18; board++) {
+      box("interior pine floorboard", { width: 11.55, height: 0.035, depth: 0.405 },
+        new BABYLON.Vector3(0, 1.04, -3.65 + board * 0.43), board % 3 === 0 ? mat.woodLight : mat.wood, root);
+    }
+    for (const z of [-3.78, 3.78]) box("interior floor skirting", { width: 10.7, height: 0.18, depth: 0.12 }, new BABYLON.Vector3(0, 1.16, z), mat.woodLight, root);
+    for (const x of [-5.22, 5.22]) box("interior side skirting", { width: 0.12, height: 0.18, depth: 7.55 }, new BABYLON.Vector3(x, 1.16, 0), mat.woodLight, root);
     // Build separate interior wall panels so the lodge has a real walkable room.
     box("lodge interior left wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(-5.42, 3.55, 0), mat.woodLight, root);
     box("lodge interior right wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(5.42, 3.55, 0), mat.woodLight, root);
@@ -742,7 +749,7 @@
 
     for (let row = 0; row < 10; row++) {
       const y = 1.28 + row * 0.46;
-      const frontSegments = y < 4.05 ? [[-3.25, 5.2], [3.25, 5.2]] : [[0, 11.7]];
+      const frontSegments = y < 4.05 ? [[-3.45, 4.8], [3.45, 4.8]] : [[0, 11.7]];
       for (const [frontX, frontLength] of frontSegments) {
         const front = BABYLON.MeshBuilder.CreateCylinder("front log course", {
           height: frontLength, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
@@ -777,7 +784,9 @@
     const cabinLamp = BABYLON.MeshBuilder.CreateSphere("cabin desk lamp", { diameter: 0.22, segments: 10 }, scene);
     cabinLamp.parent = root; cabinLamp.position.set(3.35, 2.38, 2.55); cabinLamp.material = mat.gold; cabinLamp.isPickable = false;
     const interiorLight = new BABYLON.PointLight("warm cabin interior", new BABYLON.Vector3(-14, 4.1, 44.5), scene);
-    interiorLight.diffuse = hex("#f6c887"); interiorLight.intensity = 0.42; interiorLight.range = 13;
+    interiorLight.diffuse = hex("#ffd19a"); interiorLight.intensity = 0.88; interiorLight.range = 16;
+    const rearWallLight = new BABYLON.PointLight("cabin rear wall lantern", new BABYLON.Vector3(-14, 4.2, 46.1), scene);
+    rearWallLight.diffuse = hex("#f4bd7a"); rearWallLight.intensity = 0.32; rearWallLight.range = 11;
     box("cabin stove body", { width: 1.05, height: 1.55, depth: 0.95 }, new BABYLON.Vector3(3.75, 1.82, -2.65), mat.black, root);
     const stoveDoor = box("cabin stove iron door", { width: 0.58, height: 0.65, depth: 0.06 }, new BABYLON.Vector3(3.75, 1.7, -3.15), mat.stone, root);
     const stoveDoorMaterial = makeMaterial("Cabin stove firebox", "#5b2815", 0.8);
@@ -838,7 +847,32 @@
 
     box("lodge porch platform", { width: 8.8, height: 0.34, depth: 2.4 }, new BABYLON.Vector3(0, 1.1, -5.35), mat.wood, root);
     for (let board = 0; board < 12; board++) {
-      box("porch deck board", { width: 8.65, height: 0.07, depth: 0.18 }, new BABYLON.Vector3(0, 1.3, -6.34 + board * 0.18), mat.woodLight, root);
+      box("porch deck board", { width: 8.65, height: 0.07, depth: 0.18 }, new BABYLON.Vector3(0, 1.3, -6.34 + board * 0.18), board % 3 === 0 ? mat.woodLight : mat.wood, root);
+    }
+    const stairTops = [0.4, 0.7, 1.0, 1.3];
+    const stairZ = [-8.85, -8.15, -7.45, -6.75];
+    for (let step = 0; step < stairTops.length; step++) {
+      const top = stairTops[step];
+      box("solid lodge entry stair " + (step + 1), { width: 3.85, height: 0.30, depth: 0.72 },
+        new BABYLON.Vector3(0, top - 0.15, stairZ[step]), step % 2 ? mat.wood : mat.woodLight, root);
+      box("stair front nosing " + (step + 1), { width: 3.82, height: 0.075, depth: 0.09 },
+        new BABYLON.Vector3(0, top - 0.045, stairZ[step] - 0.315), mat.woodLight, root);
+    }
+    for (const x of [-2.08, 2.08]) {
+      for (let post = 0; post < 4; post++) {
+        box("entry stair handrail post", { width: 0.14, height: 0.9, depth: 0.14 },
+          new BABYLON.Vector3(x, 0.55 + post * 0.29, -8.75 + post * 0.68), mat.bark, root);
+      }
+    }
+    const stairRailL = box("entry stair left handrail", { width: 0.18, height: 0.18, depth: 2.85 },
+      new BABYLON.Vector3(-2.08, 1.55, -7.73), mat.woodLight, root);
+    stairRailL.rotation.x = -0.35;
+    const stairRailR = box("entry stair right handrail", { width: 0.18, height: 0.18, depth: 2.85 },
+      new BABYLON.Vector3(2.08, 1.55, -7.73), mat.woodLight, root);
+    stairRailR.rotation.x = -0.35;
+    for (const x of [-3.8, 0, 3.8]) {
+      box("porch footing", { width: 0.48, height: 0.42, depth: 0.48 }, new BABYLON.Vector3(x, 0.2, -6.25), mat.stoneDark, root);
+      box("porch bearer", { width: 0.22, height: 0.24, depth: 2.1 }, new BABYLON.Vector3(x, 0.76, -5.45), mat.bark, root);
     }
     for (const x of [-4.0, 0, 4.0]) {
       box("porch support post", { width: 0.24, height: 3.0, depth: 0.24 }, new BABYLON.Vector3(x, 2.55, -6.25), mat.bark, root);
@@ -870,6 +904,18 @@
     handle.parent = cabinDoorPivot; handle.position.set(1.48, 1.5, -0.2); handle.material = mat.gold; handle.isPickable = false;
     const latch = BABYLON.MeshBuilder.CreateTorus("door iron latch", { diameter: 0.18, thickness: 0.035, tessellation: 12 }, scene);
     latch.parent = cabinDoorPivot; latch.position.set(1.48, 1.5, -0.28); latch.rotation.x = Math.PI / 2; latch.material = mat.black; latch.isPickable = false;
+    for (let plank = 0; plank < 6; plank++) {
+      box("door interior vertical plank", { width: 0.25, height: 2.82, depth: 0.045 },
+        new BABYLON.Vector3(0.18 + plank * 0.28, 1.5, 0.105), mat.woodLight, cabinDoorPivot);
+    }
+    for (const y of [0.58, 1.5, 2.42]) {
+      box("blacksmith door hinge strap", { width: 0.42, height: 0.16, depth: 0.055 },
+        new BABYLON.Vector3(0.12, y, -0.16), mat.black, cabinDoorPivot);
+      box("blacksmith door hinge pin", { width: 0.12, height: 0.24, depth: 0.13 },
+        new BABYLON.Vector3(0.06, y, -0.2), mat.gold, cabinDoorPivot);
+    }
+    const insideHandle = BABYLON.MeshBuilder.CreateSphere("interior door handle", { diameter: 0.13, segments: 12 }, scene);
+    insideHandle.parent = cabinDoorPivot; insideHandle.position.set(1.48, 1.5, 0.2); insideHandle.material = mat.gold; insideHandle.isPickable = false;
     cabinDoorPivot.getChildMeshes().forEach((mesh) => { if (mesh.isWorldMatrixFrozen) mesh.unfreezeWorldMatrix(); });
 
     for (const x of [-3.45, 3.45]) {
@@ -909,29 +955,29 @@
     const flagMark = box("outpost flag gold stripe", { width: 1.18, height: 0.09, depth: 0.025 }, new BABYLON.Vector3(4.55, 7.05, -7.04), mat.gold, root);
     // A shallow ash bed and individual stones sit directly on the level trailhead ground.
     const fireAsh = BABYLON.MeshBuilder.CreateCylinder("campfire ash bed", { height: 0.055, diameter: 1.75, tessellation: 24 }, scene);
-    fireAsh.parent = root; fireAsh.position.set(1.9, 0.1275, -9.1); fireAsh.material = mat.black; fireAsh.isPickable = false;
+    fireAsh.parent = root; fireAsh.position.set(-4.2, 0.1275, -9.1); fireAsh.material = mat.black; fireAsh.isPickable = false;
     for (let stone = 0; stone < 9; stone++) {
       const angle = stone / 9 * Math.PI * 2;
       const rock = BABYLON.MeshBuilder.CreateIcoSphere("fire ring fieldstone", { radius: 0.3, subdivisions: 1 }, scene);
-      rock.parent = root; rock.position.set(1.9 + Math.cos(angle) * 1.05, 0.31, -9.1 + Math.sin(angle) * 1.05);
+      rock.parent = root; rock.position.set(-4.2 + Math.cos(angle) * 1.05, 0.31, -9.1 + Math.sin(angle) * 1.05);
       rock.scaling.set(1.1, 0.72, 0.9); rock.material = mat.stoneDark; rock.isPickable = false;
     }
     for (let log = 0; log < 3; log++) {
       const emberLog = BABYLON.MeshBuilder.CreateCylinder("campfire split log", { height: 1.5, diameter: 0.2, tessellation: 9 }, scene);
       emberLog.parent = root; emberLog.rotation.z = Math.PI / 2; emberLog.rotation.y = log * Math.PI / 3;
-      emberLog.position.set(1.9, 0.22 + log * 0.02, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
+      emberLog.position.set(-4.2, 0.22 + log * 0.02, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
     }
     cabinFireFlame = BABYLON.MeshBuilder.CreateCylinder("outpost campfire flame", { height: 0.62, diameterTop: 0.035, diameterBottom: 0.34, tessellation: 10 }, scene);
-    cabinFireFlame.parent = root; cabinFireFlame.position.set(1.9, 0.49, -9.1);
+    cabinFireFlame.parent = root; cabinFireFlame.position.set(-4.2, 0.49, -9.1);
     const fireGlowMaterial = makeMaterial("Outpost flame material", "#e87928", 0.45);
     fireGlowMaterial.emissiveColor = hex("#f18a32"); fireGlowMaterial.disableLighting = true;
     cabinFireFlame.material = fireGlowMaterial; cabinFireFlame.isPickable = false;
     const fireCore = BABYLON.MeshBuilder.CreateCylinder("campfire yellow core", { height: 0.38, diameterTop: 0.015, diameterBottom: 0.18, tessellation: 9 }, scene);
-    fireCore.parent = root; fireCore.position.set(1.9, 0.39, -9.1);
+    fireCore.parent = root; fireCore.position.set(-4.2, 0.39, -9.1);
     const fireCoreMaterial = makeMaterial("Campfire core material", "#ffc45e", 0.4);
     fireCoreMaterial.emissiveColor = hex("#ffc45e"); fireCoreMaterial.disableLighting = true;
     fireCore.material = fireCoreMaterial; fireCore.isPickable = false;
-    const fireLight = new BABYLON.PointLight("outpost firelight", new BABYLON.Vector3(-12.1, 0.9, 33.9), scene);
+    const fireLight = new BABYLON.PointLight("outpost firelight", new BABYLON.Vector3(-18.2, 0.9, 33.9), scene);
     fireLight.diffuse = hex("#ff9a48"); fireLight.intensity = 0.48; fireLight.range = 11;
     const crate = (name, x, y, z, size) => box(name, size, new BABYLON.Vector3(x, y, z), mat.wood, root);
     crate("outpost supply crate", 5.9, 1.35, -1.4, { width: 1.25, height: 0.72, depth: 1.0 });
@@ -953,24 +999,33 @@
     }
 
     makeInteractable("LODGE DOOR", "Open or close the Pinecrest cabin door", -14, 38.7, "cabin", "door");
-    makeInteractable("OUTFITTERS", "Open the supply counter", -11.8, 27.5, "shop", "ammo");
+    makeInteractable("OUTFITTERS", "Open the supply counter", -4.5, 40.5, "shop", "ammo");
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -5.1, 22.4, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
     box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
     const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.5, diameter: 0.18, tessellation: 8 }, scene);
     boardPost.position.set(-5.1, 0.95, 22.4); boardPost.material = mat.bark;
-    const boardPaper = BABYLON.MeshBuilder.CreatePlane("board-paper", { width: 1.48, height: 1.22, sideOrientation: BABYLON.Mesh.FRONTSIDE }, scene);
+    const boardPaper = BABYLON.MeshBuilder.CreatePlane("board-paper-front", { width: 1.48, height: 1.22 }, scene);
     boardPaper.position.set(-5.1, 1.8, 22.22);
-    // Aim the plane toward hunters approaching from the south; compensate its local X reversal only.
     boardPaper.rotation.y = Math.PI;
     boardPaper.isPickable = false;
-    contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice", { width: 512, height: 384 }, scene, true);
-    contractBoardMaterial = new BABYLON.StandardMaterial("contract notice ink", scene);
+    const boardPaperBack = BABYLON.MeshBuilder.CreatePlane("board-paper-back", { width: 1.48, height: 1.22 }, scene);
+    boardPaperBack.position.set(-5.1, 1.8, 22.58);
+    boardPaperBack.isPickable = false;
+    contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice front", { width: 768, height: 576 }, scene, true);
+    contractBoardBackTexture = new BABYLON.DynamicTexture("Pinecrest contract notice rear", { width: 768, height: 576 }, scene, true);
+    contractBoardMaterial = new BABYLON.StandardMaterial("contract notice front ink", scene);
     contractBoardMaterial.diffuseTexture = contractBoardTexture;
     contractBoardMaterial.diffuseTexture.uScale = -1; contractBoardMaterial.diffuseTexture.uOffset = 1;
     contractBoardMaterial.diffuseTexture.vScale = 1; contractBoardMaterial.diffuseTexture.vOffset = 0;
     contractBoardMaterial.emissiveColor = hex("#fff4d6"); contractBoardMaterial.backFaceCulling = true;
     boardPaper.material = contractBoardMaterial;
+    const boardBackMaterial = new BABYLON.StandardMaterial("contract notice rear ink", scene);
+    boardBackMaterial.diffuseTexture = contractBoardBackTexture;
+    boardBackMaterial.diffuseTexture.uScale = 1; boardBackMaterial.diffuseTexture.uOffset = 0;
+    boardBackMaterial.diffuseTexture.vScale = 1; boardBackMaterial.diffuseTexture.vOffset = 0;
+    boardBackMaterial.emissiveColor = hex("#fff4d6"); boardBackMaterial.backFaceCulling = true;
+    boardPaperBack.material = boardBackMaterial;
     updateContractBoard();
     // Compact four-legged hide/meat workbench instead of the old solid timber block.
     box("harvest table top", { width: 3.35, height: 0.18, depth: 1.45 }, new BABYLON.Vector3(-20.7, 1.34, 40.5), mat.woodLight);
@@ -979,9 +1034,16 @@
     }
     box("harvest bench lower stretcher", { width: 2.45, height: 0.12, depth: 0.12 }, new BABYLON.Vector3(-20.7, 0.48, 40.5), mat.wood);
     box("harvest bench side stretcher", { width: 0.12, height: 0.12, depth: 0.92 }, new BABYLON.Vector3(-22.08, 0.48, 40.5), mat.wood);
-    box("outfitter counter top", { width: 2.8, height: 0.16, depth: 1.2 }, new BABYLON.Vector3(-11.8, 1.49, 27.5), mat.wood);
-    for (const x of [-12.9, -10.7]) for (const z of [27.05, 27.95]) {
-      box("outfitter counter leg", { width: 0.14, height: 1.45, depth: 0.14 }, new BABYLON.Vector3(x, 0.78, z), mat.bark);
+    box("outpost entry paver", { width: 4.2, height: 0.16, depth: 4.4 }, new BABYLON.Vector3(-14, 0.18, 31.2), mat.stone);
+    box("outfitter supply counter", { width: 2.8, height: 0.16, depth: 1.05 }, new BABYLON.Vector3(-4.5, 1.18, 40.5), mat.woodLight);
+    for (const x of [-5.62, -3.38]) for (const z of [40.08, 40.92]) {
+      box("outfitter counter leg", { width: 0.14, height: 1.12, depth: 0.14 }, new BABYLON.Vector3(x, 0.57, z), mat.bark);
+    }
+    box("outfitter awning", { width: 3.65, height: 0.18, depth: 2.0 }, new BABYLON.Vector3(-4.5, 3.05, 40.5), mat.roof);
+    for (const x of [-6.12, -2.88]) box("outfitter awning post", { width: 0.16, height: 2.9, depth: 0.16 }, new BABYLON.Vector3(x, 1.55, 39.7), mat.bark);
+    box("outfitter back shelf", { width: 2.45, height: 0.12, depth: 0.42 }, new BABYLON.Vector3(-4.5, 2.0, 41.0), mat.wood);
+    for (let crate = 0; crate < 3; crate++) {
+      box("outfitter supply crate", { width: 0.52, height: 0.48, depth: 0.48 }, new BABYLON.Vector3(-5.25 + crate * 0.75, 1.52, 40.55), mat.wood);
     }
   }
 
@@ -1973,8 +2035,7 @@
     if (canStandAt(camera.position.x, nextZ)) camera.position.z = nextZ;
     else playerVelocity.z = 0;
 
-    const insideCabin = Math.abs(camera.position.x + 14) < 5.2 && camera.position.z > 39.0 && camera.position.z < 47.4;
-    const groundSurfaceY = insideCabin ? 1.02 : heightAt(camera.position.x, camera.position.z);
+    const groundSurfaceY = walkSurfaceAt(camera.position.x, camera.position.z);
     const groundY = groundSurfaceY + (crouched ? 1.12 : 1.72);
     if (playerGrounded) {
       lastGroundedAt = now;
@@ -2013,20 +2074,35 @@
     sound(150, 0.055, "triangle", 0.012);
   }
 
+  function walkSurfaceAt(x, z) {
+    const localX = x + 14;
+    const localZ = z - 43;
+    if (Math.abs(localX) <= 5.2 && localZ > -4.0 && localZ < 4.5) return 1.02;
+    if (Math.abs(localX) <= 4.45 && localZ >= -6.65 && localZ <= -4.0) return 1.335;
+    if (Math.abs(localX) <= 1.95 && localZ >= -9.22 && localZ < -6.65) {
+      if (localZ < -8.5) return 0.4;
+      if (localZ < -7.8) return 0.7;
+      if (localZ < -7.1) return 1.0;
+      return 1.3;
+    }
+    return heightAt(x, z);
+  }
+
   function canStandAt(x, z) {
     if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 20.5) return false;
     for (const item of obstacles) {
       if (Math.hypot(x - item.x, z - item.z) < item.radius + 0.48) return false;
     }
-    const inCabinFootprint = Math.abs(x + 14) < 6.5 && Math.abs(z - 43) < 5.1;
-    if (inCabinFootprint) {
-      const inDoorway = Math.abs(x + 14) < 1.18 && z > 37.0 && z < 40.2;
-      const insideRoom = Math.abs(x + 14) < 5.2 && z > 39.0 && z < 47.4;
-      // Keep the interior walkable with the door shut; only the threshold locks.
-      if (insideRoom && (!inDoorway || cabinDoorOpen)) return true;
-      if (inDoorway && cabinDoorOpen) return true;
-      return false;
-    }
+    const localX = x + 14;
+    const localZ = z - 43;
+    const insideRoom = Math.abs(localX) < 5.2 && localZ > -4.0 && localZ < 4.5;
+    const onDeck = Math.abs(localX) <= 4.45 && localZ >= -6.65 && localZ <= -4.0;
+    const onStairs = Math.abs(localX) <= 1.95 && localZ >= -9.22 && localZ < -6.65;
+    const inDoorway = Math.abs(localX) < 1.18 && localZ > -5.0 && localZ < -3.0;
+    if (inDoorway && !cabinDoorOpen) return false;
+    if (insideRoom || onDeck || onStairs) return true;
+    const inCabinFootprint = Math.abs(localX) < 6.5 && Math.abs(localZ) < 5.1;
+    if (inCabinFootprint) return false;
     return true;
   }
 
@@ -2384,23 +2460,28 @@
 
 
   function updateContractBoard() {
-    if (!contractBoardTexture) return;
-    const ctx = contractBoardTexture.getContext();
-    ctx.clearRect(0, 0, 512, 384);
-    ctx.fillStyle = "#e8d7ad"; ctx.fillRect(0, 0, 512, 384);
-    ctx.fillStyle = "#342b1e"; ctx.fillRect(12, 12, 488, 360);
-    ctx.fillStyle = "#d8c18c"; ctx.fillRect(22, 22, 468, 340);
-    ctx.fillStyle = "#3b3021"; ctx.textAlign = "center";
-    ctx.font = "bold 25px Georgia"; ctx.fillText("PINECREST OUTPOST", 256, 62);
-    ctx.font = "bold 17px Georgia"; ctx.fillText("HUNTERS' NOTICE BOARD", 256, 91);
-    ctx.strokeStyle = "#8a7045"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(54, 108); ctx.lineTo(458, 108); ctx.stroke();
-    ctx.textAlign = "left"; ctx.font = "bold 23px Georgia"; ctx.fillText("FIRST HARVEST", 58, 151);
-    ctx.font = "17px Georgia"; ctx.fillText("Whitetail deer · 3 required", 58, 183);
-    ctx.fillText("Return to the harvest station", 58, 210);
-    ctx.fillText("for your field payment.", 58, 235);
-    ctx.font = "bold 18px Georgia"; ctx.fillText(state.contractComplete ? "✓ CONTRACT COMPLETE" : state.contractAccepted ? "IN PROGRESS  " + state.contractProgress + " / 3" : "AVAILABLE · ACCEPT AT BOARD", 58, 281);
-    ctx.font = "bold 17px Georgia"; ctx.fillText("REWARD  $250  +  180 XP", 58, 322);
-    contractBoardTexture.update(true);
+    if (!contractBoardTexture || !contractBoardBackTexture) return;
+    for (const texture of [contractBoardTexture, contractBoardBackTexture]) {
+      const ctx = texture.getContext();
+      ctx.clearRect(0, 0, 768, 576);
+      ctx.fillStyle = "#e7d4a8"; ctx.fillRect(0, 0, 768, 576);
+      ctx.fillStyle = "#382d1e"; ctx.fillRect(18, 18, 732, 540);
+      ctx.fillStyle = "#f0e2bd"; ctx.fillRect(32, 32, 704, 512);
+      ctx.strokeStyle = "#8b6d40"; ctx.lineWidth = 5; ctx.strokeRect(44, 44, 680, 488);
+      ctx.fillStyle = "#352a1c"; ctx.textAlign = "center";
+      ctx.font = "bold 40px Georgia"; ctx.fillText("PINECREST OUTPOST", 384, 104);
+      ctx.font = "bold 29px Georgia"; ctx.fillText("HUNTERS' NOTICE BOARD", 384, 148);
+      ctx.strokeStyle = "#a68a59"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(84, 174); ctx.lineTo(684, 174); ctx.stroke();
+      ctx.textAlign = "left"; ctx.font = "bold 38px Georgia"; ctx.fillText("FIRST HARVEST", 92, 246);
+      ctx.font = "27px Georgia"; ctx.fillText("Whitetail deer - 3 required", 92, 296);
+      ctx.fillText("Return to the harvest station", 92, 340);
+      ctx.fillText("to collect your field payment.", 92, 382);
+      const status = state.contractComplete ? "CONTRACT COMPLETE" :
+        state.contractAccepted ? "IN PROGRESS  " + state.contractProgress + " / 3" : "AVAILABLE - ACCEPT AT BOARD";
+      ctx.font = "bold 30px Georgia"; ctx.fillText(status, 92, 450);
+      ctx.font = "bold 28px Georgia"; ctx.fillText("REWARD  $250  +  180 XP", 92, 500);
+      texture.update(false);
+    }
   }
 
   function setCabinDoor(open) {
@@ -3174,7 +3255,7 @@
     modelLoadFailures: modelLoadFailures.slice(),
     jumpCount,
     playerGrounded,
-    playerHeight: camera ? camera.position.y - ((Math.abs(camera.position.x + 14) < 5.2 && camera.position.z > 39.0 && camera.position.z < 47.4) ? 1.02 : heightAt(camera.position.x, camera.position.z)) - (crouched ? 1.12 : 1.72) : 0,
+    playerHeight: camera ? camera.position.y - walkSurfaceAt(camera.position.x, camera.position.z) - (crouched ? 1.12 : 1.72) : 0,
     cabinDoorAngle: cabinDoorPivot ? Number(cabinDoorPivot.rotation.y.toFixed(3)) : null,
     cabinDoorUpdateCount,
     boardTextureUScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.uScale : null,
