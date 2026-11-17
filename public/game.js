@@ -89,6 +89,8 @@
   const skyNightColor = new BABYLON.Color3(0.643, 0.706, 0.741);
   const skyDayColor = new BABYLON.Color3(1, 1, 1);
   let frozenStaticMeshCount = 0;
+  let mergedSceneryBatchCount = 0;
+  let mergedScenerySourceMeshCount = 0;
   let interactionUpdateAt = 0;
   let dayCycleUpdateAt = 0;
   let keys = new Set();
@@ -595,8 +597,7 @@
     trunk.position.y = height * 0.48;
     trunk.material = mat.bark;
     trunk.isPickable = false;
-    trunk.receiveShadows = true;
-    if (lights.shadows) { try { lights.shadows.addShadowCaster(trunk); } catch (error) { /* optional */ } }
+    trunk.receiveShadows = false;
 
     if (broadleaf) {
       const clusters = [
@@ -616,9 +617,7 @@
         crown.rotation.set(rand(-0.12, 0.12), rand(0, Math.PI * 2), rand(-0.12, 0.12));
         crown.material = [mat.leaf1, mat.leaf2, mat.leaf3][index % 3];
         crown.isPickable = false;
-        crown.receiveShadows = true;
-        if (lights.shadows && index < 2) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
-        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+        crown.receiveShadows = false;
       });
     } else {
       const whorls = [
@@ -636,9 +635,7 @@
         crown.rotation.y = rand(0, Math.PI * 2);
         crown.material = [mat.pine1, mat.pine2, mat.pine3, mat.pine2][index % 4];
         crown.isPickable = false;
-        crown.receiveShadows = true;
-        if (lights.shadows && index < 2) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
-        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+        crown.receiveShadows = false;
       });
       for (let branch = 0; branch < 7; branch++) {
         const angle = branch / 7 * Math.PI * 2 + rand(-0.15, 0.15);
@@ -670,7 +667,7 @@
     rock.rotation.set(rand(-0.22, 0.22), rand(0, Math.PI), rand(-0.2, 0.2));
     rock.material = Math.random() > 0.45 ? mat.stone : mat.stoneDark;
     rock.isPickable = false;
-    rock.receiveShadows = true;
+    rock.receiveShadows = false;
     obstacles.push({ x, z, radius: scale * 0.85 });
   }
 
@@ -1604,6 +1601,51 @@
     }
   }
 
+  function mergeStaticScenery() {
+    // Hundreds of tree parts share a handful of materials. Merge those static
+    // batches so the renderer submits a few large draws instead of thousands
+    // of tiny ones. Only named scenery meshes are eligible; wildlife, weapons,
+    // cabin interactions, terrain, tracks and animated effects are untouched.
+    const batchRules = [
+      { test: (name) => name === "photographic-bark-trunk" || name === "pine branch", label: "Forest bark batch" },
+      { test: (name) => name === "photographic broadleaf crown", label: "Broadleaf canopy batch" },
+      { test: (name) => name === "pine needle bough cluster", label: "Pine canopy batch" },
+      { test: (name) => name === "weathered fieldstone", label: "Fieldstone batch" },
+      { test: (name) => name === "shrub foliage", label: "Undergrowth batch" }
+    ];
+    let mergedBatches = 0;
+    let mergedSourceMeshes = 0;
+    for (const rule of batchRules) {
+      const byMaterial = new Map();
+      for (const mesh of scene.meshes) {
+        if (!mesh || mesh.isDisposed() || !mesh.material || !rule.test(mesh.name)) continue;
+        const materialMeshes = byMaterial.get(mesh.material) || [];
+        materialMeshes.push(mesh);
+        byMaterial.set(mesh.material, materialMeshes);
+      }
+      for (const meshes of byMaterial.values()) {
+        if (meshes.length < 2) continue;
+        meshes.forEach((mesh) => mesh.computeWorldMatrix(true));
+        try {
+          const merged = BABYLON.Mesh.MergeMeshes(meshes, true, true, undefined, false, false);
+          if (!merged) continue;
+          merged.name = rule.label + " " + mergedBatches;
+          merged.material = meshes[0].material;
+          merged.isPickable = false;
+          merged.receiveShadows = false;
+          merged.applyFog = true;
+          mergedBatches++;
+          mergedSourceMeshes += meshes.length;
+        } catch (error) {
+          console.warn("Wildrange scenery batch skipped:", rule.label, error);
+        }
+      }
+    }
+    windMeshes.length = 0;
+    mergedSceneryBatchCount = mergedBatches;
+    mergedScenerySourceMeshCount = mergedSourceMeshes;
+  }
+
   function freezeStaticWorld() {
     const dynamicRoots = new Set(animals.map((animal) => animal.root));
     if (weaponRoot) dynamicRoots.add(weaponRoot);
@@ -1648,6 +1690,7 @@
     scatterUndergrowth();
     createCabin();
     createWildlife();
+    mergeStaticScenery();
 
     const spawnX = Number.isFinite(state.x) ? state.x : 0;
     const spawnZ = Number.isFinite(state.z) ? state.z : 19;
@@ -2953,6 +2996,8 @@
     renderScaleLevel: Number(renderScaleLevel.toFixed(2)),
     animalSimulationHz: 30,
     frozenStaticMeshCount,
+    mergedSceneryBatchCount,
+    mergedScenerySourceMeshCount,
     aiming,
     scopeZoom: scopeMagnifications[scopeZoomIndex],
     scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")
