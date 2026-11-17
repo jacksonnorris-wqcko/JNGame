@@ -1928,7 +1928,7 @@
       const updateInterval = playerDistance < 35 ? 1 / 30
         : playerDistance < 85 || (threatened && playerDistance < 115) ? 1 / 10 : 1 / 3;
       if (now < (animal.nextUpdateAt || 0)) continue;
-      const previousAnimalUpdate = Number.isFinite(animal.lastSimAt) ? animal.lastSimAt : now - animalDt * 1000;
+      const previousAnimalUpdate = Number.isFinite(animal.lastSimAt) ? animal.lastSimAt : now - dt * 1000;
       const animalDt = Math.min(0.5, Math.max(dt, (now - previousAnimalUpdate) / 1000));
       animal.lastSimAt = now;
       animal.nextUpdateAt = now + updateInterval * 1000;
