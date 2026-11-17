@@ -1918,13 +1918,18 @@
         if (now >= animal.respawnAt) respawnAnimal(animal);
         continue;
       }
-      if (animal.dead || !animal.modelReady) continue;
+      if (!animal.modelReady) continue;
 
-      // Distance-tiered wildlife simulation: nearby animals stay responsive, while distant herds use fewer AI/rig updates.
+      // Cull distant wildlife at the root so Babylon skips every mesh in its rig.
+      // Keep threatened animals visible a little farther away for readable reactions.
       const dx = player.x - animal.root.position.x;
       const dz = player.z - animal.root.position.z;
       const playerDistance = Math.hypot(dx, dz);
       const threatened = animal.state === "flee" || animal.state === "charge";
+      const visibleRange = threatened ? 175 : 145;
+      const shouldRenderAnimal = playerDistance < visibleRange;
+      if (animal.root.isEnabled() !== shouldRenderAnimal) animal.root.setEnabled(shouldRenderAnimal);
+      if (animal.dead) continue;
       const updateInterval = playerDistance < 35 ? 1 / 30
         : playerDistance < 85 || (threatened && playerDistance < 115) ? 1 / 10 : 1 / 3;
       if (now < (animal.nextUpdateAt || 0)) continue;
