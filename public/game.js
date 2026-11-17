@@ -909,7 +909,7 @@
     const flagMark = box("outpost flag gold stripe", { width: 1.18, height: 0.09, depth: 0.025 }, new BABYLON.Vector3(4.55, 7.05, -7.04), mat.gold, root);
     // A shallow ash bed and individual stones sit directly on the level trailhead ground.
     const fireAsh = BABYLON.MeshBuilder.CreateCylinder("campfire ash bed", { height: 0.055, diameter: 1.75, tessellation: 24 }, scene);
-    fireAsh.parent = root; fireAsh.position.set(1.9, 0.14, -9.1); fireAsh.material = mat.black; fireAsh.isPickable = false;
+    fireAsh.parent = root; fireAsh.position.set(1.9, 0.1275, -9.1); fireAsh.material = mat.black; fireAsh.isPickable = false;
     for (let stone = 0; stone < 9; stone++) {
       const angle = stone / 9 * Math.PI * 2;
       const rock = BABYLON.MeshBuilder.CreateIcoSphere("fire ring fieldstone", { radius: 0.3, subdivisions: 1 }, scene);
@@ -972,12 +972,13 @@
     contractBoardMaterial.emissiveColor = hex("#fff4d6"); contractBoardMaterial.backFaceCulling = true;
     boardPaper.material = contractBoardMaterial;
     updateContractBoard();
-    box("harvest-table", { width: 4, height: 1.1, depth: 1.7 }, new BABYLON.Vector3(-20.7, 0.75, 40.5), mat.wood);
-    for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7]]) {
-      const post = BABYLON.MeshBuilder.CreateCylinder("outpost-post", { height: 2.4, diameter: 0.16, tessellation: 8 }, scene);
-      post.position.set(x, 1.2, z); post.material = mat.bark;
+    // Compact four-legged hide/meat workbench instead of the old solid timber block.
+    box("harvest table top", { width: 3.35, height: 0.18, depth: 1.45 }, new BABYLON.Vector3(-20.7, 1.34, 40.5), mat.woodLight);
+    for (const x of [-22.08, -19.32]) for (const z of [39.92, 41.08]) {
+      box("harvest bench leg", { width: 0.16, height: 1.15, depth: 0.16 }, new BABYLON.Vector3(x, 0.675, z), mat.bark);
     }
-    box("harvest table top", { width: 4.2, height: 0.18, depth: 1.9 }, new BABYLON.Vector3(-20.7, 1.34, 40.5), mat.woodLight);
+    box("harvest bench lower stretcher", { width: 2.45, height: 0.12, depth: 0.12 }, new BABYLON.Vector3(-20.7, 0.48, 40.5), mat.wood);
+    box("harvest bench side stretcher", { width: 0.12, height: 0.12, depth: 0.92 }, new BABYLON.Vector3(-22.08, 0.48, 40.5), mat.wood);
     box("outfitter counter top", { width: 2.8, height: 0.16, depth: 1.2 }, new BABYLON.Vector3(-11.8, 1.49, 27.5), mat.wood);
     for (const x of [-12.9, -10.7]) for (const z of [27.05, 27.95]) {
       box("outfitter counter leg", { width: 0.14, height: 1.45, depth: 0.14 }, new BABYLON.Vector3(x, 0.78, z), mat.bark);
@@ -2021,7 +2022,10 @@
     if (inCabinFootprint) {
       const inDoorway = Math.abs(x + 14) < 1.18 && z > 37.0 && z < 40.2;
       const insideRoom = Math.abs(x + 14) < 5.2 && z > 39.0 && z < 47.4;
-      if (!cabinDoorOpen || (!inDoorway && !insideRoom)) return false;
+      // Keep the interior walkable with the door shut; only the threshold locks.
+      if (insideRoom && (!inDoorway || cabinDoorOpen)) return true;
+      if (inDoorway && cabinDoorOpen) return true;
+      return false;
     }
     return true;
   }
