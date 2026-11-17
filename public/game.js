@@ -68,6 +68,10 @@
   let nearestInteraction = null;
   let audioContext = null;
   let playerVelocity = new BABYLON.Vector3(0, 0, 0);
+  // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
+  const playerForward = new BABYLON.Vector3(0, 0, 1);
+  const playerRight = new BABYLON.Vector3(1, 0, 0);
+  const playerMoveDirection = new BABYLON.Vector3(0, 0, 0);
   let verticalVelocity = 0;
   let playerGrounded = true;
   let lastGroundedAt = 0;
@@ -1832,15 +1836,19 @@
     playerSprinting = sprinting;
 
     const speed = crouched ? 2.8 : sprinting ? 10.5 : 6.2;
-    const forward = camera.getDirection(BABYLON.Axis.Z);
-    forward.y = 0;
-    forward.normalize();
-    const right = BABYLON.Vector3.Cross(BABYLON.Axis.Y, forward).normalize();
-    const direction = forward.scale(forwardInput).add(right.scale(rightInput));
-    if (direction.lengthSquared() > 1) direction.normalize();
+    camera.getDirectionToRef(BABYLON.Axis.Z, playerForward);
+    playerForward.y = 0;
+    playerForward.normalize();
+    BABYLON.Vector3.CrossToRef(BABYLON.Axis.Y, playerForward, playerRight);
+    playerRight.normalize();
+    playerMoveDirection.copyFrom(playerForward).scaleInPlace(forwardInput);
+    playerMoveDirection.x += playerRight.x * rightInput;
+    playerMoveDirection.y += playerRight.y * rightInput;
+    playerMoveDirection.z += playerRight.z * rightInput;
+    if (playerMoveDirection.lengthSquared() > 1) playerMoveDirection.normalize();
 
-    const desiredX = direction.x * speed;
-    const desiredZ = direction.z * speed;
+    const desiredX = playerMoveDirection.x * speed;
+    const desiredZ = playerMoveDirection.z * speed;
     const acceleration = playerGrounded ? (moving ? 20 : 27) : 8;
     const blend = Math.min(1, acceleration * dt);
     playerVelocity.x += (desiredX - playerVelocity.x) * blend;
