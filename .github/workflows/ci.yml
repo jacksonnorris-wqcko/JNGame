@@ -88,6 +88,10 @@ jobs:
             if (fs.existsSync("public/assets/animals/forest-boar.glb")) {
               modelChecks.push({ path: "animals/forest-boar.glb", minBytes: 100000, minMeshes: 1, skins: 0, nodes: [], clips: [] });
             }
+            // High-detail CC0 deer mesh is a retopology/rigging source, not a runtime animal yet.
+            if (fs.existsSync("public/assets/animals/deer-high-detail-source.glb")) {
+              modelChecks.push({ path: "animals/deer-high-detail-source.glb", minBytes: 1000000, minMeshes: 1, skins: 0, nodes: [], clips: [] });
+            }
             for (const model of modelChecks) {
               const record = models.get(model.path);
               const file = "public/assets/" + model.path;
