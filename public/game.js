@@ -902,23 +902,23 @@
     flag.rotation.y = -0.08;
     const flagMark = box("outpost flag gold stripe", { width: 1.18, height: 0.09, depth: 0.025 }, new BABYLON.Vector3(4.55, 7.05, -7.04), mat.gold, root);
     const fireRing = BABYLON.MeshBuilder.CreateTorus("outpost fire ring", { diameter: 2.25, thickness: 0.28, tessellation: 18 }, scene);
-    fireRing.parent = root; fireRing.rotation.x = Math.PI / 2; fireRing.position.set(1.9, 1.14, -9.1); fireRing.material = mat.stone; fireRing.isPickable = false;
+    fireRing.parent = root; fireRing.position.set(1.9, 0.28, -9.1); fireRing.material = mat.stone; fireRing.isPickable = false;
     for (let stone = 0; stone < 9; stone++) {
       const angle = stone / 9 * Math.PI * 2;
       const rock = BABYLON.MeshBuilder.CreateIcoSphere("fire ring fieldstone", { radius: 0.3, subdivisions: 1 }, scene);
-      rock.parent = root; rock.position.set(1.9 + Math.cos(angle) * 1.05, 1.22, -9.1 + Math.sin(angle) * 1.05);
+      rock.parent = root; rock.position.set(1.9 + Math.cos(angle) * 1.05, 0.36, -9.1 + Math.sin(angle) * 1.05);
       rock.scaling.set(1.1, 0.72, 0.9); rock.material = mat.stoneDark; rock.isPickable = false;
     }
     for (let log = 0; log < 3; log++) {
       const emberLog = BABYLON.MeshBuilder.CreateCylinder("campfire split log", { height: 1.5, diameter: 0.2, tessellation: 9 }, scene);
       emberLog.parent = root; emberLog.rotation.z = Math.PI / 2; emberLog.rotation.y = log * Math.PI / 3;
-      emberLog.position.set(1.9, 1.35 + log * 0.04, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
+      emberLog.position.set(1.9, 0.43 + log * 0.035, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
     }
     const fireGlow = BABYLON.MeshBuilder.CreateSphere("outpost fire glow", { diameter: 0.48, segments: 10 }, scene);
-    fireGlow.parent = root; fireGlow.position.set(1.9, 1.52, -9.1);
+    fireGlow.parent = root; fireGlow.position.set(1.9, 0.62, -9.1);
     const fireGlowMaterial = makeMaterial("Outpost ember glow", "#f28b32", 0.45);
     fireGlowMaterial.emissiveColor = hex("#f28b32"); fireGlow.material = fireGlowMaterial; fireGlow.isPickable = false;
-    const fireLight = new BABYLON.PointLight("outpost firelight", new BABYLON.Vector3(-12.1, 1.9, 33.9), scene);
+    const fireLight = new BABYLON.PointLight("outpost firelight", new BABYLON.Vector3(-12.1, 0.9, 33.9), scene);
     fireLight.diffuse = hex("#ff9a48"); fireLight.intensity = 0.48; fireLight.range = 11;
     const crate = (name, x, y, z, size) => box(name, size, new BABYLON.Vector3(x, y, z), mat.wood, root);
     crate("outpost supply crate", 5.9, 1.35, -1.4, { width: 1.25, height: 0.72, depth: 1.0 });
@@ -940,7 +940,7 @@
     }
 
     makeInteractable("LODGE DOOR", "Open or close the Pinecrest cabin door", -14, 37.2, "cabin", "door");
-    makeInteractable("OUTFITTERS", "Open the supply counter", -6.8, 27.5, "shop", "ammo");
+    makeInteractable("OUTFITTERS", "Open the supply counter", -11.8, 27.5, "shop", "ammo");
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -5.1, 22.4, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
     box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
@@ -949,16 +949,19 @@
     const boardPaper = box("board-paper", { width: 1.35, height: 1.0, depth: 0.06 }, new BABYLON.Vector3(-5.1, 1.8, 22.22), mat.window);
     contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice", { width: 512, height: 384 }, scene, true);
     const boardMaterial = new BABYLON.StandardMaterial("contract notice ink", scene);
-    boardMaterial.diffuseTexture = contractBoardTexture; boardMaterial.emissiveColor = hex("#fff4d6"); boardMaterial.backFaceCulling = false;
+    boardMaterial.diffuseTexture = contractBoardTexture;
+    boardMaterial.diffuseTexture.uScale = -1; boardMaterial.diffuseTexture.uOffset = 1;
+    boardMaterial.diffuseTexture.vScale = -1; boardMaterial.diffuseTexture.vOffset = 1;
+    boardMaterial.emissiveColor = hex("#fff4d6"); boardMaterial.backFaceCulling = false;
     boardPaper.material = boardMaterial;
     updateContractBoard();
     box("harvest-table", { width: 4, height: 1.1, depth: 1.7 }, new BABYLON.Vector3(-20.7, 0.75, 40.5), mat.wood);
-    for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7], [-8.2, 28], [-5.4, 28]]) {
+    for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7], [-13.2, 28], [-10.4, 28]]) {
       const post = BABYLON.MeshBuilder.CreateCylinder("outpost-post", { height: 2.4, diameter: 0.16, tessellation: 8 }, scene);
       post.position.set(x, 1.2, z); post.material = mat.bark;
     }
     box("harvest table top", { width: 4.2, height: 0.18, depth: 1.9 }, new BABYLON.Vector3(-20.7, 1.34, 40.5), mat.woodLight);
-    box("outfitter counter top", { width: 2.8, height: 0.16, depth: 1.2 }, new BABYLON.Vector3(-6.8, 1.49, 27.5), mat.wood);
+    box("outfitter counter top", { width: 2.8, height: 0.16, depth: 1.2 }, new BABYLON.Vector3(-11.8, 1.49, 27.5), mat.wood);
   }
 
   function makeInteractable(name, description, x, z, action, target) {
@@ -1732,6 +1735,7 @@
 
   function freezeStaticWorld() {
     const dynamicRoots = new Set(animals.map((animal) => animal.root));
+    if (cabinDoorPivot) dynamicRoots.add(cabinDoorPivot);
     if (weaponRoot) dynamicRoots.add(weaponRoot);
     const dynamicMeshes = new Set(waterRipples.map((item) => item.mesh));
     let frozen = 0;
@@ -1946,7 +1950,9 @@
     if (canStandAt(camera.position.x, nextZ)) camera.position.z = nextZ;
     else playerVelocity.z = 0;
 
-    const groundY = heightAt(camera.position.x, camera.position.z) + (crouched ? 1.12 : 1.72);
+    const insideCabin = Math.abs(camera.position.x + 14) < 5.0 && camera.position.z > 39.3 && camera.position.z < 47.2;
+    const groundSurfaceY = insideCabin ? 1.02 : heightAt(camera.position.x, camera.position.z);
+    const groundY = groundSurfaceY + (crouched ? 1.12 : 1.72);
     if (playerGrounded) {
       lastGroundedAt = now;
       verticalVelocity = 0;
