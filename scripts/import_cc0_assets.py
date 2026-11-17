@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Fetch small CC0 PBR texture sets and one forest HDRI for Wildrange.
+"""Fetch environment textures and licensed GLB models for Wildrange.
 
-All textures are stored locally in public/assets/pbr so the browser game does
-not need to contact an asset CDN at runtime.
+Game assets are stored locally in public/assets so play sessions fetch models
+from the same static GitHub Pages site rather than a third-party model CDN.
 """
 from __future__ import annotations
 
@@ -35,6 +35,36 @@ MAPS = {
     "Roughness": "roughness",
     "AmbientOcclusion": "ao",
 }
+
+# Free, game-ready models. Polyfork meshes are redistributed under CC BY 4.0
+# with attribution. The scoped rifle is released under CC0 1.0 Universal.
+GAME_MODELS = [
+    {
+        "asset": "Polyfork deer-base",
+        "path": "animals/deer-base.glb",
+        "url": "https://polyfork.dev/cdn/deer-base.glb",
+        "minimum_bytes": 100_000,
+        "license": "CC BY 4.0",
+        "source": "https://polyfork.dev/asset/deer-base",
+    },
+    {
+        "asset": "Polyfork pig-base, adapted as wild boar",
+        "path": "animals/pig-base.glb",
+        "url": "https://polyfork.dev/cdn/pig-base.glb",
+        "minimum_bytes": 100_000,
+        "license": "CC BY 4.0",
+        "source": "https://polyfork.dev/asset/pig-base",
+    },
+    {
+        "asset": "Wood Sniper, Scoped (Mega Weapon Pack)",
+        "path": "weapons/wood-sniper-scoped.glb",
+        "url": "https://cdn.3dassets.dev/assets/33105/v1/model.glb",
+        "minimum_bytes": 100_000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://3dassets.dev/assets/mega-weapon-pack-bolt-sniper-classic-scoped-379f5378",
+    },
+]
+ATTRIBUTION_PATH = ROOT / "public" / "assets" / "models" / "ATTRIBUTION.md"
 
 
 def fetch(url: str, timeout: int = 90) -> bytes:
@@ -115,16 +145,78 @@ def import_hdri() -> dict:
     }
 
 
+
+
+def import_game_model(model: dict) -> dict:
+    """Download one validated glTF binary into the static game assets."""
+    destination = ROOT / "public" / "assets" / model["path"]
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    minimum_bytes = int(model.get("minimum_bytes", 100_000))
+    if destination.exists() and destination.stat().st_size >= minimum_bytes:
+        return {
+            "asset": model["asset"],
+            "status": "already-present",
+            "path": model["path"],
+            "bytes": destination.stat().st_size,
+            "license": model["license"],
+            "source": model["source"],
+        }
+
+    last_error = None
+    for attempt in range(3):
+        try:
+            data = fetch(model["url"], timeout=180)
+            if len(data) < minimum_bytes:
+                raise RuntimeError(f"GLB is unexpectedly small ({len(data)} bytes)")
+            if data[:4] != b"glTF":
+                raise RuntimeError("Downloaded file does not have a glTF binary header")
+            temporary = destination.with_suffix(destination.suffix + ".tmp")
+            temporary.write_bytes(data)
+            temporary.replace(destination)
+            return {
+                "asset": model["asset"],
+                "status": "downloaded",
+                "path": model["path"],
+                "bytes": len(data),
+                "license": model["license"],
+                "source": model["source"],
+            }
+        except Exception as exc:
+            last_error = exc
+            time.sleep(2 * (attempt + 1))
+    raise RuntimeError(f"Could not import {model['asset']}: {last_error}")
+
+
+def write_model_attributions() -> None:
+    """Keep CC BY credits beside the redistributed model files."""
+    ATTRIBUTION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ATTRIBUTION_PATH.write_text(
+        "# Wildrange model asset credits\n\n"
+        "The following 3D meshes are bundled and modified in Wildrange.\n\n"
+        "- Deer by Polyfork (https://polyfork.dev/asset/deer-base), CC BY 4.0.\n"
+        "- Pig by Polyfork (https://polyfork.dev/asset/pig-base), CC BY 4.0. "
+        "Recoloured and adapted with additional boar details for Wildrange.\n"
+        "- Wood Sniper, Scoped (Mega Weapon Pack), 3D Assets "
+        "(https://3dassets.dev/assets/mega-weapon-pack-bolt-sniper-classic-scoped-379f5378), "
+        "CC0 1.0 Universal.\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     results = [import_material(asset_id, slug) for asset_id, slug in ASSETS.items()]
     results.append(import_hdri())
+    results.extend(import_game_model(model) for model in GAME_MODELS)
+    write_model_attributions()
     manifest = {
-        "version": 1,
-        "license": "CC0 1.0 Universal",
+        "version": 2,
+        "license": "Mixed: CC0 1.0 Universal and CC BY 4.0; see per-asset records and models/ATTRIBUTION.md",
         "sources": {
             "ambientCG": "https://ambientcg.com/",
-            "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest"
+            "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest",
+            "Polyfork": "https://polyfork.dev/licensing",
+            "3D Assets": "https://3dassets.dev/"
         },
         "assets": results
     }
