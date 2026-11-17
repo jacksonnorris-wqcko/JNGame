@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111b1a">
+  <meta name="description" content="Step into Mythvale, a living world of quests, creatures and fellow adventurers.">
+  <title>Mythvale Online — JNGame</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Marcellus&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="world" aria-label="Mythvale game world"></canvas>
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">M</div><div><div class="brand-name">MYTHVALE</div><div class="brand-sub">A LIVING WORLD</div></div></div>
+      <div class="world-status"><span class="online-dot"></span><span id="connection-label">CONNECTING</span><span class="status-divider"></span><span id="online-count">0 adventurers</span></div>
+      <button class="icon-button mobile-menu-button" id="menu-button" aria-label="Open menu">☰</button>
+      <div class="top-actions">
+        <button class="top-action" id="map-button"><span>⌖</span> World map</button>
+        <button class="top-action" id="inventory-button"><span>▤</span> Inventory <kbd>I</kbd></button>
+        <button class="top-action" id="profile-button"><span>◉</span> Character</button>
+      </div>
+    </header>
+
+    <aside class="left-panel">
+      <section class="character-card panel">
+        <div class="character-top"><div class="avatar-emblem" id="avatar-emblem">✦</div><div class="character-info"><div class="eyebrow">ADVENTURER</div><div class="character-name" id="character-name">Wanderer</div><div class="character-level" id="character-level">Level 1 · Wayfarer</div></div></div>
+        <div class="stat-line"><span>VITALITY</span><strong id="hp-value">100 / 100</strong></div>
+        <div class="bar-track hp-track"><div class="bar-fill hp-fill" id="hp-fill"></div></div>
+        <div class="stat-line xp-label"><span>EXPERIENCE</span><strong id="xp-value">0 / 100</strong></div>
+        <div class="bar-track xp-track"><div class="bar-fill xp-fill" id="xp-fill"></div></div>
+        <div class="wallet-row"><span>◈ <b id="gold-value">0</b> gold</span><span>✧ <b id="potion-count">1</b> potions</span></div>
+      </section>
+      <section class="quest-card panel">
+        <div class="section-heading"><span class="heading-icon">✧</span><div><div class="eyebrow">YOUR JOURNEY</div><h2>Active quest</h2></div><span class="quest-pulse"></span></div>
+        <div id="quest-content"><div class="quest-title">A Village in Need</div><p>Speak with Elder Rowan in Moonhaven to begin your first adventure.</p><div class="quest-hint">Find the golden marker near the village square.</div></div>
+        <button class="text-button" id="quest-track-button">TRACK QUEST <span>↗</span></button>
+      </section>
+      <section class="map-card panel">
+        <div class="section-heading compact"><div><div class="eyebrow">LOCAL AREA</div><h2>Moonhaven</h2></div><span class="map-coords" id="map-coords">—</span></div>
+        <canvas id="minimap" width="220" height="132"></canvas>
+        <div class="map-legend"><span><i class="legend-player"></i>You</span><span><i class="legend-npc"></i>Friends</span><span><i class="legend-enemy"></i>Creatures</span></div>
+      </section>
+    </aside>
+
+    <aside class="right-panel">
+      <section class="panel guide-card">
+        <div class="eyebrow">A FEW POINTERS</div><h2>Make your mark</h2>
+        <div class="guide-item"><span class="guide-key">W A S D</span><span>Move around</span></div>
+        <div class="guide-item"><span class="guide-key">SPACE</span><span>Attack nearby</span></div>
+        <div class="guide-item"><span class="guide-key">E</span><span>Talk / interact</span></div>
+        <div class="guide-item"><span class="guide-key">1</span><span>Use a potion</span></div>
+        <div class="guide-item"><span class="guide-key">I</span><span>Open inventory</span></div>
+        <p class="guide-note">You can also click the ground to walk there.</p>
+      </section>
+      <section class="panel nearby-card"><div class="eyebrow">AROUND YOU</div><h2>Nearby</h2><div id="nearby-content" class="nearby-content"><span class="muted">The meadow is quiet.</span></div></section>
+    </aside>
+
+    <div class="bottom-hud">
+      <div class="action-bar panel">
+        <button class="action-slot" id="attack-button"><span class="slot-icon sword-icon">⚔</span><span class="slot-label">Attack</span><kbd>SPACE</kbd></button>
+        <button class="action-slot" id="interact-button"><span class="slot-icon interact-icon">✧</span><span class="slot-label">Interact</span><kbd>E</kbd></button>
+        <button class="action-slot potion-slot" id="potion-button"><span class="slot-icon potion-icon">⚗</span><span class="slot-count" id="slot-potion-count">1</span><span class="slot-label">Potion</span><kbd>1</kbd></button>
+        <div class="action-divider"></div>
+        <button class="action-slot" id="emote-button"><span class="slot-icon">☻</span><span class="slot-label">Wave</span><kbd>G</kbd></button>
+      </div>
+      <div class="movement-hint"><span class="hint-dot"></span> Click to move · Explore the world</div>
+    </div>
+
+    <section class="chat-panel panel">
+      <div class="chat-header"><div><span class="chat-live"></span> WORLD CHAT</div><button id="chat-toggle" aria-label="Collapse chat">⌄</button></div>
+      <div class="chat-messages" id="chat-messages"><div class="chat-line system-line">Welcome to Mythvale. Your story begins here.</div></div>
+      <form id="chat-form" class="chat-form"><span class="chat-prompt">›</span><input id="chat-input" maxlength="140" placeholder="Say something to the world..." autocomplete="off"><button type="submit" aria-label="Send message">➤</button></form>
+    </section>
+
+    <div class="toast-stack" id="toast-stack"></div>
+    <div class="modal-backdrop" id="inventory-modal"><section class="modal panel"><button class="modal-close" data-close="inventory-modal">×</button><div class="eyebrow">YOUR BELONGINGS</div><h2>Inventory</h2><p class="modal-intro">Everything you are carrying on your journey.</p><div class="inventory-grid" id="inventory-grid"></div><div class="inventory-footer"><span id="inventory-gold">0 gold</span><span>Items are saved to your character.</span></div></section></div>
+    <div class="modal-backdrop" id="map-modal"><section class="modal map-modal panel"><button class="modal-close" data-close="map-modal">×</button><div class="eyebrow">THE KNOWN LANDS</div><h2>World map</h2><canvas id="big-map" width="760" height="470"></canvas><p class="modal-intro">Moonhaven is your safe haven. The meadows beyond its gates are home to curious creatures and the start of your first quest.</p></section></div>
+    <div class="modal-backdrop" id="profile-modal"><section class="modal panel"><button class="modal-close" data-close="profile-modal">×</button><div class="eyebrow">YOUR ADVENTURER</div><h2 id="profile-modal-name">Wanderer</h2><div class="profile-summary" id="profile-summary"></div><p class="modal-intro">Your character progress is saved by this game server. Use the same browser to return to this character.</p></section></div>
+
+    <div class="start-screen" id="start-screen">
+      <div class="start-backdrop"></div>
+      <div class="start-content">
+        <div class="start-crest">✦</div><div class="eyebrow">A NEW WORLD AWAITS</div>
+        <h1>MYTHVALE<span>ONLINE</span></h1>
+        <p class="start-description">Beyond the old road lies a world waiting to be rediscovered. Find your people. Forge your story.</p>
+        <label for="name-input">CHOOSE YOUR ADVENTURER NAME</label>
+        <input id="name-input" maxlength="16" minlength="3" value="Wanderer" autocomplete="nickname" spellcheck="false">
+        <button id="start-button" class="primary-button">Enter the world <span>→</span></button>
+        <div id="start-error" class="start-error"></div>
+        <div class="start-footnote"><span>✦</span> PERSISTENT CHARACTERS <i></i> REAL-TIME MULTIPLAYER <i></i> YOUR ADVENTURE BEGINS</div>
+      </div>
+      <div class="start-version">JN GAME STUDIO · ALPHA 0.1.0</div>
+    </div>
+    <div class="disconnect-overlay" id="disconnect-overlay"><div class="disconnect-card panel"><div class="disconnect-mark">!</div><h2>Connection lost</h2><p>The link to Mythvale was interrupted.</p><button class="primary-button" id="reconnect-button">Reconnect <span>↻</span></button></div></div>
+  </main>
+  <script src="/game.js" defer></script>
+</body>
+</html>
