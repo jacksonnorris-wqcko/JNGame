@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.13&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.14&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -63,8 +63,9 @@ try {
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
   if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
-  if (diagnostics.boardTextureUScale !== -1 || diagnostics.boardTextureVScale !== 1) {
-    throw new Error("Contract notice UV orientation is not configured for a readable front-facing board: " + JSON.stringify(diagnostics));
+  if (diagnostics.boardTextureUScale !== -1 || diagnostics.boardTextureVScale !== 1 ||
+      !diagnostics.boardFrontReady || !diagnostics.boardBackReady) {
+    throw new Error("Contract notice front/back faces are not ready or correctly oriented: " + JSON.stringify(diagnostics));
   }
 
   const teleported = await page.evaluate(() => window.WildrangeQA?.teleportIntoCabin());
@@ -86,10 +87,20 @@ try {
   const cabinCollision = await page.evaluate(() => ({
     interiorWalkableWithDoorClosed: window.WildrangeQA.canStandAt(-14, 43),
     doorwayBlockedWithDoorClosed: !window.WildrangeQA.canStandAt(-14, 38.7),
+    deckWalkable: window.WildrangeQA.canStandAt(-14, 37.2),
+    stairsWalkable: window.WildrangeQA.canStandAt(-14, 35.55),
+    entryPathWalkable: window.WildrangeQA.canStandAt(-14, 31.2),
+    deckHeight: window.WildrangeQA.surfaceAt(-14, 37.2),
+    stairHeight: window.WildrangeQA.surfaceAt(-14, 35.55),
+    pathHeight: window.WildrangeQA.surfaceAt(-14, 31.2),
     hingeUpdates: window.WildrangeDiagnostics().cabinDoorUpdateCount
   }));
-  if (!cabinCollision.interiorWalkableWithDoorClosed || !cabinCollision.doorwayBlockedWithDoorClosed) {
-    throw new Error("Cabin interior/doorway collision failed: " + JSON.stringify(cabinCollision));
+  if (!cabinCollision.interiorWalkableWithDoorClosed || !cabinCollision.doorwayBlockedWithDoorClosed ||
+      !cabinCollision.deckWalkable || !cabinCollision.stairsWalkable || !cabinCollision.entryPathWalkable ||
+      Math.abs(cabinCollision.deckHeight - 1.335) > 0.02 ||
+      Math.abs(cabinCollision.stairHeight - 1.0) > 0.02 ||
+      Math.abs(cabinCollision.pathHeight - 0.26) > 0.02) {
+    throw new Error("Cabin floor, deck, stairs or compound path collision failed: " + JSON.stringify(cabinCollision));
   }
   await page.evaluate(() => window.WildrangeQA.setDoor(true));
   const openDoorwayWalkable = await page.evaluate(() => window.WildrangeQA.canStandAt(-14, 38.7));
