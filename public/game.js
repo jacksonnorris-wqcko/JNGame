@@ -938,7 +938,7 @@
       const gateLight = new BABYLON.PointLight("compound gate warm light", new BABYLON.Vector3(-14 + x, 3.2, 43 - 11.5), scene);
       gateLight.diffuse = hex("#f0bc79"); gateLight.intensity = 0.22; gateLight.range = 9;
     }
-    for (const x of [-4.0, 0, 4.0]) {
+    for (const x of [-4.15, 4.15]) {
       box("porch support post", { width: 0.24, height: 3.0, depth: 0.24 }, new BABYLON.Vector3(x, 2.55, -6.25), mat.bark, root);
       box("porch post cap", { width: 0.4, height: 0.18, depth: 0.4 }, new BABYLON.Vector3(x, 4.08, -6.25), mat.woodLight, root);
     }
@@ -2142,7 +2142,8 @@
     const localX = x + 14;
     const localZ = z - 43;
     if (Math.abs(localX) <= 5.2 && localZ > -4.0 && localZ < 4.5) return 1.02;
-    if (Math.abs(localX) <= 4.45 && localZ >= -6.65 && localZ <= -4.0) return 1.335;
+    if (Math.abs(localX) <= 2.15 && localZ >= -14.0 && localZ <= -9.2) return 0.26;
+    if (Math.abs(localX) <= 3.65 && localZ >= -6.65 && localZ <= -4.0) return 1.335;
     if (Math.abs(localX) <= 1.95 && localZ >= -9.22 && localZ < -6.65) {
       if (localZ < -8.5) return 0.4;
       if (localZ < -7.8) return 0.7;
@@ -2159,12 +2160,18 @@
     }
     const localX = x + 14;
     const localZ = z - 43;
+    // Compound rails are solid boundaries, with a deliberately open front gate.
+    const onSideFence = Math.abs(Math.abs(localX) - 13) < 0.48 && localZ >= -12.2 && localZ <= 12.2;
+    const onNorthFence = Math.abs(localZ - 12) < 0.48 && Math.abs(localX) <= 13.2;
+    const onSouthFence = Math.abs(localZ + 14) < 0.48 && (localX < -3.35 || localX > 3.35);
+    if (onSideFence || onNorthFence || onSouthFence) return false;
     const insideRoom = Math.abs(localX) < 5.2 && localZ > -4.0 && localZ < 4.5;
-    const onDeck = Math.abs(localX) <= 4.45 && localZ >= -6.65 && localZ <= -4.0;
-    const onStairs = Math.abs(localX) <= 1.95 && localZ >= -9.22 && localZ < -6.65;
+    const onDeck = Math.abs(localX) <= 3.65 && localZ >= -6.65 && localZ <= -4.0;
+    const onStairs = Math.abs(localX) <= 1.7 && localZ >= -9.22 && localZ < -6.65;
+    const onEntryPaver = Math.abs(localX) <= 2.15 && localZ >= -14.0 && localZ < -9.22;
     const inDoorway = Math.abs(localX) < 1.18 && localZ > -5.0 && localZ < -3.0;
     if (inDoorway && !cabinDoorOpen) return false;
-    if (insideRoom || onDeck || onStairs) return true;
+    if (insideRoom || onDeck || onStairs || onEntryPaver) return true;
     const inCabinFootprint = Math.abs(localX) < 6.5 && Math.abs(localZ) < 5.1;
     if (inCabinFootprint) return false;
     return true;
@@ -2550,6 +2557,13 @@
 
   function setCabinDoor(open) {
     cabinDoorOpen = Boolean(open);
+    // Apply the hinge transform immediately; the scene render loop refreshes its world matrix.
+    if (cabinDoorPivot) {
+      cabinDoorPivot.rotationQuaternion = null;
+      cabinDoorPivot.rotation.y = cabinDoorOpen ? 1.48 : 0;
+      cabinDoorPivot.computeWorldMatrix(true);
+      cabinDoorPivot.getChildMeshes().forEach((mesh) => mesh.computeWorldMatrix(true));
+    }
     sound(cabinDoorOpen ? 180 : 145, 0.18, "triangle", 0.025);
     announce(cabinDoorOpen ? "Pinecrest lodge door opened." : "Pinecrest lodge door closed.", 1500);
     updateInteraction();
@@ -3324,6 +3338,8 @@
     cabinDoorUpdateCount,
     boardTextureUScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.uScale : null,
     boardTextureVScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.vScale : null,
+    boardBackReady: Boolean(contractBoardBackTexture && contractBoardBackTexture.isReady()),
+    boardFrontReady: Boolean(contractBoardTexture && contractBoardTexture.isReady()),
     sceneInitError,
     jumpMaxHeight,
     fps: Math.round(smoothedFps),
@@ -3356,7 +3372,8 @@
         updateInteraction();
         return true;
       },
-      canStandAt: (x, z) => canStandAt(Number(x), Number(z))
+      canStandAt: (x, z) => canStandAt(Number(x), Number(z)),
+      surfaceAt: (x, z) => walkSurfaceAt(Number(x), Number(z))
     };
   }
 
