@@ -37,8 +37,7 @@ MAPS = {
     "AmbientOcclusion": "ao",
 }
 
-# Free, game-ready models. Polyfork meshes are redistributed under CC BY 4.0
-# with attribution. The scoped rifle is released under CC0 1.0 Universal.
+# Game-ready model assets. Each record carries its own licence and source metadata.
 GAME_MODELS = [
     {
         "asset": "Polyfork deer-base",
@@ -57,12 +56,20 @@ GAME_MODELS = [
         "source": "https://polyfork.dev/asset/pig-base",
     },
     {
-        "asset": "Polyfork Bolt-Action Rifle",
+        "asset": "Polyfork Bolt-Action Rifle (legacy fallback)",
         "path": "weapons/bolt-action-rifle.glb",
         "url": "https://polyfork.dev/cdn/bolt-action-rifle-2f1793.glb",
         "minimum_bytes": 50_000,
         "license": "CC BY 4.0",
         "source": "https://polyfork.dev/asset/bolt-action-rifle-2f1793",
+    },
+    {
+        "asset": "Marksman Rifle and Bipod (FPS Survival Forest Outpost)",
+        "path": "weapons/marksman-rifle.glb",
+        "url": "https://cdn.3dassets.dev/assets/32655/v1/model.glb",
+        "minimum_bytes": 100_000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2",
     },
 ]
 ATTRIBUTION_PATH = ROOT / "public" / "assets" / "models" / "ATTRIBUTION.md"
@@ -217,7 +224,8 @@ def write_model_attributions() -> None:
         "- Deer by Polyfork (https://polyfork.dev/asset/deer-base), CC BY 4.0.\n"
         "- Pig by Polyfork (https://polyfork.dev/asset/pig-base), CC BY 4.0. "
         "Recoloured and adapted with additional boar details for Wildrange.\n"
-        "- Bolt-Action Rifle by Polyfork (https://polyfork.dev/asset/bolt-action-rifle-2f1793), CC BY 4.0.\n",
+        "- Bolt-Action Rifle by Polyfork (https://polyfork.dev/asset/bolt-action-rifle-2f1793), CC BY 4.0.\n"
+        "- Marksman Rifle and Bipod by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2), CC0 1.0 Universal.\n",
         encoding="utf-8",
     )
 
