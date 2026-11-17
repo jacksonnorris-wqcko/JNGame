@@ -1507,6 +1507,12 @@
       saveGame(false);
     }
   });
+  $("supplies-close-button").addEventListener("click", () => {
+    $("supplies-screen").classList.remove("open");
+    paused = false;
+    keys.clear();
+    requestPointerLock();
+  });
   $("harvest-close").addEventListener("click", () => {
     $("harvest-screen").classList.remove("open");
     paused = false;
