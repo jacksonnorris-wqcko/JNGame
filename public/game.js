@@ -75,8 +75,19 @@
   let jumpMaxHeight = 0;
   let simulationAccumulator = 0;
   let simulationClock = 0;
+  let animalUpdateAccumulator = 0;
+  let worldAnimationAt = 0;
   let smoothedFps = 60;
   let averageFrameMs = 16.67;
+  let renderScaleLevel = 1;
+  let renderScaleBase = 1;
+  let renderScaleCheckAt = 0;
+  let renderScaleSlowFrames = 0;
+  let renderScaleFastFrames = 0;
+  const fogNightColor = new BABYLON.Color3(0.208, 0.267, 0.314);
+  const fogDayColor = new BABYLON.Color3(0.714, 0.769, 0.706);
+  const skyNightColor = new BABYLON.Color3(0.643, 0.706, 0.741);
+  const skyDayColor = new BABYLON.Color3(1, 1, 1);
   let frozenStaticMeshCount = 0;
   let interactionUpdateAt = 0;
   let dayCycleUpdateAt = 0;
@@ -1655,6 +1666,9 @@
     freezeStaticWorld();
     simulationClock = performance.now();
     simulationAccumulator = 0;
+    animalUpdateAccumulator = 0;
+    worldAnimationAt = simulationClock;
+    dayCycleUpdateAt = simulationClock;
     miniMapCtx = $("mini-map").getContext("2d");
     worldMapCtx = $("world-map").getContext("2d");
     drawWorldMap();
@@ -1668,7 +1682,31 @@
       averageFrameMs += (frameMs - averageFrameMs) * 0.08;
       smoothedFps += (1000 / frameMs - smoothedFps) * 0.06;
       if (camera) camera.rotation.x = clamp(camera.rotation.x, -0.25, 0.34);
-      const elapsed = Math.min(engine.getDeltaTime() / 1000, 0.1);
+      // Adapt render resolution gradually instead of allowing sustained GPU stalls.
+      if (frameAt - renderScaleCheckAt >= 2000) {
+        renderScaleCheckAt = frameAt;
+        if (averageFrameMs > 22 && renderScaleLevel < renderScaleBase + 0.65) {
+          renderScaleSlowFrames++;
+          renderScaleFastFrames = 0;
+          if (renderScaleSlowFrames >= 1) {
+            renderScaleLevel = Math.min(renderScaleBase + 0.65, Math.round((renderScaleLevel + 0.1) * 100) / 100);
+            engine.setHardwareScalingLevel(renderScaleLevel);
+            renderScaleSlowFrames = 0;
+          }
+        } else if (averageFrameMs < 15.5 && renderScaleLevel > renderScaleBase) {
+          renderScaleFastFrames++;
+          renderScaleSlowFrames = 0;
+          if (renderScaleFastFrames >= 4) {
+            renderScaleLevel = Math.max(renderScaleBase, Math.round((renderScaleLevel - 0.05) * 100) / 100);
+            engine.setHardwareScalingLevel(renderScaleLevel);
+            renderScaleFastFrames = 0;
+          }
+        } else {
+          renderScaleSlowFrames = 0;
+          renderScaleFastFrames = 0;
+        }
+      }
+      const elapsed = Math.min(frameMs / 1000, 0.1);
       if (gameStarted && !paused) {
         simulationAccumulator += elapsed;
         const step = 1 / 60;
@@ -1691,14 +1729,30 @@
   function updateGame(dt, suppliedNow) {
     const now = suppliedNow || performance.now();
     updatePlayer(dt, now);
-    updateAnimals(dt, now);
+    // Wildlife decision/movement logic is intentionally capped at 30 Hz; the player
+    // and camera remain on the full fixed 60 Hz simulation step.
+    animalUpdateAccumulator += dt;
+    let animalSteps = 0;
+    while (animalUpdateAccumulator >= 1 / 30 && animalSteps < 2) {
+      updateAnimals(1 / 30, now);
+      animalUpdateAccumulator -= 1 / 30;
+      animalSteps++;
+    }
+    if (animalSteps === 2 && animalUpdateAccumulator >= 1 / 30) animalUpdateAccumulator = 0;
     if (now - interactionUpdateAt >= 90) {
       updateInteraction();
       interactionUpdateAt = now;
     }
     animateWeapon(dt);
-    animateWorld(now);
-    updateDayCycle(dt);
+    if (now - worldAnimationAt >= 1000 / 30) {
+      animateWorld(now);
+      worldAnimationAt = now;
+    }
+    if (now - dayCycleUpdateAt >= 1000 / 30) {
+      const dayCycleDt = Math.min(0.1, (now - dayCycleUpdateAt) / 1000);
+      updateDayCycle(dayCycleDt);
+      dayCycleUpdateAt = now;
+    }
     if (now - hudTimer > 180) {
       const expiredTracks = footprints.filter((track) => now - track.createdAt > 75000);
       if (expiredTracks.length) {
@@ -2500,17 +2554,28 @@
     const daylight = 0.18 + Math.max(0, Math.sin(dayTime * Math.PI * 2)) * 0.82;
     lights.hemi.intensity = 0.16 + daylight * 0.48;
     lights.sun.intensity = 0.06 + daylight * 0.9;
-    const nightFog = hex("#354450"), dayFog = hex("#b6c4b4");
-    const fog = BABYLON.Color3.Lerp(nightFog, dayFog, daylight);
-    scene.fogColor.copyFrom(fog);
-    scene.clearColor = new BABYLON.Color4(fog.r, fog.g, fog.b, 1);
+    const fogR = fogNightColor.r + (fogDayColor.r - fogNightColor.r) * daylight;
+    const fogG = fogNightColor.g + (fogDayColor.g - fogNightColor.g) * daylight;
+    const fogB = fogNightColor.b + (fogDayColor.b - fogNightColor.b) * daylight;
+    scene.fogColor.r = fogR;
+    scene.fogColor.g = fogG;
+    scene.fogColor.b = fogB;
+    scene.clearColor.r = fogR;
+    scene.clearColor.g = fogG;
+    scene.clearColor.b = fogB;
     if (lights.skyMaterial) {
-      const skyLight = BABYLON.Color3.Lerp(hex("#a4b4bd"), hex("#ffffff"), daylight);
-      lights.skyMaterial.emissiveColor.copyFrom(skyLight);
+      const sky = lights.skyMaterial.emissiveColor;
+      sky.r = skyNightColor.r + (skyDayColor.r - skyNightColor.r) * daylight;
+      sky.g = skyNightColor.g + (skyDayColor.g - skyNightColor.g) * daylight;
+      sky.b = skyNightColor.b + (skyDayColor.b - skyNightColor.b) * daylight;
     }
     const angle = dayTime * Math.PI * 2;
-    lights.sun.direction = new BABYLON.Vector3(-Math.cos(angle), -Math.max(0.16, Math.sin(angle)), 0.28).normalize();
-    if (camera) lights.sun.position.copyFrom(camera.position.add(new BABYLON.Vector3(Math.cos(angle) * 100, 120, Math.sin(angle) * 100)));
+    lights.sun.direction.copyFromFloats(-Math.cos(angle), -Math.max(0.16, Math.sin(angle)), 0.28).normalize();
+    if (camera) {
+      lights.sun.position.x = camera.position.x + Math.cos(angle) * 100;
+      lights.sun.position.y = camera.position.y + 120;
+      lights.sun.position.z = camera.position.z + Math.sin(angle) * 100;
+    }
     if (skySun) skySun.setEnabled(daylight > 0.22);
   }
 
@@ -2608,8 +2673,10 @@
     scentActiveUntil = 0;
     $("game-shell").classList.remove("crouched");
     if (!scene) {
-      engine = new BABYLON.Engine(canvas, true, { stencil: false, preserveDrawingBuffer: false, adaptToDeviceRatio: false });
-      engine.setHardwareScalingLevel(Math.max(1, (window.devicePixelRatio || 1) / 1.25));
+      engine = new BABYLON.Engine(canvas, true, { stencil: false, preserveDrawingBuffer: false, adaptToDeviceRatio: false, powerPreference: "high-performance" });
+      renderScaleBase = Math.max(1, (window.devicePixelRatio || 1) / 1.25);
+      renderScaleLevel = renderScaleBase;
+      engine.setHardwareScalingLevel(renderScaleLevel);
       createScene();
       window.addEventListener("resize", () => engine.resize());
     }
@@ -2830,8 +2897,10 @@
     else $("continue-button").style.display = "none";
     // Prepare the valley behind the title screen. Everything runs locally; no server is contacted.
     try {
-      engine = new BABYLON.Engine(canvas, true, { stencil: false, preserveDrawingBuffer: false, adaptToDeviceRatio: false });
-      engine.setHardwareScalingLevel(Math.max(1, (window.devicePixelRatio || 1) / 1.25));
+      engine = new BABYLON.Engine(canvas, true, { stencil: false, preserveDrawingBuffer: false, adaptToDeviceRatio: false, powerPreference: "high-performance" });
+      renderScaleBase = Math.max(1, (window.devicePixelRatio || 1) / 1.25);
+      renderScaleLevel = renderScaleBase;
+      engine.setHardwareScalingLevel(renderScaleLevel);
       createScene();
       window.addEventListener("resize", () => engine.resize());
     } catch (error) {
@@ -2881,6 +2950,8 @@
     jumpMaxHeight,
     fps: Math.round(smoothedFps),
     averageFrameMs: Number(averageFrameMs.toFixed(2)),
+    renderScaleLevel: Number(renderScaleLevel.toFixed(2)),
+    animalSimulationHz: 30,
     frozenStaticMeshCount,
     aiming,
     scopeZoom: scopeMagnifications[scopeZoomIndex],
