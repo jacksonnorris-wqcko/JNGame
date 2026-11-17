@@ -34,8 +34,9 @@
   let modelLoadFailures = [];
   let weaponModelReady = false, weaponModelFailed = false;
   let weaponAssetMeshCount = 0, weaponScopePartCount = 0;
-  let weaponBoltNode = null, weaponModelRoot = null;
+  let weaponBoltNode = null, weaponBoltBase = null, weaponBoltCycleElapsed = -1, weaponModelRoot = null;
   let weaponAnimationGroups = [], weaponAnimationClipNames = [], weaponActiveAnimation = null;
+  let weaponFallbackUsed = false, weaponHasIntegratedScope = false;
   let weaponBaseY = -0.34;
   let footprints = [];
   let obstacles = [];
@@ -943,7 +944,7 @@
     weaponRoot.position.set(0.34, -0.34, 0.76);
     weaponRoot.rotation.set(0, 0, 0);
 
-    // Small visual effect only; the rifle, scope and bipod are imported GLB geometry.
+    // Small visual effect only; both rifle silhouettes and optic hardware are imported GLB meshes.
     const flashMaterial = new BABYLON.StandardMaterial("Rifle muzzle flash material", scene);
     flashMaterial.diffuseColor = hex("#f6c875");
     flashMaterial.emissiveColor = hex("#f69b35");
@@ -957,52 +958,74 @@
     weaponMaterials.flash = flash;
     weaponRoot.setEnabled(true);
 
-    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/weapons/", "marksman-rifle.glb", scene)
-      .then((container) => {
-        const entries = container.instantiateModelsToScene((name) => "WILDRANGE_MARKSMAN__" + name, true);
-        entries.rootNodes.forEach((node) => {
-          node.parent = weaponRoot;
-          // The asset is metre-scaled, Y-up, and the barrel faces +Z (camera forward).
-          node.rotationQuaternion = null;
-          node.rotation.set(0, 0, 0);
-          node.position.set(0, 0, 0);
-          node.scaling.set(1, 1, 1);
-        });
-        weaponModelRoot = entries.rootNodes[0] || null;
-        const nodes = entries.rootNodes.flatMap((root) => [root, ...root.getDescendants(false)]);
-        weaponBoltNode = nodes.find((node) => String(node.name).toLowerCase().includes("bolt")) || null;
-        weaponScopePartCount = nodes.filter((node) => /scope|optic/i.test(String(node.name))).length;
-        weaponAnimationGroups = entries.animationGroups || [];
-        weaponAnimationClipNames = weaponAnimationGroups.map((group) => String(group.name));
-        weaponAnimationGroups.forEach((group) => group.stop());
+    const attachRifleContainer = (container, useLegacyFallback) => {
+      const sourceGroups = container.animationGroups || [];
+      const sourceNames = sourceGroups.map((group) => String(group.name).toLowerCase());
+      const requiredClips = ["magazine-open", "magazine-close", "bolt-open", "bolt-close"];
+      if (!useLegacyFallback) {
+        const missing = requiredClips.filter((clip) => !sourceNames.some((name) => name.includes(clip)));
+        if (missing.length) throw new Error("New rifle is missing native clips: " + missing.join(", "));
+      }
 
-        const meshes = entries.rootNodes.flatMap((root) => root.getChildMeshes(false));
-        meshes.forEach((mesh) => {
-          mesh.isPickable = false;
-          mesh.receiveShadows = true;
-          mesh.metadata = { ...(mesh.metadata || {}), weaponPart: true };
-          if (lights.shadows) {
-            try { lights.shadows.addShadowCaster(mesh); } catch (error) { /* optional */ }
-          }
-        });
-        weaponAssetMeshCount = meshes.length;
-        weaponModelReady = Boolean(weaponModelRoot && meshes.length);
-        const requiredClips = ["magazine-open", "magazine-close", "bolt-open", "bolt-close"];
-        const missingClips = requiredClips.filter((clip) =>
-          !weaponAnimationClipNames.some((name) => name.toLowerCase().includes(clip))
-        );
-        if (!weaponModelReady) {
-          throw new Error("Imported marksman rifle contained no renderable model geometry");
+      const entries = container.instantiateModelsToScene(
+        (name) => (useLegacyFallback ? "RANGER308__" : "WILDRANGE_MARKSMAN__") + name,
+        true
+      );
+      entries.rootNodes.forEach((node) => {
+        node.parent = weaponRoot;
+        node.rotationQuaternion = null;
+        node.position.set(0, 0, 0);
+        if (useLegacyFallback) {
+          // Legacy Polyfork service rifle is authored along +X; turn it to face the camera's +Z.
+          node.rotation.set(0, -Math.PI / 2, 0);
+          node.scaling.scaleInPlace(1.62);
+        } else {
+          // The CC0 marksman asset is metre-scaled, Y-up and already faces +Z.
+          node.rotation.set(0, 0, 0);
+          node.scaling.set(1, 1, 1);
         }
-        if (missingClips.length) {
-          throw new Error("Imported marksman rifle is missing animation clips: " + missingClips.join(", "));
+      });
+
+      weaponModelRoot = entries.rootNodes[0] || null;
+      const nodes = entries.rootNodes.flatMap((root) => [root, ...root.getDescendants(false)]);
+      weaponBoltNode = nodes.find((node) => String(node.name).toLowerCase().includes("bolt")) || null;
+      weaponBoltBase = weaponBoltNode ? {
+        position: weaponBoltNode.position.clone(),
+        rotation: weaponBoltNode.rotation.clone()
+      } : null;
+      weaponScopePartCount = nodes.filter((node) => /scope|optic/i.test(String(node.name))).length;
+      weaponHasIntegratedScope = !useLegacyFallback;
+      weaponAnimationGroups = entries.animationGroups || [];
+      weaponAnimationClipNames = weaponAnimationGroups.map((group) => String(group.name));
+      weaponAnimationGroups.forEach((group) => group.stop());
+
+      const meshes = entries.rootNodes.flatMap((root) => root.getChildMeshes(false));
+      meshes.forEach((mesh) => {
+        mesh.isPickable = false;
+        mesh.receiveShadows = true;
+        mesh.metadata = { ...(mesh.metadata || {}), weaponPart: true };
+        if (lights.shadows) {
+          try { lights.shadows.addShadowCaster(mesh); } catch (error) { /* optional */ }
         }
-        updateHud();
+      });
+      weaponAssetMeshCount = meshes.length;
+      weaponModelReady = Boolean(weaponModelRoot && meshes.length);
+      weaponFallbackUsed = Boolean(useLegacyFallback);
+      if (!weaponModelReady) throw new Error("Imported rifle contained no renderable geometry");
+      updateHud();
+    };
+
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/weapons/", "marksman-rifle.glb", scene)
+      .then((container) => attachRifleContainer(container, false))
+      .catch((primaryError) => {
+        console.warn("Wildrange marksman rifle unavailable; loading the local legacy rifle fallback.", primaryError);
+        return BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/weapons/", "bolt-action-rifle.glb", scene)
+          .then((container) => attachRifleContainer(container, true));
       })
       .catch((error) => {
         weaponModelFailed = true;
         modelLoadFailures.push("rifle: " + (error && error.message ? error.message : String(error)));
-        console.error("Wildrange marksman rifle failed to load:", error);
+        console.error("Wildrange rifle model failed to load:", error);
       });
   }
 
@@ -2056,8 +2079,33 @@
     return true;
   }
 
+  function playWeaponAnimation(clipFragment, onEnd) {
+    const key = String(clipFragment || "").toLowerCase();
+    const group = weaponAnimationGroups.find((candidate) =>
+      String(candidate.name).toLowerCase().includes(key)
+    );
+    if (!group) return false;
+    weaponAnimationGroups.forEach((candidate) => {
+      if (candidate !== group) candidate.stop();
+    });
+    group.stop();
+    weaponActiveAnimation = group;
+    if (group.onAnimationGroupEndObservable) {
+      group.onAnimationGroupEndObservable.addOnce(() => {
+        if (weaponActiveAnimation === group) weaponActiveAnimation = null;
+        if (typeof onEnd === "function") onEnd();
+      });
+    }
+    group.start(false, 1);
+    return true;
+  }
+
   function cycleRifleBolt() {
-    playWeaponAnimation("bolt-open", () => playWeaponAnimation("bolt-close"));
+    if (weaponFallbackUsed) {
+      if (weaponBoltNode && weaponBoltBase) weaponBoltCycleElapsed = 0;
+    } else {
+      playWeaponAnimation("bolt-open", () => playWeaponAnimation("bolt-close"));
+    }
     sound(290, 0.055, "metal", 0.015);
   }
 
@@ -2076,6 +2124,19 @@
     weaponRoot.rotation.x += ((aiming ? -0.012 : 0) - weaponRoot.rotation.x) * Math.min(1, dt * 10);
     weaponRoot.rotation.z += ((reloading ? -reloadLift * 0.075 : 0) - weaponRoot.rotation.z) * Math.min(1, dt * 10);
     weaponRoot.position.z -= weaponKick * 0.14;
+
+    if (weaponFallbackUsed && weaponBoltNode && weaponBoltBase && weaponBoltCycleElapsed >= 0) {
+      weaponBoltCycleElapsed += dt;
+      const phase = clamp(weaponBoltCycleElapsed / 0.42, 0, 1);
+      const draw = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+      weaponBoltNode.position.z = weaponBoltBase.position.z - draw * 0.055;
+      weaponBoltNode.rotation.y = weaponBoltBase.rotation.y + draw * 0.28;
+      if (phase >= 1) {
+        weaponBoltNode.position.copyFrom(weaponBoltBase.position);
+        weaponBoltNode.rotation.copyFrom(weaponBoltBase.rotation);
+        weaponBoltCycleElapsed = -1;
+      }
+    }
 
     if (muzzleTimer > 0) {
       muzzleTimer -= dt;
@@ -2297,7 +2358,8 @@
     if (reloading || state.ammo >= 8 || state.reserve <= 0 || paused || !gameStarted) return;
     reloading = true;
     reloadStarted = performance.now();
-    playWeaponAnimation("magazine-open");
+    if (weaponFallbackUsed) cycleRifleBolt();
+    else playWeaponAnimation("magazine-open");
     $("reload-indicator").classList.add("show");
     sound(300, 0.07, "triangle", 0.018);
   }
@@ -2311,7 +2373,8 @@
       state.ammo += amount;
       state.reserve -= amount;
       reloading = false;
-      playWeaponAnimation("magazine-close");
+      if (weaponFallbackUsed) cycleRifleBolt();
+      else playWeaponAnimation("magazine-close");
       $("reload-indicator").classList.remove("show");
       sound(480, 0.08, "triangle", 0.025);
       toast("Reloaded. " + state.ammo + " rounds ready.", "success");
@@ -2809,7 +2872,8 @@
     weaponScopePartCount,
     weaponAnimationClipCount: weaponAnimationClipNames.length,
     weaponAnimationClipNames: weaponAnimationClipNames.slice(),
-    weaponHasIntegratedScope: weaponModelReady && weaponAssetMeshCount > 0,
+    weaponHasIntegratedScope,
+    weaponFallbackUsed,
     modelLoadFailures: modelLoadFailures.slice(),
     jumpCount,
     playerGrounded,
