@@ -56,6 +56,14 @@ GAME_MODELS = [
         "source": "https://polyfork.dev/asset/pig-base",
     },
     {
+        "asset": "Forest Boar, Jointed (FPS Survival Forest Outpost)",
+        "path": "animals/forest-boar.glb",
+        "url": "https://cdn.3dassets.dev/assets/32710/v1/model.glb",
+        "minimum_bytes": 100_000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a",
+    },
+    {
         "asset": "Polyfork Bolt-Action Rifle (legacy fallback)",
         "path": "weapons/bolt-action-rifle.glb",
         "url": "https://polyfork.dev/cdn/bolt-action-rifle-2f1793.glb",
@@ -225,7 +233,8 @@ def write_model_attributions() -> None:
         "- Pig by Polyfork (https://polyfork.dev/asset/pig-base), CC BY 4.0. "
         "Recoloured and adapted with additional boar details for Wildrange.\n"
         "- Bolt-Action Rifle by Polyfork (https://polyfork.dev/asset/bolt-action-rifle-2f1793), CC BY 4.0.\n"
-        "- Marksman Rifle and Bipod by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2), CC0 1.0 Universal.\n",
+        "- Marksman Rifle and Bipod by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2), CC0 1.0 Universal.\n"
+        "- Forest Boar, Jointed by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a), CC0 1.0 Universal.\n",
         encoding="utf-8",
     )
 
