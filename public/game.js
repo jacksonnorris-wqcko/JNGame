@@ -2633,7 +2633,7 @@
     riflePartCount: weaponRoot ? weaponRoot.getChildMeshes().length : 0,
     aiming,
     scopeZoom: scopeMagnifications[scopeZoomIndex],
-    scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming"))
+    scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")
   });
 
   window.addEventListener("beforeunload", () => saveGame(false));
