@@ -977,7 +977,7 @@
 
   function updateInteraction() {
     const px = camera.position.x, pz = camera.position.z;
-    let found = null, closest = 4.2;
+    let found = null, closest = 7.0;
     for (const animal of animals) {
       if (!animal.dead || animal.harvested) continue;
       const d = Math.hypot(px - animal.root.position.x, pz - animal.root.position.z);
@@ -1236,8 +1236,14 @@
     const stamina = $("stamina-fill");
     if (stamina) stamina.style.width = state.stamina + "%";
     text("stamina-value", Math.round(state.stamina) + "%");
-    text("field-note-text", state.hides + " hides · " + state.meat + " meat in your pack. " +
-      (tracking ? "Tracking sense is active." : "Use Q to look for fresh wildlife tracks."));
+    const fieldTip = !state.contractAccepted
+      ? "You're at Pinecrest Outpost. The contract board is nearby — press E to accept First Harvest."
+      : state.contractComplete
+        ? "First Harvest complete. Sell your hides and meat at the harvest station to build your funds."
+        : (tracking
+          ? "Tracking sense is active. Follow fresh hoof prints to locate wildlife."
+          : "Look for deer beyond the outpost. Press Q to reveal nearby tracks.");
+    text("field-note-text", state.hides + " hides · " + state.meat + " meat. " + fieldTip);
   }
 
   function updateDayCycle(dt) {
@@ -1411,13 +1417,14 @@
         !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) event.preventDefault();
     if (event.repeat) return;
     if (key === "escape") {
-      if ($("supplies-screen").classList.contains("open")) {
-        $("supplies-screen").classList.remove("open");
+      const openOverlay = ["map-screen", "supplies-screen", "harvest-screen"].find((id) => $(id).classList.contains("open"));
+      if (openOverlay) {
+        $(openOverlay).classList.remove("open");
         paused = false;
-      } else if ($("harvest-screen").classList.contains("open")) {
-        $("harvest-screen").classList.remove("open");
-        paused = false;
-      } else if (gameStarted && !paused) pauseGame();
+        keys.clear();
+        return;
+      }
+      if (gameStarted && !paused) pauseGame();
       else if (paused) resumeGame();
       return;
     }
@@ -1460,6 +1467,12 @@
   $("start-button").addEventListener("click", () => enterWorld(false));
   $("continue-button").addEventListener("click", () => enterWorld(true));
   $("pause-button").addEventListener("click", pauseGame);
+  $("map-close-button").addEventListener("click", () => {
+    $("map-screen").classList.remove("open");
+    paused = false;
+    keys.clear();
+    requestPointerLock();
+  });
   $("resume-button").addEventListener("click", resumeGame);
   $("resume-x").addEventListener("click", resumeGame);
   $("save-button").addEventListener("click", () => saveGame(true));

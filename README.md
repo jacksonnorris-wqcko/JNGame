@@ -69,3 +69,7 @@ This is a playable prototype foundation, not a finished hunting simulator. It cu
 - `.github/workflows/ci.yml` — basic browser-build validation.
 
 **Development order:** make the solo hunting loop genuinely fun, polish the wildlife and weapon feel, expand the world and progression, then decide whether multiplayer is worth adding.
+
+## First-run help
+
+When you start a new hunt, you begin at Pinecrest Outpost beside the contract board. Press **E** to accept the First Harvest contract. Then walk out into the valley, press **Q** for tracking sense, aim with the right mouse button, fire with the left mouse button, and approach a downed animal to harvest it with **E**. Return to the harvest station to sell your hides and meat. Press **M** for the field map and **Escape** to close it.
