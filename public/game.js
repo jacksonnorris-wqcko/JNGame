@@ -1734,6 +1734,7 @@
           if (renderScaleSlowFrames >= 1) {
             renderScaleLevel = Math.min(renderScaleBase + 0.65, Math.round((renderScaleLevel + 0.1) * 100) / 100);
             engine.setHardwareScalingLevel(renderScaleLevel);
+            if (lights.pipeline) lights.pipeline.fxaaEnabled = renderScaleLevel <= renderScaleBase + 0.2;
             renderScaleSlowFrames = 0;
           }
         } else if (averageFrameMs < 15.5 && renderScaleLevel > renderScaleBase) {
@@ -1742,6 +1743,7 @@
           if (renderScaleFastFrames >= 4) {
             renderScaleLevel = Math.max(renderScaleBase, Math.round((renderScaleLevel - 0.05) * 100) / 100);
             engine.setHardwareScalingLevel(renderScaleLevel);
+            if (lights.pipeline) lights.pipeline.fxaaEnabled = renderScaleLevel <= renderScaleBase + 0.2;
             renderScaleFastFrames = 0;
           }
         } else {
