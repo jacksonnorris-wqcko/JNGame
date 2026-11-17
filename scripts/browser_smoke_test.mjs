@@ -27,7 +27,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.5.0", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.6.0", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -54,9 +54,26 @@ try {
   if (!diagnostics.canvasWidth || !diagnostics.canvasHeight || !diagnostics.webglEnabled) {
     throw new Error("3D WebGL renderer is unavailable");
   }
+  if (diagnostics.animalCount < 9 || diagnostics.animalLegRigCount < 36 || diagnostics.animalHeadRigCount < 9) {
+    throw new Error("Wildlife rigs are incomplete: " + JSON.stringify(diagnostics));
+  }
+  if (diagnostics.riflePartCount < 35) throw new Error("Rifle detail model is incomplete (" + diagnostics.riflePartCount + ")");
+
+  await page.mouse.move(800, 450);
+  await page.mouse.down({ button: "right" });
+  await page.waitForFunction(() => {
+    const state = window.WildrangeDiagnostics?.();
+    return state && state.aiming && state.scopeVisible;
+  }, { timeout: 8000 });
+  const scoped = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (scoped.scopeZoom !== 4) throw new Error("Default optic magnification was not 4x");
+  await page.mouse.wheel(0, -500);
+  await page.waitForFunction(() => window.WildrangeDiagnostics?.().scopeZoom === 6, { timeout: 3000 });
+  await page.mouse.up({ button: "right" });
+  await page.waitForFunction(() => !window.WildrangeDiagnostics?.().aiming, { timeout: 3000 });
   if (failures.length) throw new Error(failures.join("\\n"));
 
-  console.log(JSON.stringify({ titleVisible, diagnostics, failures }, null, 2));
+  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, failures }, null, 2));
 
 } finally {
   await browser.close();

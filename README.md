@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Visual asset build: **0.5.0**. Game assets are stored under `public/assets/`.
+Visual asset build: **0.6.0**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -83,6 +83,12 @@ Asset validation: the CI workflow checks the locally hosted HDRI and required PB
 The 0.5.0 pass separates HDR image-based lighting from the visible sky, adds a controlled dawn sky with layered clouds, builds two distant mountain ridge bands, increases terrain heightfield detail and meadow coverage, and replaces the black leaf-atlas pattern with generated pine-needle and broadleaf textures. The detailed outpost, PBR surfaces, animal systems and solo hunting loop remain in place.
 
 The material and HDR downloads are imported by `.github/workflows/import-cc0-assets.yml` into `public/assets`. The textures are CC0 assets from ambientCG and the forest HDRI is from Poly Haven. The browser loads the files from the repository; no texture CDN, account, paid asset or runtime asset service is required.
+
+## Rifle & wildlife overhaul — 0.6.0
+
+The 0.6.0 update rebuilds the Ranger .308 first-person model with a shaped walnut stock, recoil pad, receiver, ejection port, bolt assembly, trigger guard, pistol grip, detachable magazine, fore-end, free-floating barrel, muzzle brake, mounted optic, objective/ocular bells and adjustment turrets. Holding right mouse raises a scoped sight picture; the camera zooms through the centre reticle and the mouse wheel switches between 2x, 4x, 6x and 8x magnification.
+
+Deer and boars have upgraded body proportions, articulated two-section legs, visible joints and hooves, movable heads, ear and tail motion, deer antlers and boar tusks/bristles. Their walking, grazing and fleeing states now drive the limb/head/tail animation. This remains an in-engine procedural model pass, not imported motion-captured animal models.
 
 ## Cost
 

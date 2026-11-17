@@ -66,6 +66,9 @@
   let windMeshes = [];
   let waterRipples = [];
   let skySun = null;
+  let scopeZoomIndex = 1;
+  const scopeMagnifications = [2, 4, 6, 8];
+  const scopeFovs = [0.42, 0.245, 0.18, 0.135];
 
   const mat = {};
   const rand = (min, max) => min + Math.random() * (max - min);
@@ -915,81 +918,138 @@
   }
 
   function createWeapon() {
-    weaponRoot = new BABYLON.TransformNode("Ranger 308 first person model", scene);
+    weaponRoot = new BABYLON.TransformNode("Ranger 308 precision rifle", scene);
     weaponRoot.parent = camera;
     weaponRoot.position.set(0.34, -0.43, 0.9);
-    weaponRoot.scaling.set(0.72, 0.72, 0.72);
-    const body = BABYLON.MeshBuilder.CreateBox("rifle-body", { width: 0.17, height: 0.19, depth: 0.9 }, scene);
-    body.parent = weaponRoot;
-    body.position.set(-0.06, 0, 0.18);
-    body.material = mat.metal;
-    body.isPickable = false;
-    const stock = BABYLON.MeshBuilder.CreateBox("rifle-stock", { width: 0.22, height: 0.18, depth: 0.46 }, scene);
-    stock.parent = weaponRoot;
-    stock.position.set(-0.1, -0.035, -0.42);
-    stock.material = mat.rifleWood;
-    stock.isPickable = false;
-    const barrel = BABYLON.MeshBuilder.CreateCylinder("rifle-barrel", { height: 0.92, diameter: 0.055, tessellation: 10 }, scene);
-    barrel.parent = weaponRoot;
-    barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(-0.035, 0.045, 0.78);
-    barrel.material = mat.metal;
-    barrel.isPickable = false;
-    const muzzle = BABYLON.MeshBuilder.CreateCylinder("muzzle", { height: 0.14, diameter: 0.068, tessellation: 16 }, scene);
-    muzzle.parent = weaponRoot;
-    muzzle.rotation.x = Math.PI / 2;
-    muzzle.position.set(-0.035, 0.045, 1.26);
-    muzzle.material = mat.black;
-    muzzle.isPickable = false;
-    const scope = BABYLON.MeshBuilder.CreateCylinder("rifle-scope", { height: 0.44, diameter: 0.09, tessellation: 16 }, scene);
-    scope.parent = weaponRoot;
-    scope.rotation.x = Math.PI / 2;
-    scope.position.set(-0.06, 0.15, 0.18);
-    scope.material = mat.black;
-    scope.isPickable = false;
-    const scopeGlass = BABYLON.MeshBuilder.CreateCylinder("scope-glass", { height: 0.025, diameter: 0.09, tessellation: 12 }, scene);
-    scopeGlass.parent = weaponRoot;
-    scopeGlass.rotation.x = Math.PI / 2;
-    scopeGlass.position.set(-0.06, 0.15, 0.41);
-    scopeGlass.material = mat.water;
-    scopeGlass.isPickable = false;
-    const grip = BABYLON.MeshBuilder.CreateBox("rifle-grip", { width: 0.12, height: 0.32, depth: 0.16 }, scene);
-    grip.parent = weaponRoot;
-    grip.position.set(-0.06, -0.2, 0.03);
-    grip.rotation.x = -0.24;
-    grip.material = mat.rifleWood;
-    grip.isPickable = false;
-    const sight = BABYLON.MeshBuilder.CreateBox("front-sight", { width: 0.035, height: 0.1, depth: 0.04 }, scene);
-    sight.parent = weaponRoot;
-    sight.position.set(-0.035, 0.115, 0.92);
-    sight.material = mat.gold;
-    sight.isPickable = false;
-    const scopeBands = [-0.19, 0.19].map((offset) => {
-      const band = BABYLON.MeshBuilder.CreateTorus("scope mounting ring", { diameter: 0.145, thickness: 0.014, tessellation: 16 }, scene);
-      band.parent = weaponRoot;
-      band.rotation.x = Math.PI / 2;
-      band.position.set(-0.06, 0.15, 0.18 + offset);
-      band.material = mat.metal;
-      band.isPickable = false;
-      return band;
-    });
-    const bolt = BABYLON.MeshBuilder.CreateCylinder("rifle bolt", { height: 0.18, diameter: 0.045, tessellation: 8 }, scene);
-    bolt.parent = weaponRoot;
-    bolt.rotation.z = Math.PI / 2;
-    bolt.position.set(0.04, 0.045, -0.03);
-    bolt.material = mat.metal;
-    bolt.isPickable = false;
-    const magazine = BABYLON.MeshBuilder.CreateBox("rifle magazine", { width: 0.12, height: 0.29, depth: 0.19 }, scene);
-    magazine.parent = weaponRoot;
-    magazine.position.set(-0.045, -0.2, 0.18);
-    magazine.material = mat.black;
-    magazine.isPickable = false;
-    const muzzleFlash = BABYLON.MeshBuilder.CreateSphere("muzzle-flash", { diameter: 0.3, segments: 6 }, scene);
-    muzzleFlash.parent = weaponRoot;
-    muzzleFlash.position.set(-0.035, 0.045, 1.42);
-    muzzleFlash.material = makeMaterial("muzzle-flash-material", "#f6c875", 0.15);
+    weaponRoot.scaling.set(0.78, 0.78, 0.78);
+
+    const riflePart = (name, mesh, material, position, rotation) => {
+      mesh.name = name;
+      mesh.parent = weaponRoot;
+      if (position) mesh.position.set(position.x, position.y, position.z);
+      if (rotation) mesh.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
+      mesh.material = material;
+      mesh.isPickable = false;
+      mesh.receiveShadows = true;
+      return mesh;
+    };
+    const rifleBox = (name, size, position, material, rotation) =>
+      riflePart(name, BABYLON.MeshBuilder.CreateBox(name, size, scene), material, position, rotation);
+    const rifleCylinderZ = (name, length, diameter, position, material, tessellation) => {
+      const mesh = BABYLON.MeshBuilder.CreateCylinder(name, {
+        height: length, diameter, tessellation: tessellation || 18
+      }, scene);
+      mesh.rotation.x = Math.PI / 2;
+      return riflePart(name, mesh, material, position);
+    };
+    const rubber = new BABYLON.PBRMaterial("Rifle recoil pad rubber", scene);
+    rubber.albedoColor = hex("#171c1b"); rubber.metallic = 0.02; rubber.roughness = 0.96;
+    const scopeGlass = new BABYLON.PBRMaterial("Optic coated glass", scene);
+    scopeGlass.albedoColor = hex("#263b3d"); scopeGlass.emissiveColor = hex("#0b1718");
+    scopeGlass.metallic = 0.24; scopeGlass.roughness = 0.12; scopeGlass.alpha = 0.72;
+    scopeGlass.backFaceCulling = false;
+
+    // Walnut buttstock with a raised comb, cheek rest and rubber recoil pad.
+    rifleBox("Rifle walnut buttstock", { width: 0.235, height: 0.23, depth: 0.74 }, { x: -0.105, y: -0.035, z: -0.47 }, mat.rifleWood);
+    const butt = rifleBox("Rubber recoil pad", { width: 0.245, height: 0.255, depth: 0.085 }, { x: -0.105, y: -0.035, z: -0.89 }, rubber);
+    butt.rotation.x = -0.04;
+    rifleBox("Stock comb", { width: 0.205, height: 0.085, depth: 0.49 }, { x: -0.105, y: 0.105, z: -0.48 }, mat.rifleWood);
+    rifleBox("Raised cheek weld", { width: 0.19, height: 0.075, depth: 0.31 }, { x: -0.105, y: 0.18, z: -0.38 }, mat.rifleWood);
+    rifleBox("Stock shadow line", { width: 0.245, height: 0.018, depth: 0.43 }, { x: -0.105, y: 0.078, z: -0.49 }, mat.black);
+
+    // Receiver, top rail, ejection port and bolt assembly.
+    rifleBox("Machined steel receiver", { width: 0.19, height: 0.2, depth: 0.62 }, { x: -0.085, y: 0.015, z: 0.04 }, mat.metal);
+    rifleBox("Receiver upper rail", { width: 0.12, height: 0.045, depth: 0.58 }, { x: -0.085, y: 0.135, z: 0.08 }, mat.black);
+    for (let slot = 0; slot < 11; slot++) {
+      rifleBox("Picatinny rail slot", { width: 0.095, height: 0.012, depth: 0.025 }, { x: -0.085, y: 0.162, z: -0.17 + slot * 0.047 }, mat.metal);
+    }
+    rifleBox("Right ejection port recess", { width: 0.018, height: 0.075, depth: 0.25 }, { x: 0.015, y: 0.035, z: 0.02 }, mat.black);
+    rifleBox("Ejection port cover", { width: 0.014, height: 0.052, depth: 0.205 }, { x: 0.026, y: 0.04, z: 0.02 }, mat.metal);
+    rifleCylinderZ("Bolt body", 0.31, 0.072, { x: -0.085, y: 0.04, z: -0.31 }, mat.metal);
+    const boltStem = BABYLON.MeshBuilder.CreateCylinder("Bolt handle stem", { height: 0.17, diameter: 0.035, tessellation: 12 }, scene);
+    boltStem.rotation.z = Math.PI / 2;
+    riflePart("Bolt handle stem", boltStem, mat.metal, { x: 0.035, y: 0.04, z: -0.16 });
+    const boltKnob = BABYLON.MeshBuilder.CreateSphere("Bolt knob", { diameter: 0.105, segments: 16 }, scene);
+    riflePart("Bolt knob", boltKnob, mat.black, { x: 0.125, y: 0.04, z: -0.16 });
+    rifleBox("Safety selector", { width: 0.035, height: 0.055, depth: 0.1 }, { x: 0.025, y: -0.035, z: -0.12 }, mat.metal);
+
+    // Trigger group and a properly open trigger guard.
+    const guardPath = [
+      new BABYLON.Vector3(-0.085, -0.075, 0.015),
+      new BABYLON.Vector3(-0.085, -0.17, 0.055),
+      new BABYLON.Vector3(-0.085, -0.19, 0.22),
+      new BABYLON.Vector3(-0.085, -0.12, 0.28),
+      new BABYLON.Vector3(-0.085, -0.07, 0.23)
+    ];
+    const guard = BABYLON.MeshBuilder.CreateTube("Open trigger guard", { path: guardPath, radius: 0.012, tessellation: 10 }, scene);
+    riflePart("Open trigger guard", guard, mat.metal);
+    rifleBox("Trigger blade", { width: 0.025, height: 0.12, depth: 0.025 }, { x: -0.085, y: -0.085, z: 0.1 }, mat.metal, { x: 0.18, y: 0, z: -0.12 });
+
+    // Angled pistol grip and checkered grip panels.
+    rifleBox("Pistol grip core", { width: 0.145, height: 0.34, depth: 0.18 }, { x: -0.09, y: -0.235, z: -0.015 }, mat.rifleWood, { x: -0.34, y: 0, z: 0.08 });
+    rifleBox("Grip side panel", { width: 0.018, height: 0.24, depth: 0.13 }, { x: 0.0, y: -0.23, z: -0.005 }, mat.black, { x: -0.34, y: 0, z: 0.08 });
+    for (let line = 0; line < 6; line++) {
+      rifleBox("Grip checkering", { width: 0.012, height: 0.012, depth: 0.105 }, { x: 0.011, y: -0.32 + line * 0.035, z: -0.02 }, mat.rifleWood);
+    }
+
+    // Detachable magazine with base plate and fore-end furniture.
+    rifleBox("Detachable .308 magazine", { width: 0.135, height: 0.34, depth: 0.19 }, { x: -0.085, y: -0.215, z: 0.13 }, mat.black, { x: -0.06, y: 0, z: 0.02 });
+    rifleBox("Magazine floorplate", { width: 0.15, height: 0.035, depth: 0.205 }, { x: -0.085, y: -0.39, z: 0.14 }, mat.metal);
+    rifleBox("Walnut fore-end", { width: 0.205, height: 0.19, depth: 0.61 }, { x: -0.095, y: -0.015, z: 0.55 }, mat.rifleWood);
+    rifleBox("Fore-end underside rail", { width: 0.105, height: 0.04, depth: 0.36 }, { x: -0.095, y: -0.13, z: 0.57 }, mat.black);
+    for (let groove = 0; groove < 5; groove++) {
+      rifleBox("Fore-end grip groove", { width: 0.012, height: 0.11, depth: 0.018 }, { x: 0.012, y: -0.015, z: 0.36 + groove * 0.085 }, mat.black);
+    }
+
+    // Free-floating barrel, crown and ventilated muzzle brake.
+    rifleCylinderZ("Free floating precision barrel", 1.28, 0.045, { x: -0.085, y: 0.065, z: 1.13 }, mat.metal, 24);
+    rifleCylinderZ("Barrel shoulder", 0.15, 0.072, { x: -0.085, y: 0.065, z: 0.54 }, mat.black, 20);
+    rifleCylinderZ("Thread protector", 0.06, 0.065, { x: -0.085, y: 0.065, z: 1.79 }, mat.metal, 20);
+    rifleCylinderZ("Muzzle brake", 0.19, 0.09, { x: -0.085, y: 0.065, z: 1.91 }, mat.black, 24);
+    for (const side of [-1, 1]) for (let port = 0; port < 2; port++) {
+      rifleBox("Muzzle brake gas port", { width: 0.012, height: 0.027, depth: 0.052 }, { x: -0.085 + side * 0.046, y: 0.065 + 0.012, z: 1.87 + port * 0.065 }, mat.metal);
+    }
+
+    // Proper mounted optic: tube, objective bell, ocular bell, glass and adjustment turrets.
+    rifleBox("One piece scope mount base", { width: 0.105, height: 0.045, depth: 0.52 }, { x: -0.085, y: 0.195, z: 0.25 }, mat.black);
+    for (const z of [0.04, 0.43]) {
+      const mount = BABYLON.MeshBuilder.CreateBox("Scope ring foot", { width: 0.105, height: 0.08, depth: 0.07 }, scene);
+      riflePart("Scope ring foot", mount, mat.metal, { x: -0.085, y: 0.25, z });
+      const ring = BABYLON.MeshBuilder.CreateTorus("Scope mounting ring", { diameter: 0.18, thickness: 0.025, tessellation: 20 }, scene);
+      ring.rotation.x = Math.PI / 2;
+      riflePart("Scope mounting ring", ring, mat.metal, { x: -0.085, y: 0.305, z });
+    }
+    rifleCylinderZ("30mm optic tube", 0.57, 0.112, { x: -0.085, y: 0.31, z: 0.245 }, mat.black, 24);
+    rifleCylinderZ("Scope ocular bell", 0.18, 0.155, { x: -0.085, y: 0.31, z: -0.095 }, mat.black, 24);
+    rifleCylinderZ("Scope objective bell", 0.19, 0.19, { x: -0.085, y: 0.31, z: 0.57 }, mat.black, 24);
+    rifleCylinderZ("Rear optic glass", 0.018, 0.128, { x: -0.085, y: 0.31, z: -0.19 }, scopeGlass, 24);
+    rifleCylinderZ("Front optic glass", 0.018, 0.162, { x: -0.085, y: 0.31, z: 0.67 }, scopeGlass, 24);
+    for (const z of [-0.09, 0.58]) {
+      const lip = BABYLON.MeshBuilder.CreateTorus("Scope bell rim", { diameter: z < 0 ? 0.158 : 0.193, thickness: 0.014, tessellation: 24 }, scene);
+      lip.rotation.x = Math.PI / 2;
+      riflePart("Scope bell rim", lip, mat.metal, { x: -0.085, y: 0.31, z });
+    }
+    const elevation = BABYLON.MeshBuilder.CreateCylinder("Scope elevation turret", { height: 0.13, diameter: 0.12, tessellation: 20 }, scene);
+    riflePart("Scope elevation turret", elevation, mat.black, { x: -0.085, y: 0.405, z: 0.22 });
+    const elevationCap = BABYLON.MeshBuilder.CreateCylinder("Elevation cap", { height: 0.035, diameter: 0.105, tessellation: 20 }, scene);
+    riflePart("Elevation cap", elevationCap, mat.metal, { x: -0.085, y: 0.48, z: 0.22 });
+    const windage = BABYLON.MeshBuilder.CreateCylinder("Scope windage turret", { height: 0.11, diameter: 0.115, tessellation: 20 }, scene);
+    windage.rotation.z = Math.PI / 2;
+    riflePart("Scope windage turret", windage, mat.black, { x: 0.0, y: 0.31, z: 0.22 });
+    const windageCap = BABYLON.MeshBuilder.CreateCylinder("Windage cap", { height: 0.035, diameter: 0.1, tessellation: 20 }, scene);
+    windageCap.rotation.z = Math.PI / 2;
+    riflePart("Windage cap", windageCap, mat.metal, { x: 0.075, y: 0.31, z: 0.22 });
+    const throwLever = BABYLON.MeshBuilder.CreateBox("Scope zoom throw lever", { width: 0.04, height: 0.11, depth: 0.09 }, scene);
+    riflePart("Scope zoom throw lever", throwLever, mat.metal, { x: 0.0, y: 0.36, z: 0.06 });
+
+    // Low-profile rear and front backup sights.
+    rifleBox("Rear aperture sight", { width: 0.05, height: 0.075, depth: 0.035 }, { x: -0.085, y: 0.2, z: -0.27 }, mat.metal);
+    rifleBox("Front post sight", { width: 0.025, height: 0.08, depth: 0.03 }, { x: -0.085, y: 0.13, z: 1.55 }, mat.metal);
+
+    // Muzzle flash remains disabled while scoped, but is retained for hip fire.
+    const muzzleFlash = BABYLON.MeshBuilder.CreateSphere("muzzle-flash", { diameter: 0.23, segments: 10 }, scene);
+    riflePart("muzzle-flash", muzzleFlash, makeMaterial("muzzle-flash-material", "#f6c875", 0.15), { x: -0.085, y: 0.065, z: 2.06 });
     muzzleFlash.material.emissiveColor = hex("#f69b35");
-    muzzleFlash.isPickable = false;
     muzzleFlash.setEnabled(false);
     weaponMaterials.flash = muzzleFlash;
     weaponRoot.setEnabled(true);
@@ -1015,99 +1075,167 @@
     return eye;
   }
 
+  function createWildlifeLeg(root, x, z, material, options) {
+    const config = options || {};
+    const upperLength = config.upperLength || 0.48;
+    const lowerLength = config.lowerLength || 0.45;
+    const thickness = config.thickness || 1;
+    const upperPivot = new BABYLON.TransformNode("wildlife upper leg joint", scene);
+    upperPivot.parent = root;
+    upperPivot.position.set(x, config.hipHeight || 1.02, z);
+    const upper = BABYLON.MeshBuilder.CreateCylinder("muscular upper leg", {
+      height: upperLength, diameterTop: 0.13 * thickness, diameterBottom: 0.18 * thickness, tessellation: 14
+    }, scene);
+    upper.position.y = -upperLength * 0.48;
+    makeAnimalPart(upperPivot, upper, material, "body");
+    const knee = BABYLON.MeshBuilder.CreateSphere("leg knee joint", { diameter: 0.15 * thickness, segments: 12 }, scene);
+    knee.position.y = -upperLength * 0.92;
+    makeAnimalPart(upperPivot, knee, material, "body");
+    const lowerPivot = new BABYLON.TransformNode("wildlife lower leg joint", scene);
+    lowerPivot.parent = upperPivot;
+    lowerPivot.position.y = -upperLength * 0.92;
+    const lower = BABYLON.MeshBuilder.CreateCylinder("slim lower cannon", {
+      height: lowerLength, diameterTop: 0.09 * thickness, diameterBottom: 0.065 * thickness, tessellation: 12
+    }, scene);
+    lower.position.y = -lowerLength * 0.48;
+    makeAnimalPart(lowerPivot, lower, material, "body");
+    const ankle = BABYLON.MeshBuilder.CreateSphere("ankle joint", { diameter: 0.085 * thickness, segments: 10 }, scene);
+    ankle.position.y = -lowerLength * 0.9;
+    makeAnimalPart(lowerPivot, ankle, material, "body");
+    const hoof = BABYLON.MeshBuilder.CreateBox("cloven hoof", { width: 0.13 * thickness, height: 0.105, depth: 0.18 * thickness }, scene);
+    hoof.position.set(0, -lowerLength - 0.04, 0.025);
+    makeAnimalPart(lowerPivot, hoof, mat.hoof, "body");
+    return { upper: upperPivot, lower: lowerPivot, phase: config.phase || 0, front: Boolean(config.front) };
+  }
+
   function createDeer(id, species, x, z) {
     const info = speciesInfo[species];
     const root = new BABYLON.TransformNode("wildlife-" + id, scene);
     root.metadata = { animalId: id };
     root.position.set(x, heightAt(x, z), z);
-    const coat = species === "buck" ? mat.deerDark : mat.deer;
-    const lightCoat = species === "buck" ? mat.deerLight : mat.fawn;
-    const body = BABYLON.MeshBuilder.CreateSphere("deer-body", { diameter: 1, segments: 10 }, scene);
-    body.scaling.set(0.62, 0.55, 1.12);
-    body.position.y = 1.3;
-    makeAnimalPart(root, body, coat, "body");
-    const rump = BABYLON.MeshBuilder.CreateSphere("deer-rump", { diameter: 1, segments: 9 }, scene);
-    rump.scaling.set(0.56, 0.55, 0.5);
-    rump.position.set(0, 1.35, -0.65);
-    makeAnimalPart(root, rump, lightCoat, "body");
-    const neck = BABYLON.MeshBuilder.CreateSphere("deer-neck", { diameter: 1, segments: 9 }, scene);
-    neck.scaling.set(0.3, 0.54, 0.38);
-    neck.position.set(0, 1.58, 0.66);
-    neck.rotation.x = -0.42;
-    makeAnimalPart(root, neck, coat, "body");
-    const chest = BABYLON.MeshBuilder.CreateSphere("deer-chest", { diameter: 1, segments: 8 }, scene);
-    chest.scaling.set(0.34, 0.48, 0.3);
-    chest.position.set(0, 1.12, 0.6);
-    makeAnimalPart(root, chest, mat.white, "body");
-    const head = BABYLON.MeshBuilder.CreateSphere("deer-head", { diameter: 1, segments: 10 }, scene);
-    head.scaling.set(0.28, 0.29, 0.38);
-    head.position.set(0, 1.94, 0.91);
-    makeAnimalPart(root, head, lightCoat, "head");
-    const muzzle = BABYLON.MeshBuilder.CreateSphere("deer-muzzle", { diameter: 1, segments: 8 }, scene);
-    muzzle.scaling.set(0.19, 0.13, 0.22);
-    muzzle.position.set(0, 1.82, 1.21);
-    makeAnimalPart(root, muzzle, mat.white, "head");
-    makeEye(root, -0.17, 1.99, 0.94, -1);
-    makeEye(root, 0.17, 1.99, 0.94, 1);
+    root.rotation.y = rand(0, Math.PI * 2);
+    const buck = species === "buck";
+    const coat = buck ? mat.deerDark : mat.deer;
+    const lightCoat = buck ? mat.deerLight : mat.fawn;
+    const white = mat.white;
 
+    // Natural barrel, shoulder and hip masses form one recognizable whitetail silhouette.
+    const body = BABYLON.MeshBuilder.CreateSphere("deer ribcage", { diameter: 1, segments: 22 }, scene);
+    body.scaling.set(0.57, 0.53, 1.08);
+    body.position.y = 1.24;
+    makeAnimalPart(root, body, coat, "body");
+    const shoulder = BABYLON.MeshBuilder.CreateSphere("deer shoulder muscle", { diameter: 1, segments: 20 }, scene);
+    shoulder.scaling.set(0.53, 0.64, 0.58);
+    shoulder.position.set(0, 1.21, 0.53);
+    makeAnimalPart(root, shoulder, coat, "body");
+    const haunch = BABYLON.MeshBuilder.CreateSphere("deer hindquarter", { diameter: 1, segments: 20 }, scene);
+    haunch.scaling.set(0.55, 0.61, 0.61);
+    haunch.position.set(0, 1.2, -0.58);
+    makeAnimalPart(root, haunch, lightCoat, "body");
+    const belly = BABYLON.MeshBuilder.CreateSphere("deer belly", { diameter: 1, segments: 16 }, scene);
+    belly.scaling.set(0.42, 0.28, 0.75);
+    belly.position.set(0, 0.98, -0.02);
+    makeAnimalPart(root, belly, lightCoat, "body");
+
+    const neck = BABYLON.MeshBuilder.CreateSphere("deer sloping neck", { diameter: 1, segments: 20 }, scene);
+    neck.scaling.set(0.29, 0.55, 0.43);
+    neck.position.set(0, 1.56, 0.68);
+    neck.rotation.x = -0.38;
+    makeAnimalPart(root, neck, coat, "body");
+    const throat = BABYLON.MeshBuilder.CreateSphere("deer pale throat", { diameter: 1, segments: 18 }, scene);
+    throat.scaling.set(0.19, 0.36, 0.22);
+    throat.position.set(0, 1.3, 0.82);
+    throat.rotation.x = -0.32;
+    makeAnimalPart(root, throat, white, "body");
+
+    const headPivot = new BABYLON.TransformNode("deer articulated head and neck", scene);
+    headPivot.parent = root;
+    headPivot.position.set(0, 1.82, 0.91);
+    const skull = BABYLON.MeshBuilder.CreateSphere("deer skull", { diameter: 1, segments: 20 }, scene);
+    skull.scaling.set(0.255, 0.29, 0.34);
+    skull.position.set(0, 0.03, 0.07);
+    makeAnimalPart(headPivot, skull, lightCoat, "head");
+    const cheek = BABYLON.MeshBuilder.CreateSphere("deer cheek", { diameter: 1, segments: 16 }, scene);
+    cheek.scaling.set(0.22, 0.2, 0.2);
+    cheek.position.set(0, -0.07, 0.21);
+    makeAnimalPart(headPivot, cheek, coat, "head");
+    const muzzle = BABYLON.MeshBuilder.CreateSphere("deer long muzzle", { diameter: 1, segments: 18 }, scene);
+    muzzle.scaling.set(0.16, 0.125, 0.34);
+    muzzle.position.set(0, -0.095, 0.34);
+    makeAnimalPart(headPivot, muzzle, lightCoat, "head");
+    const nose = BABYLON.MeshBuilder.CreateSphere("deer nose", { diameter: 1, segments: 14 }, scene);
+    nose.scaling.set(0.105, 0.075, 0.12);
+    nose.position.set(0, -0.095, 0.6);
+    makeAnimalPart(headPivot, nose, mat.black, "head");
+    makeEye(headPivot, -0.19, 0.09, 0.21, -1);
+    makeEye(headPivot, 0.19, 0.09, 0.21, 1);
+
+    const ears = [];
     for (const side of [-1, 1]) {
-      const ear = BABYLON.MeshBuilder.CreateSphere("deer-ear", { diameter: 1, segments: 7 }, scene);
-      ear.scaling.set(0.09, 0.075, 0.22);
-      ear.position.set(side * 0.25, 2.02, 0.78);
-      ear.rotation.y = side * 0.45;
-      makeAnimalPart(root, ear, mat.deerLight, "head");
+      const ear = BABYLON.MeshBuilder.CreateSphere("deer long alert ear", { diameter: 1, segments: 16 }, scene);
+      ear.scaling.set(0.105, 0.09, 0.29);
+      ear.position.set(side * 0.26, 0.2, -0.02);
+      ear.rotation.y = side * 0.66;
+      ear.rotation.x = -0.08;
+      makeAnimalPart(headPivot, ear, coat, "head");
+      const inner = BABYLON.MeshBuilder.CreateSphere("deer ear inner", { diameter: 1, segments: 12 }, scene);
+      inner.scaling.set(0.04, 0.045, 0.21);
+      inner.position.set(side * 0.285, 0.205, 0.005);
+      inner.rotation.y = side * 0.66;
+      makeAnimalPart(headPivot, inner, lightCoat, "head");
+      ears.push(ear);
     }
 
     const legs = [];
     for (const side of [-1, 1]) {
-      for (const front of [true, false]) {
-        const pivot = new BABYLON.TransformNode("deer-leg-pivot", scene);
-        pivot.parent = root;
-        pivot.position.set(side * 0.22, 0.94, front ? 0.48 : -0.58);
-        const upper = BABYLON.MeshBuilder.CreateCylinder("deer-leg", {
-          height: 0.68, diameterTop: 0.11, diameterBottom: 0.085, tessellation: 6
-        }, scene);
-        upper.position.y = -0.34;
-        makeAnimalPart(pivot, upper, coat, "body");
-        const hoof = BABYLON.MeshBuilder.CreateCylinder("deer-hoof", { height: 0.13, diameter: 0.13, tessellation: 6 }, scene);
-        hoof.position.y = -0.7;
-        makeAnimalPart(pivot, hoof, mat.hoof, "body");
-        legs.push(pivot);
-      }
+      legs.push(createWildlifeLeg(root, side * 0.235, 0.48, coat, { front: true, thickness: 0.78, hipHeight: 1.0, upperLength: 0.47, lowerLength: 0.46, phase: side < 0 ? 0 : Math.PI }));
+      legs.push(createWildlifeLeg(root, side * 0.24, -0.58, coat, { front: false, thickness: 1.02, hipHeight: 1.0, upperLength: 0.49, lowerLength: 0.45, phase: side < 0 ? Math.PI : 0 }));
     }
-    const tail = BABYLON.MeshBuilder.CreateSphere("deer-tail", { diameter: 0.23, segments: 7 }, scene);
-    tail.scaling.set(0.75, 0.8, 1.2);
-    tail.position.set(0, 1.3, -1.18);
-    makeAnimalPart(root, tail, mat.white, "body");
 
-    if (species === "buck") {
+    const tailPivot = new BABYLON.TransformNode("deer white flag tail pivot", scene);
+    tailPivot.parent = root;
+    tailPivot.position.set(0, 1.33, -1.04);
+    const tail = BABYLON.MeshBuilder.CreateSphere("deer white tail", { diameter: 1, segments: 16 }, scene);
+    tail.scaling.set(0.14, 0.18, 0.27);
+    tail.position.set(0, 0.01, -0.12);
+    makeAnimalPart(tailPivot, tail, white, "body");
+    const tailTip = BABYLON.MeshBuilder.CreateSphere("deer tail underside", { diameter: 1, segments: 12 }, scene);
+    tailTip.scaling.set(0.12, 0.11, 0.16);
+    tailTip.position.set(0, -0.07, -0.18);
+    makeAnimalPart(tailPivot, tailTip, lightCoat, "body");
+
+    let antlers = [];
+    if (buck) {
       for (const side of [-1, 1]) {
-        const antlerBase = new BABYLON.Vector3(side * 0.1, 2.16, 0.88);
-        const branchA = new BABYLON.Vector3(side * 0.28, 2.48, 0.83);
-        const branchB = new BABYLON.Vector3(side * 0.42, 2.72, 0.78);
-        const branchC = new BABYLON.Vector3(side * 0.18, 2.69, 0.81);
-        const branchD = new BABYLON.Vector3(side * 0.55, 2.5, 0.78);
-        const antler = BABYLON.MeshBuilder.CreateTube("buck-antler", {
-          path: [antlerBase, branchA, branchB], radius: 0.045, tessellation: 5
+        const base = new BABYLON.Vector3(side * 0.105, 0.22, -0.02);
+        const crown = new BABYLON.Vector3(side * 0.19, 0.44, -0.03);
+        const beamEnd = new BABYLON.Vector3(side * 0.37, 0.47, -0.06);
+        const beam = BABYLON.MeshBuilder.CreateTube("buck antler main beam", {
+          path: [base, crown, beamEnd, new BABYLON.Vector3(side * 0.53, 0.67, -0.08)],
+          radius: 0.038, tessellation: 8
         }, scene);
-        makeAnimalPart(root, antler, mat.antler, "head");
-        const tine1 = BABYLON.MeshBuilder.CreateTube("antler-tine", {
-          path: [branchA, branchC], radius: 0.035, tessellation: 5
-        }, scene);
-        makeAnimalPart(root, tine1, mat.antler, "head");
-        const tine2 = BABYLON.MeshBuilder.CreateTube("antler-tine", {
-          path: [branchA, branchD], radius: 0.035, tessellation: 5
-        }, scene);
-        makeAnimalPart(root, tine2, mat.antler, "head");
+        makeAnimalPart(headPivot, beam, mat.antler, "head");
+        const tines = [
+          [crown, new BABYLON.Vector3(side * 0.22, 0.72, -0.01)],
+          [new BABYLON.Vector3(side * 0.31, 0.47, -0.05), new BABYLON.Vector3(side * 0.34, 0.76, -0.02)],
+          [new BABYLON.Vector3(side * 0.42, 0.55, -0.065), new BABYLON.Vector3(side * 0.54, 0.82, -0.02)],
+          [new BABYLON.Vector3(side * 0.46, 0.61, -0.075), new BABYLON.Vector3(side * 0.67, 0.72, -0.04)]
+        ];
+        for (const [from, to] of tines) {
+          const tine = BABYLON.MeshBuilder.CreateTube("buck antler tine", { path: [from, to], radius: 0.023, tessellation: 7 }, scene);
+          makeAnimalPart(headPivot, tine, mat.antler, "head");
+        }
+        antlers.push(beam);
       }
     }
 
     const animal = {
-      id, species, info, root, legs, health: info.health, maxHealth: info.health,
+      id, species, info, root, legs, headPivot, tailPivot, ears, body,
+      health: info.health, maxHealth: info.health,
       state: "graze", target: null, speed: 0, dead: false, harvested: false,
       hitCount: 0, cleanKill: false, lastShotDistance: 0,
       alertUntil: 0, lastTrack: 0, lastAnim: rand(0, 6),
-      spawn: { x, z }, respawnAt: 0, name: info.label
+      spawn: { x, z }, respawnAt: 0, name: info.label, antlers
     };
     animals.push(animal);
     return animal;
@@ -1118,42 +1246,101 @@
     const root = new BABYLON.TransformNode("wildlife-" + id, scene);
     root.metadata = { animalId: id };
     root.position.set(x, heightAt(x, z), z);
-    const body = BABYLON.MeshBuilder.CreateSphere("boar-body", { diameter: 1, segments: 10 }, scene);
-    body.scaling.set(0.73, 0.7, 1.05);
-    body.position.y = 0.95;
+    root.rotation.y = rand(0, Math.PI * 2);
+
+    const body = BABYLON.MeshBuilder.CreateSphere("boar barrel body", { diameter: 1, segments: 22 }, scene);
+    body.scaling.set(0.72, 0.62, 1.1);
+    body.position.y = 0.92;
     makeAnimalPart(root, body, mat.boar, "body");
-    const head = BABYLON.MeshBuilder.CreateSphere("boar-head", { diameter: 1, segments: 9 }, scene);
-    head.scaling.set(0.47, 0.43, 0.5);
-    head.position.set(0, 1.1, 0.83);
-    makeAnimalPart(root, head, mat.boarLight, "head");
-    const snout = BABYLON.MeshBuilder.CreateSphere("boar-snout", { diameter: 1, segments: 8 }, scene);
-    snout.scaling.set(0.28, 0.22, 0.24);
-    snout.position.set(0, 0.98, 1.21);
-    makeAnimalPart(root, snout, mat.boar, "head");
-    makeEye(root, -0.27, 1.25, 0.94, -1);
-    makeEye(root, 0.27, 1.25, 0.94, 1);
+    const shoulder = BABYLON.MeshBuilder.CreateSphere("boar high shoulder", { diameter: 1, segments: 20 }, scene);
+    shoulder.scaling.set(0.67, 0.76, 0.63);
+    shoulder.position.set(0, 1.03, 0.39);
+    makeAnimalPart(root, shoulder, mat.boar, "body");
+    const rump = BABYLON.MeshBuilder.CreateSphere("boar rump", { diameter: 1, segments: 18 }, scene);
+    rump.scaling.set(0.63, 0.57, 0.55);
+    rump.position.set(0, 0.94, -0.6);
+    makeAnimalPart(root, rump, mat.boarLight, "body");
+    const belly = BABYLON.MeshBuilder.CreateSphere("boar underside", { diameter: 1, segments: 16 }, scene);
+    belly.scaling.set(0.57, 0.27, 0.78);
+    belly.position.set(0, 0.62, -0.02);
+    makeAnimalPart(root, belly, mat.boar, "body");
+
+    const headPivot = new BABYLON.TransformNode("boar articulated head", scene);
+    headPivot.parent = root;
+    headPivot.position.set(0, 1.12, 0.78);
+    const skull = BABYLON.MeshBuilder.CreateSphere("boar skull", { diameter: 1, segments: 20 }, scene);
+    skull.scaling.set(0.4, 0.39, 0.43);
+    skull.position.set(0, 0, 0.06);
+    makeAnimalPart(headPivot, skull, mat.boarLight, "head");
+    const snout = BABYLON.MeshBuilder.CreateSphere("boar long snout", { diameter: 1, segments: 18 }, scene);
+    snout.scaling.set(0.29, 0.23, 0.38);
+    snout.position.set(0, -0.13, 0.35);
+    makeAnimalPart(headPivot, snout, mat.boarLight, "head");
+    const nose = BABYLON.MeshBuilder.CreateSphere("boar wet nose", { diameter: 1, segments: 14 }, scene);
+    nose.scaling.set(0.2, 0.13, 0.1);
+    nose.position.set(0, -0.14, 0.66);
+    makeAnimalPart(headPivot, nose, mat.hoof, "head");
+    const jaw = BABYLON.MeshBuilder.CreateSphere("boar lower jaw", { diameter: 1, segments: 16 }, scene);
+    jaw.scaling.set(0.25, 0.15, 0.27);
+    jaw.position.set(0, -0.31, 0.35);
+    makeAnimalPart(headPivot, jaw, mat.boar, "head");
+    makeEye(headPivot, -0.29, 0.07, 0.18, -1);
+    makeEye(headPivot, 0.29, 0.07, 0.18, 1);
+
+    const ears = [];
     for (const side of [-1, 1]) {
-      const ear = BABYLON.MeshBuilder.CreateSphere("boar-ear", { diameter: 1, segments: 7 }, scene);
-      ear.scaling.set(0.15, 0.22, 0.12);
-      ear.position.set(side * 0.31, 1.48, 0.72);
-      makeAnimalPart(root, ear, mat.boar, "head");
-      const tusk = BABYLON.MeshBuilder.CreateCylinder("boar-tusk", { height: 0.27, diameterTop: 0.01, diameterBottom: 0.09, tessellation: 6 }, scene);
-      tusk.position.set(side * 0.22, 0.84, 1.2);
-      tusk.rotation.x = -0.2;
-      makeAnimalPart(root, tusk, mat.boarTusks, "head");
+      const ear = BABYLON.MeshBuilder.CreateSphere("boar pointed ear", { diameter: 1, segments: 14 }, scene);
+      ear.scaling.set(0.16, 0.24, 0.12);
+      ear.position.set(side * 0.34, 0.24, -0.02);
+      ear.rotation.z = -side * 0.26;
+      makeAnimalPart(headPivot, ear, mat.boar, "head");
+      ears.push(ear);
+      const tuskPath = [
+        new BABYLON.Vector3(side * 0.23, -0.2, 0.36),
+        new BABYLON.Vector3(side * 0.31, -0.06, 0.43),
+        new BABYLON.Vector3(side * 0.32, 0.12, 0.42),
+        new BABYLON.Vector3(side * 0.28, 0.23, 0.36)
+      ];
+      const tusk = BABYLON.MeshBuilder.CreateTube("curved boar tusk", { path: tuskPath, radius: 0.052, tessellation: 10 }, scene);
+      makeAnimalPart(headPivot, tusk, mat.boarTusks, "head");
+      const tuskEdge = BABYLON.MeshBuilder.CreateTube("tusk tip", { path: [tuskPath[2], tuskPath[3]], radius: 0.027, tessellation: 8 }, scene);
+      makeAnimalPart(headPivot, tuskEdge, mat.white, "head");
     }
+
+    // Short bristles follow the dorsal ridge instead of a smooth toy-like back.
+    for (let i = 0; i < 17; i++) {
+      const z = 0.48 - i * 0.09;
+      const bristle = BABYLON.MeshBuilder.CreateCylinder("boar dorsal bristle", {
+        height: rand(0.13, 0.22), diameterTop: 0, diameterBottom: 0.075, tessellation: 6
+      }, scene);
+      bristle.position.set(rand(-0.07, 0.07), 1.52 + rand(-0.015, 0.06), z);
+      bristle.rotation.x = -0.18;
+      makeAnimalPart(root, bristle, i % 3 === 0 ? mat.boarLight : mat.boar, "body");
+    }
+
     const legs = [];
-    for (const side of [-1, 1]) for (const front of [true, false]) {
-      const pivot = new BABYLON.TransformNode("boar-leg-pivot", scene);
-      pivot.parent = root;
-      pivot.position.set(side * 0.34, 0.62, front ? 0.54 : -0.55);
-      const leg = BABYLON.MeshBuilder.CreateCylinder("boar-leg", { height: 0.55, diameter: 0.18, tessellation: 6 }, scene);
-      leg.position.y = -0.27;
-      makeAnimalPart(pivot, leg, mat.boar, "body");
-      legs.push(pivot);
+    for (const side of [-1, 1]) {
+      legs.push(createWildlifeLeg(root, side * 0.31, 0.52, mat.boar, { front: true, thickness: 1.22, hipHeight: 0.82, upperLength: 0.38, lowerLength: 0.34, phase: side < 0 ? 0 : Math.PI }));
+      legs.push(createWildlifeLeg(root, side * 0.32, -0.58, mat.boar, { front: false, thickness: 1.26, hipHeight: 0.82, upperLength: 0.39, lowerLength: 0.33, phase: side < 0 ? Math.PI : 0 }));
     }
+
+    const tailPivot = new BABYLON.TransformNode("boar tail pivot", scene);
+    tailPivot.parent = root;
+    tailPivot.position.set(0, 1.0, -1.03);
+    const tail = BABYLON.MeshBuilder.CreateTube("boar curled tail", {
+      path: [
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(0.02, 0.14, -0.1),
+        new BABYLON.Vector3(0.08, 0.19, -0.2),
+        new BABYLON.Vector3(0.04, 0.11, -0.27)
+      ],
+      radius: 0.035, tessellation: 8
+    }, scene);
+    makeAnimalPart(tailPivot, tail, mat.boarLight, "body");
+
     const animal = {
-      id, species: "boar", info, root, legs, health: info.health, maxHealth: info.health,
+      id, species: "boar", info, root, legs, headPivot, tailPivot, ears, body,
+      health: info.health, maxHealth: info.health,
       state: "graze", target: null, speed: 0, dead: false, harvested: false,
       hitCount: 0, cleanKill: false, lastShotDistance: 0,
       alertUntil: 0, lastTrack: 0, lastAnim: rand(0, 6),
@@ -1679,12 +1866,29 @@
         animal.lastTrack = now;
         addTrack(animal);
       }
-      const gait = now * (animal.state === "flee" ? 0.018 : 0.009) + animal.lastAnim;
-      animal.legs.forEach((leg, index) => { leg.rotation.x = Math.sin(gait + (index % 2) * Math.PI) * (animal.state === "graze" ? 0.03 : 0.32); });
-      if (animal.state === "graze") {
-        const bob = Math.sin(now * 0.0018 + animal.lastAnim) * 0.025;
-        animal.root.position.y += bob;
+      const moving = animal.state === "walk" || animal.state === "flee";
+      const pace = animal.state === "flee" ? (animal.species === "boar" ? 0.026 : 0.034) : 0.012;
+      const gait = now * pace + animal.lastAnim;
+      const stride = animal.state === "flee" ? 0.72 : animal.species === "boar" ? 0.22 : 0.32;
+      animal.legs.forEach((leg) => {
+        const swing = Math.sin(gait + leg.phase);
+        leg.upper.rotation.x = moving ? swing * stride : Math.sin(now * 0.0015 + animal.lastAnim + leg.phase) * 0.018;
+        leg.lower.rotation.x = moving ? Math.max(0, Math.sin(gait + leg.phase + 0.72)) * (animal.state === "flee" ? 0.72 : 0.32) : 0.015;
+      });
+      if (animal.headPivot) {
+        const graze = animal.state === "graze";
+        const alert = animal.state === "flee";
+        const targetPitch = graze ? 0.34 + Math.sin(now * 0.0017 + animal.lastAnim) * 0.06 : alert ? -0.12 : Math.sin(now * 0.0012 + animal.lastAnim) * 0.045;
+        animal.headPivot.rotation.x += (targetPitch - animal.headPivot.rotation.x) * Math.min(1, dt * 4.5);
+        animal.headPivot.rotation.y = Math.sin(now * 0.0008 + animal.lastAnim) * (alert ? 0.03 : 0.065);
       }
+      if (animal.tailPivot) {
+        const tailMotion = animal.species === "boar" ? 0.12 : 0.2;
+        animal.tailPivot.rotation.x = Math.sin(now * (animal.state === "flee" ? 0.012 : 0.004) + animal.lastAnim) * tailMotion;
+        animal.tailPivot.rotation.z = Math.sin(now * 0.0015 + animal.lastAnim) * 0.12;
+      }
+      if (moving) animal.root.position.y += Math.abs(Math.sin(gait * 2)) * (animal.state === "flee" ? 0.045 : 0.018);
+      else if (animal.state === "graze") animal.root.position.y += Math.sin(now * 0.0018 + animal.lastAnim) * 0.025;
     }
   }
 
@@ -1711,17 +1915,26 @@
     animal.hitCount = 0;
     animal.cleanKill = false;
     animal.lastShotDistance = 0;
+    animal.legs.forEach((leg) => { leg.upper.rotation.set(0, 0, 0); leg.lower.rotation.set(0, 0, 0); });
+    if (animal.headPivot) animal.headPivot.rotation.set(0, 0, 0);
+    if (animal.tailPivot) animal.tailPivot.rotation.set(0, 0, 0);
     animal.pauseUntil = performance.now() + rand(1000, 3000);
   }
 
   function animateWeapon(dt) {
     if (!weaponRoot) return;
-    weaponKick = Math.max(0, weaponKick - dt * 1.8);
-    weaponRoot.position.z = (aiming ? 0.78 : 0.72) - weaponKick * 0.22;
-    weaponRoot.position.x = aiming ? 0.13 : 0.36;
+    weaponKick = Math.max(0, weaponKick - dt * 2.6);
+    const targetZ = aiming ? 0.74 : 0.9;
+    const targetX = aiming ? 0.34 : 0.34;
+    const targetY = aiming ? -0.43 : -0.43;
+    weaponRoot.position.z += (targetZ - weaponRoot.position.z) * Math.min(1, dt * 12);
+    weaponRoot.position.x += (targetX - weaponRoot.position.x) * Math.min(1, dt * 12);
+    weaponRoot.position.y += (targetY - weaponRoot.position.y) * Math.min(1, dt * 12);
+    weaponRoot.rotation.x += ((aiming ? -0.015 : 0) - weaponRoot.rotation.x) * Math.min(1, dt * 10);
+    weaponRoot.position.z -= weaponKick * 0.18;
     if (muzzleTimer > 0) {
       muzzleTimer -= dt;
-      if (weaponMaterials.flash) weaponMaterials.flash.setEnabled(muzzleTimer > 0);
+      if (weaponMaterials.flash) weaponMaterials.flash.setEnabled(muzzleTimer > 0 && !aiming);
     }
   }
 
@@ -1953,9 +2166,27 @@
 
   function toggleAim(value) {
     aiming = value === undefined ? !aiming : value;
-    $("game-shell").classList.toggle("aiming", aiming);
-    if (camera) camera.fov = aiming ? 0.62 : 1.04;
-    text("weapon-mode", aiming ? "AIMING · STEADY BREATH" : "SEMI-AUTOMATIC · IRON SIGHTS");
+    const shell = $("game-shell");
+    shell.classList.toggle("aiming", aiming);
+    const overlay = $("scope-overlay");
+    if (overlay) overlay.setAttribute("aria-hidden", aiming ? "false" : "true");
+    if (camera) camera.fov = aiming ? scopeFovs[scopeZoomIndex] : 1.04;
+    if (weaponRoot) weaponRoot.setEnabled(!aiming);
+    text("scope-zoom-label", scopeMagnifications[scopeZoomIndex] + "X");
+    text("weapon-mode", aiming
+      ? "RANGER OPTIC · " + scopeMagnifications[scopeZoomIndex] + "X"
+      : "SEMI-AUTOMATIC · RIFLE SCOPE");
+  }
+
+  function adjustScopeZoom(event) {
+    if (!aiming || paused) return;
+    event.preventDefault();
+    const direction = Math.sign(event.deltaY);
+    if (!direction) return;
+    scopeZoomIndex = clamp(scopeZoomIndex + (direction < 0 ? 1 : -1), 0, scopeMagnifications.length - 1);
+    if (camera) camera.fov = scopeFovs[scopeZoomIndex];
+    text("scope-zoom-label", scopeMagnifications[scopeZoomIndex] + "X");
+    sound(410 + scopeZoomIndex * 35, 0.045, "sine", 0.012);
   }
 
   function toggleTracking() {
@@ -2288,6 +2519,7 @@
     else shoot();
   });
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+  canvas.addEventListener("wheel", adjustScopeZoom, { passive: false });
   canvas.addEventListener("mousedown", (event) => {
     if (event.button === 2 && gameStarted && !paused) toggleAim(true);
   });
@@ -2394,7 +2626,14 @@
     readyTextureCount: scene ? scene.textures.filter((texture) => texture.isReady()).length : 0,
     canvasWidth: canvas ? canvas.width : 0,
     canvasHeight: canvas ? canvas.height : 0,
-    webglEnabled: Boolean(engine && engine.getCaps && engine.getCaps().maxTextureSize > 0)
+    webglEnabled: Boolean(engine && engine.getCaps && engine.getCaps().maxTextureSize > 0),
+    animalCount: animals.length,
+    animalLegRigCount: animals.reduce((sum, animal) => sum + animal.legs.length, 0),
+    animalHeadRigCount: animals.filter((animal) => Boolean(animal.headPivot)).length,
+    riflePartCount: weaponRoot ? weaponRoot.getChildMeshes().length : 0,
+    aiming,
+    scopeZoom: scopeMagnifications[scopeZoomIndex],
+    scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming"))
   });
 
   window.addEventListener("beforeunload", () => saveGame(false));
