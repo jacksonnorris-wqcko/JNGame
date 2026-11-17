@@ -1495,6 +1495,7 @@
   $("continue-button").addEventListener("click", () => enterWorld(true));
   $("pause-button").addEventListener("click", pauseGame);
   $("map-close-button").addEventListener("click", () => closeMap(true));
+  $("map-close-x").addEventListener("click", () => closeMap(true));
   $("resume-button").addEventListener("click", resumeGame);
   $("resume-x").addEventListener("click", resumeGame);
   $("save-button").addEventListener("click", () => saveGame(true));
