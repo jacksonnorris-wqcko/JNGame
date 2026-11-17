@@ -913,13 +913,13 @@
     for (let stone = 0; stone < 9; stone++) {
       const angle = stone / 9 * Math.PI * 2;
       const rock = BABYLON.MeshBuilder.CreateIcoSphere("fire ring fieldstone", { radius: 0.3, subdivisions: 1 }, scene);
-      rock.parent = root; rock.position.set(1.9 + Math.cos(angle) * 1.05, 0.36, -9.1 + Math.sin(angle) * 1.05);
+      rock.parent = root; rock.position.set(1.9 + Math.cos(angle) * 1.05, 0.31, -9.1 + Math.sin(angle) * 1.05);
       rock.scaling.set(1.1, 0.72, 0.9); rock.material = mat.stoneDark; rock.isPickable = false;
     }
     for (let log = 0; log < 3; log++) {
       const emberLog = BABYLON.MeshBuilder.CreateCylinder("campfire split log", { height: 1.5, diameter: 0.2, tessellation: 9 }, scene);
       emberLog.parent = root; emberLog.rotation.z = Math.PI / 2; emberLog.rotation.y = log * Math.PI / 3;
-      emberLog.position.set(1.9, 0.43 + log * 0.035, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
+      emberLog.position.set(1.9, 0.22 + log * 0.02, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
     }
     cabinFireFlame = BABYLON.MeshBuilder.CreateCylinder("outpost campfire flame", { height: 0.62, diameterTop: 0.035, diameterBottom: 0.34, tessellation: 10 }, scene);
     cabinFireFlame.parent = root; cabinFireFlame.position.set(1.9, 0.49, -9.1);
