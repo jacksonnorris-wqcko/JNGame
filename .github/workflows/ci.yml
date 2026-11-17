@@ -55,7 +55,7 @@ jobs:
             }
             if (!js.includes("board-paper-front") || !js.includes("board-paper-back")) throw new Error("Pinecrest noticeboard must show readable text on both faces");
             if (!js.includes("solid lodge entry stair") || !js.includes("compound north fence lower rail")) throw new Error("Lodge stairs or compound perimeter is missing");
-            if (js.includes('new BABYLON.Vector3(-11.8, 1.49, 27.5)')) throw new Error("Old counter table remains behind the noticeboard");
+            if (js.includes("new BABYLON.Vector3(-11.8, 1.49, 27.5)")) throw new Error("Old counter table remains behind the noticeboard");
             if (!html.includes("scope-overlay") || !css.includes("#game-shell.aiming .scope-overlay")) throw new Error("Scope sight picture UI is missing");
             if (!html.includes("touch-jump") || !html.includes("SPACE")) throw new Error("Jump controls are missing");
             const requiredAssets = [
