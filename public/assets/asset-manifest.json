@@ -134,7 +134,7 @@
     },
     {
       "asset": "Forest Boar, Jointed (FPS Survival Forest Outpost)",
-      "status": "downloaded",
+      "status": "already-present",
       "path": "animals/forest-boar.glb",
       "bytes": 169968,
       "license": "CC0 1.0 Universal",
