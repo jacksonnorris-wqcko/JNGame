@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Marcellus&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main id="game-shell">
@@ -89,6 +89,8 @@
         <p class="start-description">Beyond the old road lies a world waiting to be rediscovered. Find your people. Forge your story.</p>
         <label for="name-input">CHOOSE YOUR ADVENTURER NAME</label>
         <input id="name-input" maxlength="16" minlength="3" value="Wanderer" autocomplete="nickname" spellcheck="false">
+        <label for="server-input" class="server-label">WORLD SERVER ADDRESS <span>(leave blank when hosted with the game)</span></label>
+        <input id="server-input" inputmode="url" autocomplete="url" placeholder="https://your-world-server.onrender.com" spellcheck="false">
         <button id="start-button" class="primary-button">Enter the world <span>→</span></button>
         <div id="start-error" class="start-error"></div>
         <div class="start-footnote"><span>✦</span> PERSISTENT CHARACTERS <i></i> REAL-TIME MULTIPLAYER <i></i> YOUR ADVENTURE BEGINS</div>
@@ -97,6 +99,7 @@
     </div>
     <div class="disconnect-overlay" id="disconnect-overlay"><div class="disconnect-card panel"><div class="disconnect-mark">!</div><h2>Connection lost</h2><p>The link to Mythvale was interrupted.</p><button class="primary-button" id="reconnect-button">Reconnect <span>↻</span></button></div></div>
   </main>
-  <script src="/game.js" defer></script>
+  <script src="./config.js"></script>
+  <script src="./game.js" defer></script>
 </body>
 </html>

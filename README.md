@@ -28,6 +28,33 @@ For a production-style local run:
 
 The server exposes a health check at /health.
 
+
+## Browser testing with GitHub Pages
+
+The browser client is published from the `public/` folder by the GitHub Pages workflow. After enabling Pages once (see below), every push to `main` republishes the site.
+
+Expected browser address:
+
+https://jacksonnorris-wqcko.github.io/JNGame/
+
+GitHub Pages hosts static HTML, CSS and JavaScript only. It cannot run the Node.js WebSocket game server, so the multiplayer world must also be deployed as a separate web service.
+
+### Enable the browser website
+
+1. Open this repository's **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Open the **Actions** tab and check the **Deploy Mythvale to GitHub Pages** workflow.
+4. Once it succeeds, visit the browser address above.
+
+### Connect the live MMO server
+
+1. In Render, create a new **Web Service** from this repository. The included `render.yaml` configures Node, `npm install`, `npm start`, and the `/health` check.
+2. Wait for Render to provide the service's public `onrender.com` address.
+3. Open the GitHub Pages game website. On the title screen, enter that Render address in **World server address**, then enter the world.
+4. The address is remembered in that browser. Alternatively, append `?server=https://YOUR-SERVICE.onrender.com` to the Pages URL to prefill it.
+
+Render's free web services can spin down after inactivity, so the first connection after a quiet period may take a little while. The prototype currently stores characters in a local JSON file; on a free service that data is not guaranteed to survive service replacement/redeploy. A durable database is a later milestone. Do not add a paid disk or plan without checking its price first.
+
 ## Deploy
 
 This is a Node.js application with a persistent WebSocket connection. It needs a host that supports long-running Node processes and WebSockets (for example, Render or Railway). It is not a static-only GitHub Pages app.

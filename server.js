@@ -419,7 +419,7 @@ setInterval(() => {
   for (const player of activePlayers.values()) send(player.socket, stateFor(player));
 }, 100);
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log("Mythvale Online running on port " + PORT);
   console.log("Open http://localhost:" + PORT + " to play.");
 });

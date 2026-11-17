@@ -18,6 +18,10 @@ let menuOpen = false;
 
 const savedId = localStorage.getItem("mythvale-player-id");
 if (savedId) socketState.playerId = savedId;
+const serverFromQuery = new URLSearchParams(location.search).get("server");
+const savedServer = localStorage.getItem("mythvale-server-url") || "";
+const configuredServer = String(window.MYTHVALE_SERVER_URL || "").trim();
+$("server-input").value = serverFromQuery || savedServer || configuredServer;
 
 function send(payload) {
   if (socketState.socket && socketState.socket.readyState === WebSocket.OPEN) {
@@ -32,6 +36,22 @@ function startGame() {
     return;
   }
   socketState.name = inputName.slice(0, 16);
+  const requestedServer = $("server-input").value.trim() || serverFromQuery || configuredServer;
+  if (location.hostname.endsWith("github.io") && !requestedServer) {
+    $("start-error").textContent = "The website is live, but its multiplayer server is not connected yet. Enter the server address above.";
+    return;
+  }
+  if (requestedServer) {
+    try {
+      const parsed = new URL(requestedServer);
+      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Use an http:// or https:// address.");
+      localStorage.setItem("mythvale-server-url", parsed.origin);
+      $("server-input").value = parsed.origin;
+    } catch (error) {
+      $("start-error").textContent = error.message || "Enter a valid server address.";
+      return;
+    }
+  }
   $("start-error").textContent = "";
   $("start-button").disabled = true;
   $("start-button").textContent = "Connecting to Mythvale...";
@@ -42,8 +62,10 @@ function connect() {
   if (socketState.socket) {
     try { socketState.socket.close(); } catch {}
   }
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(protocol + "//" + location.host);
+  const requestedServer = $("server-input").value.trim() || serverFromQuery || configuredServer || localStorage.getItem("mythvale-server-url") || "";
+  const serverOrigin = requestedServer ? new URL(requestedServer).origin : location.origin;
+  const socketOrigin = serverOrigin.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
+  const ws = new WebSocket(socketOrigin);
   socketState.socket = ws;
   let opened = false;
   ws.addEventListener("open", () => {
