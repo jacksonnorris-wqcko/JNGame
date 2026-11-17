@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import struct
 import tempfile
 import time
 import urllib.request
@@ -56,12 +57,12 @@ GAME_MODELS = [
         "source": "https://polyfork.dev/asset/pig-base",
     },
     {
-        "asset": "Wood Sniper, Scoped (Mega Weapon Pack)",
-        "path": "weapons/wood-sniper-scoped.glb",
-        "url": "https://cdn.3dassets.dev/assets/33105/v1/model.glb",
+        "asset": "Straight Pull Rifle, Scoped (Mega Weapon Pack)",
+        "path": "weapons/straight-pull-rifle-scoped.glb",
+        "url": "https://cdn.3dassets.dev/assets/33108/v1/model.glb",
         "minimum_bytes": 100_000,
         "license": "CC0 1.0 Universal",
-        "source": "https://3dassets.dev/assets/mega-weapon-pack-bolt-sniper-classic-scoped-379f5378",
+        "source": "https://3dassets.dev/assets/mega-weapon-pack-straight-pull-rifle-scoped-7c27fb1e",
     },
 ]
 ATTRIBUTION_PATH = ROOT / "public" / "assets" / "models" / "ATTRIBUTION.md"
@@ -147,6 +148,24 @@ def import_hdri() -> dict:
 
 
 
+def inspect_glb(data: bytes) -> dict:
+    """Read the JSON chunk of a GLB to expose model node and animation names."""
+    if len(data) < 20 or data[:4] != b"glTF":
+        return {}
+    chunk_length = struct.unpack_from("<I", data, 12)[0]
+    chunk_type = struct.unpack_from("<I", data, 16)[0]
+    if chunk_type != 0x4E4F534A or 20 + chunk_length > len(data):
+        return {}
+    document = json.loads(data[20:20 + chunk_length].decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
+    return {
+        "node_names": [node.get("name", "") for node in document.get("nodes", []) if node.get("name")],
+        "animation_names": [animation.get("name", "") for animation in document.get("animations", []) if animation.get("name")],
+        "mesh_count": len(document.get("meshes", [])),
+        "material_count": len(document.get("materials", [])),
+        "skin_count": len(document.get("skins", [])),
+    }
+
+
 def import_game_model(model: dict) -> dict:
     """Download one validated glTF binary into the static game assets."""
     destination = ROOT / "public" / "assets" / model["path"]
@@ -160,6 +179,7 @@ def import_game_model(model: dict) -> dict:
             "bytes": destination.stat().st_size,
             "license": model["license"],
             "source": model["source"],
+            **inspect_glb(destination.read_bytes()),
         }
 
     last_error = None
@@ -180,6 +200,7 @@ def import_game_model(model: dict) -> dict:
                 "bytes": len(data),
                 "license": model["license"],
                 "source": model["source"],
+                **inspect_glb(data),
             }
         except Exception as exc:
             last_error = exc
@@ -196,7 +217,7 @@ def write_model_attributions() -> None:
         "- Deer by Polyfork (https://polyfork.dev/asset/deer-base), CC BY 4.0.\n"
         "- Pig by Polyfork (https://polyfork.dev/asset/pig-base), CC BY 4.0. "
         "Recoloured and adapted with additional boar details for Wildrange.\n"
-        "- Wood Sniper, Scoped (Mega Weapon Pack), 3D Assets "
+        "- Straight Pull Rifle, Scoped (Mega Weapon Pack), 3D Assets "
         "(https://3dassets.dev/assets/mega-weapon-pack-bolt-sniper-classic-scoped-379f5378), "
         "CC0 1.0 Universal.\n",
         encoding="utf-8",
