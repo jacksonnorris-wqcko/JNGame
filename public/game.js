@@ -1920,9 +1920,18 @@
       }
       if (animal.dead || !animal.modelReady) continue;
 
+      // Distance-tiered wildlife simulation: nearby animals stay responsive, while distant herds use fewer AI/rig updates.
       const dx = player.x - animal.root.position.x;
       const dz = player.z - animal.root.position.z;
       const playerDistance = Math.hypot(dx, dz);
+      const threatened = animal.state === "flee" || animal.state === "charge";
+      const updateInterval = playerDistance < 35 ? 1 / 30
+        : playerDistance < 85 || (threatened && playerDistance < 115) ? 1 / 10 : 1 / 3;
+      if (now < (animal.nextUpdateAt || 0)) continue;
+      const previousAnimalUpdate = Number.isFinite(animal.lastSimAt) ? animal.lastSimAt : now - animalDt * 1000;
+      const animalDt = Math.min(0.5, Math.max(dt, (now - previousAnimalUpdate) / 1000));
+      animal.lastSimAt = now;
+      animal.nextUpdateAt = now + updateInterval * 1000;
       const baseSense = animal.species === "boar" ? 18 : animal.species === "buck" ? 25 : 22;
       const movementNoise = crouched ? 0.34 : playerSprinting ? 1.55 : playerMoving ? 1.08 : 0.72;
       const scentFactor = now < scentActiveUntil ? 0.62 : 1;
@@ -1989,7 +1998,7 @@
       if (animal.state === "alert") {
         const towardPlayer = Math.atan2(dx, dz);
         const turn = Math.atan2(Math.sin(towardPlayer - animal.root.rotation.y), Math.cos(towardPlayer - animal.root.rotation.y));
-        animal.root.rotation.y += turn * Math.min(1, dt * 2.4);
+        animal.root.rotation.y += turn * Math.min(1, animalDt * 2.4);
         if (animal.species === "boar") {
           if (playerDistance < 10 || (now > animal.alertUntil && playerDistance < 18)) {
             animal.state = "charge";
@@ -2066,7 +2075,7 @@
       }
 
       const gaitRate = animal.state === "flee" ? 10.5 : animal.state === "charge" ? 9.2 : animal.state === "walk" ? 5.8 : 1.1;
-      animal.gaitTime = (animal.gaitTime || animal.lastAnim || 0) + dt * gaitRate;
+      animal.gaitTime = (animal.gaitTime || animal.lastAnim || 0) + animalDt * gaitRate;
       const moving = animal.state === "walk" || animal.state === "flee" || animal.state === "charge";
       const stride = animal.state === "flee" ? 0.78 : animal.state === "charge" ? 0.72 : animal.species === "boar" ? 0.2 : 0.29;
       for (const leg of animal.legs) {
@@ -2081,7 +2090,7 @@
           : animal.state === "alert" ? -0.14
             : animal.state === "charge" ? -0.22
               : moving ? -0.045 : Math.sin(animal.gaitTime * 0.3) * 0.05;
-        animal.headPivot.rotation.x += (targetPitch - animal.headPivot.rotation.x) * Math.min(1, dt * 4.2);
+        animal.headPivot.rotation.x += (targetPitch - animal.headPivot.rotation.x) * Math.min(1, animalDt * 4.2);
         animal.headPivot.rotation.y = Math.sin(animal.gaitTime * 0.34) * (animal.state === "alert" ? 0.13 : 0.055);
       }
       if (animal.ears) {
