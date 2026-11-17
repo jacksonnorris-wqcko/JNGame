@@ -6,3 +6,4 @@ The following 3D meshes are bundled and modified in Wildrange.
 - Pig by Polyfork (https://polyfork.dev/asset/pig-base), CC BY 4.0. Recoloured and adapted with additional boar details for Wildrange.
 - Bolt-Action Rifle by Polyfork (https://polyfork.dev/asset/bolt-action-rifle-2f1793), CC BY 4.0.
 - Marksman Rifle and Bipod by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2), CC0 1.0 Universal.
+- Forest Boar, Jointed (FPS Survival Forest Outpost) by 3DAssets.dev, CC0 1.0 Universal: https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a (no attribution required).
