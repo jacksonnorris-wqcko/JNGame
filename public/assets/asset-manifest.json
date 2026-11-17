@@ -42,7 +42,7 @@
     },
     {
       "asset": "Polyfork deer-base",
-      "status": "downloaded",
+      "status": "already-present",
       "path": "animals/deer-base.glb",
       "bytes": 1424448,
       "license": "CC BY 4.0",
@@ -88,7 +88,7 @@
     },
     {
       "asset": "Polyfork pig-base, adapted as wild boar",
-      "status": "downloaded",
+      "status": "already-present",
       "path": "animals/pig-base.glb",
       "bytes": 1524340,
       "license": "CC BY 4.0",
@@ -134,7 +134,7 @@
     },
     {
       "asset": "Polyfork Bolt-Action Rifle",
-      "status": "downloaded",
+      "status": "already-present",
       "path": "weapons/bolt-action-rifle.glb",
       "bytes": 77240,
       "license": "CC BY 4.0",
