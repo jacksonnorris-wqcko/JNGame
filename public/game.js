@@ -1190,6 +1190,7 @@
       ear.rotation.y = side * 0.66;
       ear.rotation.x = -0.08;
       makeAnimalPart(headPivot, ear, coat, "head");
+      ear.metadata.baseRotationZ = ear.rotation.z;
       const inner = BABYLON.MeshBuilder.CreateSphere("deer ear inner", { diameter: 1, segments: 12 }, scene);
       inner.scaling.set(0.04, 0.045, 0.21);
       inner.position.set(side * 0.285, 0.205, 0.005);
@@ -1243,6 +1244,7 @@
 
     const animal = {
       id, species, info, root, legs, headPivot, tailPivot, ears, body,
+      baseBodyScaleY: body.scaling.y, gaitTime: rand(0, 6),
       health: info.health, maxHealth: info.health,
       state: "graze", target: null, speed: 0, dead: false, harvested: false,
       hitCount: 0, cleanKill: false, lastShotDistance: 0,
@@ -1306,6 +1308,7 @@
       ear.position.set(side * 0.34, 0.24, -0.02);
       ear.rotation.z = -side * 0.26;
       makeAnimalPart(headPivot, ear, mat.boar, "head");
+      ear.metadata.baseRotationZ = ear.rotation.z;
       ears.push(ear);
       const tuskPath = [
         new BABYLON.Vector3(side * 0.23, -0.2, 0.36),
@@ -1352,6 +1355,7 @@
 
     const animal = {
       id, species: "boar", info, root, legs, headPivot, tailPivot, ears, body,
+      baseBodyScaleY: body.scaling.y, gaitTime: rand(0, 6),
       health: info.health, maxHealth: info.health,
       state: "graze", target: null, speed: 0, dead: false, harvested: false,
       hitCount: 0, cleanKill: false, lastShotDistance: 0,
@@ -1391,7 +1395,7 @@
         label: animal.info.label, x: mark.position.x, z: mark.position.z
       });
     }
-    if (footprints.length > 280) {
+    if (footprints.length > 190) {
       const old = footprints.shift();
       old.mesh.dispose();
     }
@@ -1900,23 +1904,58 @@
   }
 
   function updateAnimals(dt, now) {
+    const player = { x: camera.position.x, z: camera.position.z };
     for (const animal of animals) {
       if (animal.harvested) {
         if (now >= animal.respawnAt) respawnAnimal(animal);
         continue;
       }
       if (animal.dead) continue;
-      const p = { x: camera.position.x, z: camera.position.z };
-      const a = { x: animal.root.position.x, z: animal.root.position.z };
-      const playerDistance = distance2D(p, a);
-      const baseSense = animal.species === "boar" ? 15 : animal.species === "buck" ? 23 : 20;
-      const movementNoise = crouched ? 0.36 : playerSprinting ? 1.42 : playerMoving ? 1 : 0.68;
-      const scentFactor = performance.now() < scentActiveUntil ? 0.62 : 1;
+
+      const dx = player.x - animal.root.position.x;
+      const dz = player.z - animal.root.position.z;
+      const playerDistance = Math.hypot(dx, dz);
+      const baseSense = animal.species === "boar" ? 18 : animal.species === "buck" ? 25 : 22;
+      const movementNoise = crouched ? 0.34 : playerSprinting ? 1.55 : playerMoving ? 1.08 : 0.72;
+      const scentFactor = now < scentActiveUntil ? 0.62 : 1;
       const detectionRadius = baseSense * movementNoise * scentFactor;
-      if (playerDistance < detectionRadius || (shotAt > 0 && Date.now() - shotAt < 9000 && playerDistance < 65)) {
-        animal.state = "flee";
-        animal.alertUntil = now + 8500;
+      const heardShot = shotAt > 0 && Date.now() - shotAt < 9000 && playerDistance < 72;
+
+      if (animal.species === "boar") {
+        if (heardShot || (playerDistance < 15 && (!crouched || playerDistance < 8))) {
+          if (animal.state !== "charge") {
+            animal.state = "charge";
+            animal.target = null;
+            animal.chargeRetargetAt = 0;
+          }
+        } else if (playerDistance < detectionRadius && animal.state !== "alert" && animal.state !== "charge") {
+          animal.state = "alert";
+          animal.alertUntil = now + rand(900, 1600);
+          animal.target = null;
+          animal.speed = 0;
+        }
+      } else if (heardShot) {
+        if (animal.state !== "flee") {
+          animal.state = "flee";
+          animal.target = null;
+          animal.fleeRetargetAt = 0;
+          animal.alertUntil = now + 9000;
+        }
+      } else if (playerDistance < detectionRadius) {
+        const startled = playerSprinting || playerMoving || playerDistance < detectionRadius * 0.56;
+        if (startled && animal.state !== "flee") {
+          animal.state = "flee";
+          animal.target = null;
+          animal.fleeRetargetAt = 0;
+          animal.alertUntil = now + 8500;
+        } else if (animal.state !== "flee" && animal.state !== "alert") {
+          animal.state = "alert";
+          animal.alertUntil = now + rand(1300, 2400);
+          animal.target = null;
+          animal.speed = 0;
+        }
       }
+
       if (animal.species === "boar" && playerDistance < 7.5 && now > (animal.attackCooldown || 0)) {
         animal.attackCooldown = now + 2300;
         state.health = Math.max(0, state.health - 8);
@@ -1929,66 +1968,140 @@
           state.health = 100;
           camera.position.x = 0;
           camera.position.z = 19;
+          camera.position.y = heightAt(0, 19) + 1.72;
+          playerVelocity.set(0, 0, 0);
+          verticalVelocity = 0;
+          playerGrounded = true;
           state.cash = Math.max(0, state.cash - 15);
           announce("You were knocked out and escorted back to Pinecrest Outpost. $15 lost.", 4200);
         }
       }
-      if (animal.state === "flee") {
-        if (playerDistance > 72 && now > animal.alertUntil) {
-          animal.state = "graze";
-          pickWanderTarget(animal);
+
+      const current = { x: animal.root.position.x, z: animal.root.position.z };
+      if (animal.state === "alert") {
+        const towardPlayer = Math.atan2(dx, dz);
+        const turn = Math.atan2(Math.sin(towardPlayer - animal.root.rotation.y), Math.cos(towardPlayer - animal.root.rotation.y));
+        animal.root.rotation.y += turn * Math.min(1, dt * 2.4);
+        if (animal.species === "boar") {
+          if (playerDistance < 10 || (now > animal.alertUntil && playerDistance < 18)) {
+            animal.state = "charge";
+            animal.target = null;
+            animal.chargeRetargetAt = 0;
+          } else if (now > animal.alertUntil) {
+            animal.state = "graze";
+            animal.pauseUntil = now + rand(1800, 3500);
+          }
+        } else if (now > animal.alertUntil) {
+          if (playerDistance < detectionRadius * 1.15) {
+            animal.state = "flee";
+            animal.target = null;
+            animal.fleeRetargetAt = 0;
+            animal.alertUntil = now + 8500;
+          } else {
+            animal.state = "graze";
+            animal.pauseUntil = now + rand(1200, 3200);
+          }
+        }
+      }
+
+      if (animal.state === "charge") {
+        if (playerDistance > 56) {
+          animal.state = "walk";
+          animal.target = null;
+          animal.speed = 0;
+          animal.pauseUntil = now + rand(900, 1700);
         } else {
-          let dx = a.x - p.x;
-          let dz = a.z - p.z;
-          const length = Math.max(0.001, Math.hypot(dx, dz));
-          dx /= length; dz /= length;
-          animal.target = {
-            x: clamp(a.x + dx * 25 + rand(-5, 5), -WORLD_LIMIT + 5, WORLD_LIMIT - 5),
-            z: clamp(a.z + dz * 25 + rand(-5, 5), -WORLD_LIMIT + 5, WORLD_LIMIT - 5)
-          };
-          moveAnimal(animal, dt, animal.species === "boar" ? 8.5 : 10.5);
+          if (now >= (animal.chargeRetargetAt || 0)) {
+            animal.target = {
+              x: clamp(player.x + rand(-1.8, 1.8), -WORLD_LIMIT + 5, WORLD_LIMIT - 5),
+              z: clamp(player.z + rand(-1.8, 1.8), -WORLD_LIMIT + 5, WORLD_LIMIT - 5)
+            };
+            animal.chargeRetargetAt = now + 430;
+          }
+          if (animal.target) moveAnimal(animal, dt, 7.6);
+        }
+      } else if (animal.state === "flee") {
+        if (playerDistance > 92 && now > animal.alertUntil) {
+          animal.state = "walk";
+          animal.target = null;
+          animal.speed = 0;
+          animal.pauseUntil = now + rand(1000, 2100);
+        } else {
+          if (now >= (animal.fleeRetargetAt || 0)) {
+            const awayX = -dx / Math.max(0.001, playerDistance);
+            const awayZ = -dz / Math.max(0.001, playerDistance);
+            const angle = rand(-0.38, 0.38);
+            const fleeX = awayX * Math.cos(angle) - awayZ * Math.sin(angle);
+            const fleeZ = awayX * Math.sin(angle) + awayZ * Math.cos(angle);
+            const runDistance = rand(28, 42);
+            animal.target = {
+              x: clamp(current.x + fleeX * runDistance, -WORLD_LIMIT + 5, WORLD_LIMIT - 5),
+              z: clamp(current.z + fleeZ * runDistance, -WORLD_LIMIT + 5, WORLD_LIMIT - 5)
+            };
+            animal.fleeRetargetAt = now + rand(850, 1250);
+          }
+          if (animal.target) moveAnimal(animal, dt, animal.species === "boar" ? 8.8 : 10.8);
         }
       } else if (animal.target) {
-        const d = Math.hypot(animal.target.x - a.x, animal.target.z - a.z);
-        if (d < 1.5) {
+        const distanceToTarget = Math.hypot(animal.target.x - current.x, animal.target.z - current.z);
+        if (distanceToTarget < 1.6) {
           animal.target = null;
           animal.state = "graze";
-          animal.pauseUntil = now + rand(1500, 4200);
+          animal.speed = 0;
+          animal.pauseUntil = now + rand(2200, 5600);
         } else if (now > (animal.pauseUntil || 0)) {
-          moveAnimal(animal, dt, animal.species === "boar" ? 1.7 : 2.25);
+          moveAnimal(animal, dt, animal.species === "boar" ? 1.65 : 2.05);
         }
-      } else if (now > (animal.pauseUntil || 0)) {
+      } else if (now > (animal.pauseUntil || 0) && animal.state !== "alert") {
         pickWanderTarget(animal);
         animal.state = "walk";
       }
-      animal.root.position.y = heightAt(animal.root.position.x, animal.root.position.z);
-      if (now - animal.lastTrack > 3000 && animal.state !== "graze") {
+
+      const gaitRate = animal.state === "flee" ? 10.5 : animal.state === "charge" ? 9.2 : animal.state === "walk" ? 5.8 : 1.1;
+      animal.gaitTime = (animal.gaitTime || animal.lastAnim || 0) + dt * gaitRate;
+      const moving = animal.state === "walk" || animal.state === "flee" || animal.state === "charge";
+      const stride = animal.state === "flee" ? 0.78 : animal.state === "charge" ? 0.72 : animal.species === "boar" ? 0.2 : 0.29;
+      for (const leg of animal.legs) {
+        const swing = Math.sin(animal.gaitTime + leg.phase);
+        const recovery = Math.max(0, Math.sin(animal.gaitTime + leg.phase + 0.8));
+        leg.upper.rotation.x = moving ? swing * stride : Math.sin(animal.gaitTime * 0.45 + leg.phase) * 0.015;
+        leg.lower.rotation.x = moving ? recovery * (animal.state === "flee" ? 0.82 : animal.state === "charge" ? 0.68 : 0.3) : 0.012;
+      }
+      if (animal.headPivot) {
+        const targetPitch = animal.state === "graze"
+          ? (animal.species === "boar" ? 0.24 : 0.39) + Math.sin(animal.gaitTime * 0.38) * 0.055
+          : animal.state === "alert" ? -0.14
+            : animal.state === "charge" ? -0.22
+              : moving ? -0.045 : Math.sin(animal.gaitTime * 0.3) * 0.05;
+        animal.headPivot.rotation.x += (targetPitch - animal.headPivot.rotation.x) * Math.min(1, dt * 4.2);
+        animal.headPivot.rotation.y = Math.sin(animal.gaitTime * 0.34) * (animal.state === "alert" ? 0.13 : 0.055);
+      }
+      if (animal.ears) {
+        for (let index = 0; index < animal.ears.length; index++) {
+          const ear = animal.ears[index];
+          const baseZ = Number.isFinite(ear.metadata?.baseRotationZ) ? ear.metadata.baseRotationZ : 0;
+          const flick = Math.sin(animal.gaitTime * (animal.state === "alert" ? 2.4 : 0.72) + index * 2.1) * (animal.state === "alert" ? 0.18 : 0.045);
+          ear.rotation.z = baseZ + flick;
+        }
+      }
+      if (animal.tailPivot) {
+        const tailMotion = animal.species === "boar" ? 0.16 : 0.25;
+        const tailRate = animal.state === "flee" || animal.state === "charge" ? 8 : 1.7;
+        animal.tailPivot.rotation.x = Math.sin(animal.gaitTime * tailRate * 0.18 + animal.lastAnim) * tailMotion;
+        animal.tailPivot.rotation.z = Math.sin(animal.gaitTime * 0.32 + animal.lastAnim) * 0.12;
+      }
+      if (animal.body && animal.baseBodyScaleY) {
+        animal.body.scaling.y = animal.baseBodyScaleY * (1 + Math.sin(animal.gaitTime * 0.55) * 0.008);
+      }
+      const ground = heightAt(animal.root.position.x, animal.root.position.z);
+      animal.root.position.y = ground + (moving
+        ? Math.abs(Math.sin(animal.gaitTime * 2)) * (animal.state === "flee" ? 0.055 : 0.022)
+        : animal.state === "graze" ? Math.sin(animal.gaitTime * 0.55) * 0.022 : 0);
+
+      if (moving && now - animal.lastTrack > 5200 && playerDistance < 96) {
         animal.lastTrack = now;
         addTrack(animal);
       }
-      const moving = animal.state === "walk" || animal.state === "flee";
-      const pace = animal.state === "flee" ? (animal.species === "boar" ? 0.026 : 0.034) : 0.012;
-      const gait = now * pace + animal.lastAnim;
-      const stride = animal.state === "flee" ? 0.72 : animal.species === "boar" ? 0.22 : 0.32;
-      animal.legs.forEach((leg) => {
-        const swing = Math.sin(gait + leg.phase);
-        leg.upper.rotation.x = moving ? swing * stride : Math.sin(now * 0.0015 + animal.lastAnim + leg.phase) * 0.018;
-        leg.lower.rotation.x = moving ? Math.max(0, Math.sin(gait + leg.phase + 0.72)) * (animal.state === "flee" ? 0.72 : 0.32) : 0.015;
-      });
-      if (animal.headPivot) {
-        const graze = animal.state === "graze";
-        const alert = animal.state === "flee";
-        const targetPitch = graze ? 0.34 + Math.sin(now * 0.0017 + animal.lastAnim) * 0.06 : alert ? -0.12 : Math.sin(now * 0.0012 + animal.lastAnim) * 0.045;
-        animal.headPivot.rotation.x += (targetPitch - animal.headPivot.rotation.x) * Math.min(1, dt * 4.5);
-        animal.headPivot.rotation.y = Math.sin(now * 0.0008 + animal.lastAnim) * (alert ? 0.03 : 0.065);
-      }
-      if (animal.tailPivot) {
-        const tailMotion = animal.species === "boar" ? 0.12 : 0.2;
-        animal.tailPivot.rotation.x = Math.sin(now * (animal.state === "flee" ? 0.012 : 0.004) + animal.lastAnim) * tailMotion;
-        animal.tailPivot.rotation.z = Math.sin(now * 0.0015 + animal.lastAnim) * 0.12;
-      }
-      if (moving) animal.root.position.y += Math.abs(Math.sin(gait * 2)) * (animal.state === "flee" ? 0.045 : 0.018);
-      else if (animal.state === "graze") animal.root.position.y += Math.sin(now * 0.0018 + animal.lastAnim) * 0.025;
     }
   }
 
@@ -1996,11 +2109,14 @@
     if (!animal.target) return;
     const dx = animal.target.x - animal.root.position.x;
     const dz = animal.target.z - animal.root.position.z;
-    const len = Math.max(0.001, Math.hypot(dx, dz));
-    animal.root.position.x += dx / len * speed * dt;
-    animal.root.position.z += dz / len * speed * dt;
-    animal.root.rotation.y = Math.atan2(dx, dz);
-    animal.speed = speed;
+    const length = Math.max(0.001, Math.hypot(dx, dz));
+    const desiredYaw = Math.atan2(dx, dz);
+    const yawDelta = Math.atan2(Math.sin(desiredYaw - animal.root.rotation.y), Math.cos(desiredYaw - animal.root.rotation.y));
+    animal.root.rotation.y += yawDelta * Math.min(1, dt * (animal.state === "flee" || animal.state === "charge" ? 5.5 : 2.8));
+    const acceleration = animal.state === "flee" || animal.state === "charge" ? 7.5 : 3.2;
+    animal.speed += (speed - animal.speed) * Math.min(1, dt * acceleration);
+    animal.root.position.x += dx / length * animal.speed * dt;
+    animal.root.position.z += dz / length * animal.speed * dt;
   }
 
   function respawnAnimal(animal) {
@@ -2015,6 +2131,8 @@
     animal.hitCount = 0;
     animal.cleanKill = false;
     animal.lastShotDistance = 0;
+    animal.speed = 0;
+    animal.gaitTime = rand(0, 6);
     animal.legs.forEach((leg) => { leg.upper.rotation.set(0, 0, 0); leg.lower.rotation.set(0, 0, 0); });
     if (animal.headPivot) animal.headPivot.rotation.set(0, 0, 0);
     if (animal.tailPivot) animal.tailPivot.rotation.set(0, 0, 0);
@@ -2199,7 +2317,10 @@
         animal.lastShotDistance = distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z });
         const damage = aiming ? 120 : 92;
         animal.health = Math.max(0, animal.health - damage);
-        animal.state = "flee";
+        animal.state = animal.species === "boar" ? "charge" : "flee";
+        animal.target = null;
+        animal.fleeRetargetAt = 0;
+        animal.chargeRetargetAt = 0;
         animal.alertUntil = performance.now() + 10000;
         const hitPart = pick.pickedMesh.metadata.animalPart;
         const headshot = hitPart === "head";
@@ -2225,7 +2346,10 @@
       for (const animal of animals) {
         const d = distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z });
         if (!animal.dead && d < 66) {
-          animal.state = "flee";
+          animal.state = animal.species === "boar" ? "charge" : "flee";
+          animal.target = null;
+          animal.fleeRetargetAt = 0;
+          animal.chargeRetargetAt = 0;
           animal.alertUntil = performance.now() + 11000;
         }
       }
@@ -2738,6 +2862,7 @@
     animalLegRigCount: animals.reduce((sum, animal) => sum + animal.legs.length, 0),
     animalHeadRigCount: animals.filter((animal) => Boolean(animal.headPivot)).length,
     animalStates: animals.reduce((result, animal) => { result[animal.state] = (result[animal.state] || 0) + 1; return result; }, {}),
+    animalMovingCount: animals.filter((animal) => animal.state === "walk" || animal.state === "flee" || animal.state === "charge").length,
     animalAnimatedEarCount: animals.reduce((sum, animal) => sum + (animal.ears ? animal.ears.length : 0), 0),
     riflePartCount: weaponRoot ? weaponRoot.getChildMeshes().length : 0,
     jumpCount,

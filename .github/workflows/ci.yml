@@ -39,7 +39,7 @@ jobs:
             for (const cssRule of [".quick-actions", ".hud-panel"]) {
               if (!css.includes(cssRule)) throw new Error("Missing interface styling " + cssRule);
             }
-            if (!html.includes("styles.css?v=0.7.1") || !html.includes("game.js?v=0.7.1")) {
+            if (!html.includes("styles.css?v=0.7.2") || !html.includes("game.js?v=0.7.2")) {
               throw new Error("Graphics build asset version mismatch");
             }
             if (!html.includes("scope-overlay") || !css.includes("#game-shell.aiming .scope-overlay")) throw new Error("Scope sight picture UI is missing");

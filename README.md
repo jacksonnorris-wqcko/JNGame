@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Visual asset build: **0.7.1**. Game assets are stored under `public/assets/`.
+Visual asset build: **0.7.2**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -99,11 +99,15 @@ This update adds Space-to-jump with gravity, landing detection and a mobile jump
 
 The game now uses fixed 60Hz simulation steps, a capped high-DPI render scale, static world transform freezing, lower shadow-map resolution and disabled bloom to reduce frame pacing spikes and GPU work. Performance remains dependent on the PC and browser.
 
-## Movement and optimization — 0.7.1
+## Living world and movement — 0.7.2
 
 Adds Space-to-jump with gravity, landing detection and mobile jump control. Player motion now uses acceleration/deceleration and collision sliding; the game simulation runs at a fixed 60Hz while rendering once per browser frame. High-DPI render scale, static-world transform freezing, shadow resolution and bloom are adjusted to reduce unnecessary GPU work.
 
 The current deer and boars remain procedural models, but the next wildlife pass will add distinct alert, flee and charge states, more stable turning, richer locomotion and more natural head/ear/tail motion.
+
+## Living wildlife — 0.7.2
+
+Deer now have an alert phase before fleeing, with stable escape directions and smoother turns. Boars have distinct warning and charge behaviour. A fixed-step gait clock drives leg movement, head turns, ear flicks, tail motion and subtle breathing. Hoof signs are created less often and only near the hunter to reduce scene churn. Wildlife remains procedural rather than imported skeletal assets.
 
 ## Cost
 
