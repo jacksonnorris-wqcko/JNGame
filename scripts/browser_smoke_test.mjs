@@ -57,14 +57,7 @@ try {
   if (failures.length) throw new Error(failures.join("\\n"));
 
   console.log(JSON.stringify({ titleVisible, diagnostics, failures }, null, 2));
-  await page.evaluate(() => window.WildrangeFreezeRender?.());
-  await page.screenshot({
-    path: "artifacts/wildrange-0.4.0-chrome.png",
-    timeout: 90000,
-    animations: "disabled",
-    caret: "hide",
-    scale: "css"
-  });
+
 } finally {
   await browser.close();
 }

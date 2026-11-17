@@ -2201,9 +2201,6 @@
     canvasHeight: canvas ? canvas.height : 0,
     webglEnabled: Boolean(engine && engine.getCaps && engine.getCaps().maxTextureSize > 0)
   });
-  window.WildrangeFreezeRender = () => {
-    if (engine) engine.stopRenderLoop();
-  };
 
   window.addEventListener("beforeunload", () => saveGame(false));
   document.addEventListener("visibilitychange", () => {
