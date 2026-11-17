@@ -56,6 +56,14 @@ GAME_MODELS = [
         "source": "https://polyfork.dev/asset/pig-base",
     },
     {
+        "asset": "White-Tailed Deer, high-detail static source (Grab3D)",
+        "path": "animals/deer-high-detail-source.glb",
+        "url": "https://grab3d.com/dl/deer/deer-light.glb",
+        "minimum_bytes": 1_000_000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://grab3d.com/models/animals/deer/",
+    },
+    {
         "asset": "Forest Boar, Jointed (FPS Survival Forest Outpost)",
         "path": "animals/forest-boar.glb",
         "url": "https://cdn.3dassets.dev/assets/32710/v1/model.glb",
@@ -234,7 +242,8 @@ def write_model_attributions() -> None:
         "Recoloured and adapted with additional boar details for Wildrange.\n"
         "- Bolt-Action Rifle by Polyfork (https://polyfork.dev/asset/bolt-action-rifle-2f1793), CC BY 4.0.\n"
         "- Marksman Rifle and Bipod by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2), CC0 1.0 Universal.\n"
-        "- Forest Boar, Jointed by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a), CC0 1.0 Universal.\n",
+        "- Forest Boar, Jointed by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a), CC0 1.0 Universal.\n"
+        "- White-Tailed Deer high-detail static source by Grab3D (https://grab3d.com/models/animals/deer/), CC0 1.0 Universal. Imported for future retopology and rigging; not used as a live game model.\n",
         encoding="utf-8",
     )
 
