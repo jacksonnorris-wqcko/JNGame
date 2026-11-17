@@ -776,7 +776,8 @@
     interiorLight.diffuse = hex("#f6c887"); interiorLight.intensity = 0.42; interiorLight.range = 13;
     box("cabin stove body", { width: 1.05, height: 1.55, depth: 0.95 }, new BABYLON.Vector3(3.75, 1.82, -2.65), mat.black, root);
     const stoveDoor = box("cabin stove iron door", { width: 0.58, height: 0.65, depth: 0.06 }, new BABYLON.Vector3(3.75, 1.7, -3.15), mat.stone, root);
-    stoveDoor.material.emissiveColor = hex("#5b2815");
+    const stoveDoorMaterial = makeMaterial("Cabin stove firebox", "#5b2815", 0.8);
+    stoveDoorMaterial.emissiveColor = hex("#5b2815"); stoveDoor.material = stoveDoorMaterial;
     const stovePipe = BABYLON.MeshBuilder.CreateCylinder("cabin stove flue", { height: 3.1, diameter: 0.18, tessellation: 12 }, scene);
     stovePipe.parent = root; stovePipe.position.set(3.75, 4.0, -2.65); stovePipe.material = mat.black; stovePipe.isPickable = false;
     box("wall shelf", { width: 3.0, height: 0.14, depth: 0.48 }, new BABYLON.Vector3(-1.5, 4.65, 3.72), mat.wood, root);
@@ -914,7 +915,9 @@
       emberLog.position.set(1.9, 1.35 + log * 0.04, -9.1); emberLog.material = mat.bark; emberLog.isPickable = false;
     }
     const fireGlow = BABYLON.MeshBuilder.CreateSphere("outpost fire glow", { diameter: 0.48, segments: 10 }, scene);
-    fireGlow.parent = root; fireGlow.position.set(1.9, 1.52, -9.1); fireGlow.material = mat.gold; fireGlow.material.emissiveColor = hex("#f28b32"); fireGlow.isPickable = false;
+    fireGlow.parent = root; fireGlow.position.set(1.9, 1.52, -9.1);
+    const fireGlowMaterial = makeMaterial("Outpost ember glow", "#f28b32", 0.45);
+    fireGlowMaterial.emissiveColor = hex("#f28b32"); fireGlow.material = fireGlowMaterial; fireGlow.isPickable = false;
     const fireLight = new BABYLON.PointLight("outpost firelight", new BABYLON.Vector3(-12.1, 1.9, 33.9), scene);
     fireLight.diffuse = hex("#ff9a48"); fireLight.intensity = 0.48; fireLight.range = 11;
     const crate = (name, x, y, z, size) => box(name, size, new BABYLON.Vector3(x, y, z), mat.wood, root);
