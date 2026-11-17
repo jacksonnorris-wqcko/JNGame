@@ -1,9 +1,11 @@
 {
-  "version": 1,
-  "license": "CC0 1.0 Universal",
+  "version": 2,
+  "license": "Mixed: CC0 1.0 Universal and CC BY 4.0; see per-asset records and models/ATTRIBUTION.md",
   "sources": {
     "ambientCG": "https://ambientcg.com/",
-    "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest"
+    "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest",
+    "Polyfork": "https://polyfork.dev/licensing",
+    "3D Assets": "https://3dassets.dev/"
   },
   "assets": [
     {
@@ -37,6 +39,116 @@
     {
       "asset": "nature_reserve_forest",
       "status": "already-present"
+    },
+    {
+      "asset": "Polyfork deer-base",
+      "status": "downloaded",
+      "path": "animals/deer-base.glb",
+      "bytes": 1424448,
+      "license": "CC BY 4.0",
+      "source": "https://polyfork.dev/asset/deer-base",
+      "node_names": [
+        "animal-deer",
+        "body",
+        "Hips",
+        "Spine",
+        "Chest",
+        "Neck",
+        "Head",
+        "Jaw",
+        "LeftEar",
+        "RightEar",
+        "LeftFrontUpLeg",
+        "LeftFrontElbow",
+        "LeftFrontLeg",
+        "LeftFrontFoot",
+        "RightFrontUpLeg",
+        "RightFrontElbow",
+        "RightFrontLeg",
+        "RightFrontFoot",
+        "Tail",
+        "TailTip",
+        "LeftHindUpLeg",
+        "LeftHindLeg",
+        "LeftHindHock",
+        "LeftHindFoot",
+        "RightHindUpLeg",
+        "RightHindLeg",
+        "RightHindHock",
+        "RightHindFoot"
+      ],
+      "animation_names": [
+        "Walk",
+        "Idle",
+        "Run"
+      ],
+      "mesh_count": 1,
+      "material_count": 1,
+      "skin_count": 1
+    },
+    {
+      "asset": "Polyfork pig-base, adapted as wild boar",
+      "status": "downloaded",
+      "path": "animals/pig-base.glb",
+      "bytes": 1524340,
+      "license": "CC BY 4.0",
+      "source": "https://polyfork.dev/asset/pig-base",
+      "node_names": [
+        "animal-pig",
+        "body",
+        "Hips",
+        "Spine",
+        "Chest",
+        "Neck",
+        "Head",
+        "Jaw",
+        "LeftEar",
+        "RightEar",
+        "LeftFrontUpLeg",
+        "LeftFrontElbow",
+        "LeftFrontLeg",
+        "LeftFrontFoot",
+        "RightFrontUpLeg",
+        "RightFrontElbow",
+        "RightFrontLeg",
+        "RightFrontFoot",
+        "Tail",
+        "TailTip",
+        "LeftHindUpLeg",
+        "LeftHindLeg",
+        "LeftHindHock",
+        "LeftHindFoot",
+        "RightHindUpLeg",
+        "RightHindLeg",
+        "RightHindHock",
+        "RightHindFoot"
+      ],
+      "animation_names": [
+        "Walk",
+        "Idle",
+        "Run"
+      ],
+      "mesh_count": 1,
+      "material_count": 1,
+      "skin_count": 1
+    },
+    {
+      "asset": "Polyfork Bolt-Action Rifle",
+      "status": "downloaded",
+      "path": "weapons/bolt-action-rifle.glb",
+      "bytes": 77240,
+      "license": "CC BY 4.0",
+      "source": "https://polyfork.dev/asset/bolt-action-rifle-2f1793",
+      "node_names": [
+        "bolt-action-rifle",
+        "rifle-body",
+        "bolt",
+        "bolt-mesh"
+      ],
+      "animation_names": [],
+      "mesh_count": 2,
+      "material_count": 1,
+      "skin_count": 0
     }
   ]
 }
