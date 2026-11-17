@@ -75,11 +75,12 @@ try {
   if (Math.abs(cabinFloor.playerHeight) > 0.08) {
     throw new Error("Hunter is not standing on the cabin floor: " + JSON.stringify(cabinFloor));
   }
-  const doorUpdatesBefore = await page.evaluate(() => window.WildrangeDiagnostics().cabinDoorUpdateCount);
   await page.evaluate(() => window.WildrangeQA.setDoor(true));
   await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle() - 1.48) < 0.025, null, { timeout: 5000 });
   const openDoorState = await page.evaluate(() => window.WildrangeDiagnostics());
-  if (openDoorState.cabinDoorUpdateCount <= doorUpdatesBefore) throw new Error("Cabin door hinge did not receive render-loop updates: " + JSON.stringify(openDoorState));
+  if (Math.abs(openDoorState.cabinDoorAngle - 1.48) > 0.025 || !openDoorState.cabinDoorOpen) {
+    throw new Error("Lodge door leaf did not physically reach the open hinge angle: " + JSON.stringify(openDoorState));
+  }
   const openDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
   await page.evaluate(() => window.WildrangeQA.setDoor(false));
   await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle()) < 0.025, null, { timeout: 5000 });
