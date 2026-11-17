@@ -33,14 +33,31 @@ jobs:
             for (const id of ["render-canvas", "start-button", "continue-button", "interaction-prompt", "health-fill", "ammo-current", "contract-progress", "map-close-button"]) {
               if (!html.includes(id)) throw new Error("Missing UI reference " + id);
             }
-            for (const feature of ["createSkyDome", "createGroundCover", "createHorizonRidges", "setupPostProcessing", "animateWorld"]) {
+            for (const feature of ["makePbrSurface", "createSkyDome", "createCabin", "createGroundCover", "setupPostProcessing", "animateWorld", "createFurTexture"]) {
               if (!js.includes("function " + feature + "(")) throw new Error("Missing graphics system " + feature);
             }
             for (const cssRule of [".quick-actions", ".hud-panel"]) {
               if (!css.includes(cssRule)) throw new Error("Missing interface styling " + cssRule);
             }
-            if (!html.includes("styles.css?v=0.3.0") || !html.includes("game.js?v=0.3.0")) {
+            if (!html.includes("styles.css?v=0.4.0") || !html.includes("game.js?v=0.4.0")) {
               throw new Error("Graphics build asset version mismatch");
+            }
+            const requiredAssets = [
+              "public/assets/nature_reserve_forest_1k.hdr",
+              "public/assets/pbr/grass/grass_albedo.jpg",
+              "public/assets/pbr/grass/grass_normal.jpg",
+              "public/assets/pbr/grass/grass_roughness.jpg",
+              "public/assets/pbr/forest_floor/forest_floor_albedo.jpg",
+              "public/assets/pbr/forest_floor/forest_floor_normal.jpg",
+              "public/assets/pbr/wood_siding/wood_siding_albedo.jpg",
+              "public/assets/pbr/wood_planks/wood_planks_albedo.jpg",
+              "public/assets/pbr/wood_planks/wood_planks_normal.jpg",
+              "public/assets/pbr/bark/bark_albedo.jpg",
+              "public/assets/pbr/rock/rock_albedo.jpg",
+              "public/assets/asset-manifest.json"
+            ];
+            for (const file of requiredAssets) {
+              if (!fs.existsSync(file)) throw new Error("Missing imported graphics asset " + file);
             }
             console.log("Wildrange browser build validation passed.");
           '

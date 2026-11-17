@@ -77,6 +77,9 @@ The graphics remain procedural and local: no paid texture packs, hosted art serv
 
 ## Real-environment graphics — 0.4.0
 
+Asset validation: the CI workflow checks the locally hosted HDRI and required PBR maps before accepting the build.
+
+
 The 0.4.0 pass replaces the simple gradient sky and cone mountain placeholders with a real forest HDR environment, image-based lighting and locally hosted PBR surface maps. The outpost is rebuilt with weathered siding, timber courses, a proper pitched shingle roof, framed windows, stone chimney, porch, lantern and camp details. Trees use fuller textured foliage clusters rather than stacked polygon cones, and fieldstones use smoother scanned-rock surfaces.
 
 The material and HDR downloads are imported by `.github/workflows/import-cc0-assets.yml` into `public/assets`. The textures are CC0 assets from ambientCG and the forest HDRI is from Poly Haven. The browser loads the files from the repository; no texture CDN, account, paid asset or runtime asset service is required.

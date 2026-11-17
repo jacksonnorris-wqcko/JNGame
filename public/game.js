@@ -201,8 +201,11 @@
     if (detailMaps !== false) {
       material.bumpTexture = texture("normal");
       material.roughnessTexture = texture("roughness");
-      material.ambientTexture = texture("ao");
-      material.useAmbientInGrayScale = true;
+      // AmbientCG Wood001 has no AO map; avoid requesting a non-existent file.
+      if (slug !== "wood_planks") {
+        material.ambientTexture = texture("ao");
+        material.useAmbientInGrayScale = true;
+      }
     }
     return material;
   }
@@ -563,7 +566,7 @@
     shore.rotation.x = Math.PI / 2;
     shore.position.set(55, heightAt(55, -44) + 0.05, -44);
     shore.scaling.set(1.3, 0.8, 1);
-    shore.material = mat.dirt;
+    shore.material = mat.shore;
     shore.isPickable = false;
     const water = BABYLON.MeshBuilder.CreateDisc("Stillwater Lake", { radius: 20.7, tessellation: 48 }, scene);
     water.rotation.x = Math.PI / 2;
@@ -1187,33 +1190,7 @@
     }
   }
 
-  function createHorizonRidges() {
-    const peaks = [
-      [-172, -104, 78, 112], [-94, -178, 91, 128], [15, -184, 70, 118],
-      [132, -162, 92, 132], [185, -34, 82, 128], [156, 118, 84, 126],
-      [42, 184, 70, 116], [-91, 177, 90, 132], [-184, 47, 82, 132]
-    ];
-    peaks.forEach((peak, index) => {
-      const [x, z, height, diameter] = peak;
-      const ridge = BABYLON.MeshBuilder.CreateCylinder("distant mountain", {
-        height, diameterTop: 1.5, diameterBottom: diameter, tessellation: 6
-      }, scene);
-      ridge.position.set(x, heightAt(clamp(x, -138, 138), clamp(z, -138, 138)) + height * 0.46 - 2, z);
-      ridge.rotation.y = rand(0, Math.PI);
-      ridge.material = [mat.mountain1, mat.mountain2, mat.mountain3][index % 3];
-      ridge.isPickable = false;
-      ridge.receiveShadows = true;
-      ridge.applyFog = true;
-      const shoulder = BABYLON.MeshBuilder.CreateCylinder("distant mountain shoulder", {
-        height: height * 0.67, diameterTop: 1, diameterBottom: diameter * 0.56, tessellation: 6
-      }, scene);
-      shoulder.position.set(x + rand(-17, 17), ridge.position.y + height * 0.13, z + rand(-13, 13));
-      shoulder.rotation.y = rand(0, Math.PI);
-      shoulder.material = [mat.mountain2, mat.mountain3, mat.mountain1][index % 3];
-      shoulder.isPickable = false;
-      shoulder.applyFog = true;
-    });
-  }
+  // Distant ridges are supplied by the photographic forest HDR environment.
 
   function createGroundCover() {
     const positions = [], indices = [], colors = [];
