@@ -55,6 +55,22 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 Click the game view once to capture the mouse. Press Escape to release it and open the pause menu.
 
+
+## Graphics overhaul — 0.3.0
+
+The 0.3.0 visual pass upgrades Pinecrest Valley without external paid assets:
+
+- Procedural ground, dirt-trail, water and bark textures generated in the browser.
+- A panoramic sky dome with layered cloud wisps and a moving sun.
+- More natural layered pine and broadleaf canopies, animated lightly in the wind.
+- 1,050 vertex-coloured meadow grass tufts and 34 undergrowth clusters.
+- Distant low-poly mountain ridges to give the reserve a stronger horizon.
+- Animated lake ripples and improved water surface material.
+- Directional lighting, softened shadows, FXAA, ACES tone mapping and subtle bloom.
+- More detail on the Ranger .308 scope and receiver.
+
+The graphics remain procedural and local: no paid texture packs, hosted art services or extra game server are required. The extra foliage and post-processing are intended for desktop Chrome; performance still needs confirmation on different hardware.
+
 ## Cost
 
 The solo prototype can be developed and hosted as a public GitHub Pages project without a paid game server. Babylon.js is open source. Any future paid art/audio assets or optional hosted services would be a separate decision; nothing paid is required to test this solo alpha.
