@@ -1,4 +1,4 @@
-name: Deploy Mythvale to GitHub Pages
+name: Deploy Wildrange to GitHub Pages
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -24,14 +24,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-      - name: Configure GitHub Pages
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Upload browser game
+      - name: Upload static game
         uses: actions/upload-pages-artifact@v4
         with:
           path: public
-      - name: Deploy browser game
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

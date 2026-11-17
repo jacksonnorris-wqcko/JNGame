@@ -1,518 +1,1498 @@
-const canvas = document.getElementById("world");
-const ctx = canvas.getContext("2d");
-const minimap = document.getElementById("minimap");
-const miniCtx = minimap.getContext("2d");
-const bigMap = document.getElementById("big-map");
-const bigMapCtx = bigMap.getContext("2d");
-const $ = (id) => document.getElementById(id);
+(() => {
+  "use strict";
 
-const socketState = { socket: null, connected: false, playerId: null, name: "Wanderer" };
-let game = { me: null, players: [], mobs: [], npcs: [], world: { width: 2600, height: 1800 }, online: 0 };
-let camera = { x: 0, y: 0 };
-let lastMiniMap = 0;
-let keys = new Set();
-let clickTarget = null;
-let pixelRatio = 1;
-let chatCollapsed = false;
-let menuOpen = false;
+  const canvas = document.getElementById("render-canvas");
+  const $ = (id) => document.getElementById(id);
+  const BABYLON = window.BABYLON;
 
-const savedId = localStorage.getItem("mythvale-player-id");
-if (savedId) socketState.playerId = savedId;
-const serverFromQuery = new URLSearchParams(location.search).get("server");
-const savedServer = localStorage.getItem("mythvale-server-url") || "";
-const configuredServer = String(window.MYTHVALE_SERVER_URL || "").trim();
-$("server-input").value = serverFromQuery || savedServer || configuredServer;
-
-function send(payload) {
-  if (socketState.socket && socketState.socket.readyState === WebSocket.OPEN) {
-    socketState.socket.send(JSON.stringify(payload));
-  }
-}
-
-function startGame() {
-  const inputName = $("name-input").value.trim();
-  if (inputName.length < 3) {
-    $("start-error").textContent = "Choose a name with at least 3 characters.";
+  if (!BABYLON) {
+    $("center-message").textContent = "The 3D engine could not load. Check your internet connection and refresh.";
+    $("center-message").classList.add("show");
     return;
   }
-  socketState.name = inputName.slice(0, 16);
-  const requestedServer = $("server-input").value.trim() || serverFromQuery || configuredServer;
-  if (location.hostname.endsWith("github.io") && !requestedServer) {
-    $("start-error").textContent = "The website is live, but its multiplayer server is not connected yet. Enter the server address above.";
-    return;
-  }
-  if (requestedServer) {
+
+  const SAVE_KEY = "wildrange-solo-save-v1";
+  const WORLD_LIMIT = 132;
+  const speciesInfo = {
+    deer: { label: "Whitetail Deer", hide: 1, meat: 2, xp: 45, value: 65, health: 100 },
+    buck: { label: "Pinecrest Buck", hide: 2, meat: 3, xp: 65, value: 95, health: 125 },
+    boar: { label: "Wild Boar", hide: 1, meat: 4, xp: 55, value: 85, health: 150 }
+  };
+
+  const defaults = {
+    name: "Ranger", cash: 180, xp: 0, level: 1, ammo: 8, reserve: 40,
+    hides: 0, meat: 0, harvested: 0, deerHarvested: 0, contractAccepted: false,
+    contractProgress: 0, contractComplete: false, health: 100, stamina: 100,
+    medkits: 1, scent: 0, x: 0, z: 19, yaw: 0, unlocked: ["Pinecrest Valley"]
+  };
+
+  let state = { ...defaults };
+  let scene, engine, camera, weaponRoot, weaponMaterials = {};
+  let animals = [];
+  let footprints = [];
+  let obstacles = [];
+  let interactables = [];
+  let lights = {};
+  let miniMapCtx, worldMapCtx;
+  let pointerLocked = false;
+  let gameStarted = false;
+  let paused = false;
+  let aiming = false;
+  let firing = false;
+  let tracking = false;
+  let reloading = false;
+  let reloadStarted = 0;
+  let reloadDuration = 1450;
+  let lastShot = 0;
+  let shotAt = 0;
+  let weaponKick = 0;
+  let muzzleTimer = 0;
+  let messageTimer = 0;
+  let autosaveTimer = 0;
+  let hudTimer = 0;
+  let mapTimer = 0;
+  let dayTime = 0.28;
+  let nearestInteraction = null;
+  let audioContext = null;
+  let playerVelocity = new BABYLON.Vector3(0, 0, 0);
+  let keys = new Set();
+  let touchKeys = new Set();
+  let currentTarget = null;
+  let currentAnimal = null;
+
+  const mat = {};
+  const rand = (min, max) => min + Math.random() * (max - min);
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const distance2D = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+  const hex = (value) => BABYLON.Color3.FromHexString(value);
+  const text = (id, value) => { if ($(id)) $(id).textContent = String(value); };
+
+  function loadSave() {
     try {
-      const parsed = new URL(requestedServer);
-      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Use an http:// or https:// address.");
-      localStorage.setItem("mythvale-server-url", parsed.origin);
-      $("server-input").value = parsed.origin;
+      const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
+      if (saved && typeof saved === "object") state = { ...defaults, ...saved };
     } catch (error) {
-      $("start-error").textContent = error.message || "Enter a valid server address.";
+      console.warn("Could not read local save:", error);
+    }
+    text("hunter-name", state.name.toUpperCase());
+    $("player-name").value = state.name || "Ranger";
+    $("continue-button").style.display = localStorage.getItem(SAVE_KEY) ? "block" : "none";
+    $("start-save-status").textContent = localStorage.getItem(SAVE_KEY)
+      ? "PREVIOUS HUNT FOUND · SAVED ON THIS DEVICE"
+      : "SOLO FIELD TEST · PROGRESS SAVED IN THIS BROWSER";
+  }
+
+  function saveGame(showNotice) {
+    if (!gameStarted) return;
+    if (camera) {
+      state.x = camera.position.x;
+      state.z = camera.position.z;
+      state.yaw = camera.rotation.y;
+    }
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      if (showNotice) toast("Hunt saved on this device.", "success");
+    } catch (error) {
+      console.warn("Could not save hunt:", error);
+      if (showNotice) toast("Browser storage is unavailable. Progress may not persist.", "warning");
+    }
+  }
+
+  function resetSave() {
+    localStorage.removeItem(SAVE_KEY);
+    state = { ...defaults };
+    state.name = $("player-name").value.trim().slice(0, 16) || "Ranger";
+    state.x = 0;
+    state.z = 19;
+    state.yaw = 0;
+    state.contractAccepted = false;
+    state.contractProgress = 0;
+    state.contractComplete = false;
+    state.cash = defaults.cash;
+    state.xp = 0;
+    state.level = 1;
+    state.ammo = 8;
+    state.reserve = 40;
+    state.hides = 0;
+    state.meat = 0;
+    state.harvested = 0;
+    state.deerHarvested = 0;
+    state.health = 100;
+    state.stamina = 100;
+    state.medkits = 1;
+    state.scent = 0;
+    updateHud();
+    saveGame(false);
+    toast("Fresh field record created.", "success");
+  }
+
+  function toast(message, type) {
+    const item = document.createElement("div");
+    item.className = "toast " + (type || "");
+    item.textContent = message;
+    $("toast-stack").appendChild(item);
+    window.setTimeout(() => item.remove(), 3000);
+  }
+
+  function announce(message, duration) {
+    $("center-message").textContent = message;
+    $("center-message").classList.add("show");
+    clearTimeout(messageTimer);
+    messageTimer = window.setTimeout(() => $("center-message").classList.remove("show"), duration || 2600);
+  }
+
+  function sound(frequency, duration, kind, volume) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!audioContext) audioContext = new AudioCtx();
+      if (audioContext.state === "suspended") audioContext.resume();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = kind || "triangle";
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(28, frequency * 0.48), audioContext.currentTime + duration);
+      gain.gain.setValueAtTime(volume || 0.045, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch (error) { /* audio is optional */ }
+  }
+
+  function makeMaterial(name, color, roughness) {
+    const material = new BABYLON.StandardMaterial(name, scene);
+    material.diffuseColor = hex(color);
+    material.specularColor = new BABYLON.Color3(0.08, 0.08, 0.07);
+    material.roughness = roughness === undefined ? 0.9 : roughness;
+    return material;
+  }
+
+  function createMaterials() {
+    mat.grass = makeMaterial("meadow-grass", "#758d58");
+    mat.grassLight = makeMaterial("sunlit-grass", "#89a46a");
+    mat.grassDark = makeMaterial("deep-grass", "#5f7950");
+    mat.dirt = makeMaterial("trail-dirt", "#aa9169");
+    mat.dirtLight = makeMaterial("trail-edge", "#c4a77a");
+    mat.water = makeMaterial("stillwater", "#67969a", 0.35);
+    mat.water.alpha = 0.88;
+    mat.bark = makeMaterial("tree-bark", "#74543a");
+    mat.pine1 = makeMaterial("pine-canopy-1", "#315b44");
+    mat.pine2 = makeMaterial("pine-canopy-2", "#416e4d");
+    mat.pine3 = makeMaterial("pine-canopy-3", "#527b50");
+    mat.leaf1 = makeMaterial("broadleaf-1", "#467450");
+    mat.leaf2 = makeMaterial("broadleaf-2", "#618655");
+    mat.leaf3 = makeMaterial("broadleaf-3", "#78945e");
+    mat.stone = makeMaterial("stone", "#8d9684");
+    mat.stoneDark = makeMaterial("stone-dark", "#667267");
+    mat.wood = makeMaterial("camp-wood", "#846747");
+    mat.woodLight = makeMaterial("camp-light-wood", "#ad8d5c");
+    mat.roof = makeMaterial("camp-roof", "#5c4a36");
+    mat.roofLight = makeMaterial("camp-roof-light", "#786044");
+    mat.window = makeMaterial("window-light", "#d9c38a", 0.5);
+    mat.metal = makeMaterial("rifle-metal", "#303d3c", 0.35);
+    mat.rifleWood = makeMaterial("rifle-stock", "#684a32");
+    mat.black = makeMaterial("dark-metal", "#17201e", 0.45);
+    mat.gold = makeMaterial("brass", "#c59b54", 0.4);
+    mat.antler = makeMaterial("antler", "#d8c6a0");
+    mat.hoof = makeMaterial("hoof", "#3c3931");
+    mat.track = makeMaterial("animal-track", "#d5c49a");
+    mat.bloodless = makeMaterial("harvest-marker", "#e3c68c");
+    mat.fence = makeMaterial("fence-wood", "#8d704c");
+    mat.sign = makeMaterial("signboard", "#544532");
+    mat.boar = makeMaterial("boar-coat", "#554b3d");
+    mat.boarLight = makeMaterial("boar-face", "#70604b");
+    mat.boarTusks = makeMaterial("boar-tusk", "#e5d7b6");
+    mat.deer = makeMaterial("deer-coat", "#a87548");
+    mat.deerLight = makeMaterial("deer-light", "#c58a53");
+    mat.deerDark = makeMaterial("deer-dark", "#755033");
+    mat.fawn = makeMaterial("fawn-coat", "#b88758");
+    mat.white = makeMaterial("wildlife-cream", "#eadbb9");
+    mat.eye = makeMaterial("wildlife-eye", "#211d18");
+    mat.grassBlade = makeMaterial("grass-blade", "#9aae6b");
+  }
+
+  function heightAt(x, z) {
+    return Math.sin(x * 0.034) * 1.05 + Math.cos(z * 0.029) * 1.15 +
+      Math.sin((x + z) * 0.018) * 1.35 + Math.cos((x - z) * 0.024) * 0.65;
+  }
+
+  function flatArea(x, z) {
+    return Math.hypot(x, z - 31) < 22;
+  }
+
+  function makeTerrain() {
+    const ground = BABYLON.MeshBuilder.CreateGround("Pinecrest terrain", {
+      width: 280, height: 280, subdivisions: 100, updatable: true
+    }, scene);
+    const positions = ground.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    const indices = ground.getIndices();
+    const normals = [];
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const z = positions[i + 2];
+      positions[i + 1] = flatArea(x, z) ? 0.1 : heightAt(x, z);
+    }
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    ground.updateVerticesData(BABYLON.VertexBuffer.PositionKind, positions);
+    ground.updateVerticesData(BABYLON.VertexBuffer.NormalKind, normals);
+    ground.material = mat.grass;
+    ground.isPickable = true;
+    ground.receiveShadows = true;
+    return ground;
+  }
+
+  function makePath(points, width, material, name) {
+    const left = [], right = [];
+    for (let i = 0; i < points.length; i++) {
+      const previous = points[Math.max(0, i - 1)];
+      const next = points[Math.min(points.length - 1, i + 1)];
+      const dx = next.x - previous.x;
+      const dz = next.z - previous.z;
+      const length = Math.max(0.001, Math.hypot(dx, dz));
+      const ox = -(dz / length) * width / 2;
+      const oz = (dx / length) * width / 2;
+      left.push(new BABYLON.Vector3(points[i].x + ox, heightAt(points[i].x + ox, points[i].z + oz) + 0.09, points[i].z + oz));
+      right.push(new BABYLON.Vector3(points[i].x - ox, heightAt(points[i].x - ox, points[i].z - oz) + 0.09, points[i].z - oz));
+    }
+    const ribbon = BABYLON.MeshBuilder.CreateRibbon(name, { pathArray: [left, right], sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    ribbon.material = material;
+    ribbon.isPickable = false;
+    return ribbon;
+  }
+
+  function bezierPoint(t, a, b, c, d) {
+    const mt = 1 - t;
+    return {
+      x: mt * mt * mt * a.x + 3 * mt * mt * t * b.x + 3 * mt * t * t * c.x + t * t * t * d.x,
+      z: mt * mt * mt * a.z + 3 * mt * mt * t * b.z + 3 * mt * t * t * c.z + t * t * t * d.z
+    };
+  }
+
+  function buildTrail() {
+    const p = [];
+    const a = { x: 0, z: 32 }, b = { x: -6, z: 52 }, c = { x: 4, z: 71 }, d = { x: 9, z: 103 };
+    for (let i = 0; i <= 30; i++) p.push(bezierPoint(i / 30, a, b, c, d));
+    makePath(p, 4.8, mat.dirt, "Pinecrest trail");
+    const p2 = [];
+    const a2 = { x: 7, z: 75 }, b2 = { x: 24, z: 86 }, c2 = { x: 34, z: 101 }, d2 = { x: 56, z: 108 };
+    for (let i = 0; i <= 18; i++) p2.push(bezierPoint(i / 18, a2, b2, c2, d2));
+    makePath(p2, 3.2, mat.dirtLight, "East ridge track");
+  }
+
+  function createTree(x, z, scale, broadleaf) {
+    const root = new BABYLON.TransformNode("tree-root", scene);
+    root.position.set(x, heightAt(x, z), z);
+    const trunk = BABYLON.MeshBuilder.CreateCylinder("tree-trunk", {
+      height: 3.2 * scale, diameterTop: 0.28 * scale, diameterBottom: 0.48 * scale, tessellation: 6
+    }, scene);
+    trunk.position.y = 1.55 * scale;
+    trunk.parent = root;
+    trunk.material = mat.bark;
+    trunk.isPickable = false;
+    trunk.receiveShadows = true;
+    if (broadleaf) {
+      const leaves = [mat.leaf1, mat.leaf2, mat.leaf3];
+      const sizes = [1.65, 1.3, 0.95];
+      for (let i = 0; i < 3; i++) {
+        const crown = BABYLON.MeshBuilder.CreatePolyhedron("broadleaf-crown", {
+          type: 1, size: sizes[i] * scale
+        }, scene);
+        crown.position.set(rand(-0.25, 0.25) * scale, (2.5 + i * 0.7) * scale, rand(-0.18, 0.18) * scale);
+        crown.rotation.y = rand(0, Math.PI * 2);
+        crown.parent = root;
+        crown.material = leaves[i];
+        crown.isPickable = false;
+        crown.receiveShadows = true;
+      }
+    } else {
+      const layers = [mat.pine1, mat.pine2, mat.pine3];
+      for (let i = 0; i < 3; i++) {
+        const crown = BABYLON.MeshBuilder.CreateCylinder("pine-crown", {
+          height: 3.1 * scale, diameterTop: 0, diameterBottom: (3.6 - i * 0.55) * scale, tessellation: 6
+        }, scene);
+        crown.position.y = (2.4 + i * 1.05) * scale;
+        crown.parent = root;
+        crown.material = layers[i];
+        crown.isPickable = false;
+        crown.receiveShadows = true;
+      }
+    }
+    obstacles.push({ x, z, radius: broadleaf ? 1.15 * scale : 0.65 * scale });
+    return root;
+  }
+
+  function createRock(x, z, scale) {
+    const rock = BABYLON.MeshBuilder.CreatePolyhedron("valley-rock", { type: 1, size: scale }, scene);
+    rock.position.set(x, heightAt(x, z) + scale * 0.38, z);
+    rock.scaling.set(1.1, 0.75, 0.9);
+    rock.rotation.set(rand(-0.15, 0.15), rand(0, Math.PI), rand(-0.15, 0.15));
+    rock.material = Math.random() > 0.5 ? mat.stone : mat.stoneDark;
+    rock.isPickable = false;
+    obstacles.push({ x, z, radius: scale * 0.8 });
+  }
+
+  function createPinecrestLake() {
+    const shore = BABYLON.MeshBuilder.CreateDisc("lake-shore", { radius: 22, tessellation: 48 }, scene);
+    shore.rotation.x = Math.PI / 2;
+    shore.position.set(55, heightAt(55, -44) + 0.05, -44);
+    shore.scaling.set(1.3, 0.8, 1);
+    shore.material = mat.dirt;
+    shore.isPickable = false;
+    const water = BABYLON.MeshBuilder.CreateDisc("Stillwater Lake", { radius: 20.7, tessellation: 48 }, scene);
+    water.rotation.x = Math.PI / 2;
+    water.position.set(55, heightAt(55, -44) + 0.12, -44);
+    water.scaling.set(1.3, 0.8, 1);
+    water.material = mat.water;
+    water.isPickable = false;
+    const shimmer = BABYLON.MeshBuilder.CreateDisc("lake shimmer", { radius: 8, tessellation: 36 }, scene);
+    shimmer.rotation.x = Math.PI / 2;
+    shimmer.position.set(49, heightAt(49, -43) + 0.15, -43);
+    shimmer.scaling.set(1.3, 0.25, 1);
+    const waterGlow = makeMaterial("lake-glint", "#a8c5ae");
+    waterGlow.alpha = 0.26;
+    shimmer.material = waterGlow;
+    shimmer.isPickable = false;
+  }
+
+  function box(name, size, position, material, parent) {
+    const mesh = BABYLON.MeshBuilder.CreateBox(name, size, scene);
+    mesh.position.copyFrom(position);
+    mesh.material = material;
+    mesh.parent = parent || null;
+    mesh.isPickable = false;
+    mesh.receiveShadows = true;
+    return mesh;
+  }
+
+  function createCabin() {
+    const root = new BABYLON.TransformNode("Pinecrest Outpost", scene);
+    root.position.set(-14, 0, 43);
+    box("cabin-floor", { width: 12, height: 0.45, depth: 9 }, new BABYLON.Vector3(0, 0.35, 0), mat.wood, root);
+    box("cabin-body", { width: 11, height: 5.5, depth: 8 }, new BABYLON.Vector3(0, 3.15, 0), mat.woodLight, root);
+    const roof = BABYLON.MeshBuilder.CreateCylinder("cabin-roof", { height: 11.8, diameterTop: 0, diameterBottom: 9.4, tessellation: 4 }, scene);
+    roof.rotation.z = Math.PI / 2;
+    roof.scaling.y = 0.76;
+    roof.position.set(0, 6.35, 0);
+    roof.parent = root;
+    roof.material = mat.roof;
+    roof.isPickable = false;
+    const door = box("cabin-door", { width: 1.55, height: 3.0, depth: 0.2 }, new BABYLON.Vector3(0, 1.9, -4.11), mat.roof, root);
+    const step = box("cabin-step", { width: 2.4, height: 0.3, depth: 1.0 }, new BABYLON.Vector3(0, 0.25, -4.7), mat.stoneDark, root);
+    for (const x of [-3.3, 3.3]) {
+      const win = box("cabin-window", { width: 1.25, height: 1.2, depth: 0.15 }, new BABYLON.Vector3(x, 3.7, -4.12), mat.window, root);
+      const frame = box("window-frame", { width: 1.5, height: 1.45, depth: 0.18 }, new BABYLON.Vector3(x, 3.7, -4.2), mat.wood, root);
+      win.position.z = -4.32;
+    }
+    const chimney = BABYLON.MeshBuilder.CreateCylinder("chimney", { height: 3.7, diameter: 1.1, tessellation: 6 }, scene);
+    chimney.position.set(3.5, 7.2, 1.3);
+    chimney.parent = root;
+    chimney.material = mat.stoneDark;
+    chimney.isPickable = false;
+    obstacles.push({ x: -14, z: 43, radius: 6.4 });
+    makeInteractable("OUTFITTERS", "Open the supply counter", -6.8, 27.5, "shop", "ammo");
+    makeInteractable("CONTRACT BOARD", "View local hunting contracts", -5.1, 22.4, "contract", "board");
+    makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
+    const board = box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
+    const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.5, diameter: 0.18, tessellation: 5 }, scene);
+    boardPost.position.set(-5.1, 0.95, 22.4);
+    boardPost.material = mat.wood;
+    const paper = box("board-paper", { width: 1.35, height: 1.0, depth: 0.06 }, new BABYLON.Vector3(-5.1, 1.8, 22.22), mat.window);
+    const table = box("harvest-table", { width: 4, height: 1.1, depth: 1.7 }, new BABYLON.Vector3(-20.7, 0.75, 40.5), mat.wood);
+    const counter = box("supply-counter", { width: 2.6, height: 1.2, depth: 1.0 }, new BABYLON.Vector3(-6.8, 0.85, 27.5), mat.woodLight);
+    for (const [x, z] of [[-22.6, 39.7], [-18.7, 39.7], [-8.2, 28], [-5.4, 28]]) {
+      const post = BABYLON.MeshBuilder.CreateCylinder("outpost-post", { height: 2.4, diameter: 0.16, tessellation: 5 }, scene);
+      post.position.set(x, 1.2, z);
+      post.material = mat.wood;
+    }
+  }
+
+  function makeInteractable(name, description, x, z, action, target) {
+    interactables.push({ name, description, x, z, action, target });
+  }
+
+  function scatterEnvironment() {
+    let placed = 0, attempts = 0;
+    while (placed < 148 && attempts < 1200) {
+      attempts++;
+      const x = rand(-125, 125);
+      const z = rand(-124, 125);
+      if (flatArea(x, z)) continue;
+      if (Math.hypot(x, z - 31) < 21) continue;
+      if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 27) continue;
+      const roadX = 0.003 * z * z - 0.12 * z - 1;
+      if (Math.abs(x - roadX) < 7 && z > 25 && z < 108) continue;
+      const scale = rand(0.75, 1.45);
+      const broadleaf = Math.random() > 0.72;
+      createTree(x, z, scale, broadleaf);
+      placed++;
+    }
+    for (let i = 0; i < 36; i++) {
+      const x = rand(-115, 115), z = rand(-115, 120);
+      if (flatArea(x, z) || (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 24)) continue;
+      createRock(x, z, rand(0.45, 1.25));
+    }
+    for (let i = 0; i < 46; i++) {
+      const x = rand(-90, 90), z = rand(-100, 115);
+      if (flatArea(x, z)) continue;
+      const tuft = BABYLON.MeshBuilder.CreatePolyhedron("grass-tuft", { type: 1, size: rand(0.1, 0.22) }, scene);
+      tuft.position.set(x, heightAt(x, z) + 0.16, z);
+      tuft.scaling.set(0.7, rand(1.4, 2.8), 0.65);
+      tuft.material = mat.grassBlade;
+      tuft.isPickable = false;
+    }
+  }
+
+  function setupLighting() {
+    const hemi = new BABYLON.HemisphericLight("sky-fill", new BABYLON.Vector3(0, 1, 0), scene);
+    hemi.intensity = 0.86;
+    hemi.groundColor = hex("#53604a");
+    const sun = new BABYLON.DirectionalLight("morning-sun", new BABYLON.Vector3(-0.45, -1, 0.35), scene);
+    sun.position = new BABYLON.Vector3(65, 95, -70);
+    sun.intensity = 1.15;
+    lights.hemi = hemi;
+    lights.sun = sun;
+    try {
+      const shadows = new BABYLON.ShadowGenerator(1024, sun);
+      shadows.useBlurExponentialShadowMap = true;
+      shadows.blurKernel = 12;
+      lights.shadows = shadows;
+    } catch (error) {
+      console.warn("Shadow map unavailable; continuing without shadows.", error);
+    }
+  }
+
+  function createWeapon() {
+    weaponRoot = new BABYLON.TransformNode("Ranger 308 first person model", scene);
+    weaponRoot.parent = camera;
+    weaponRoot.position.set(0.36, -0.34, 0.72);
+    const body = BABYLON.MeshBuilder.CreateBox("rifle-body", { width: 0.17, height: 0.19, depth: 0.9 }, scene);
+    body.parent = weaponRoot;
+    body.position.set(-0.06, 0, 0.18);
+    body.material = mat.metal;
+    body.isPickable = false;
+    const stock = BABYLON.MeshBuilder.CreateBox("rifle-stock", { width: 0.22, height: 0.18, depth: 0.46 }, scene);
+    stock.parent = weaponRoot;
+    stock.position.set(-0.1, -0.035, -0.42);
+    stock.material = mat.rifleWood;
+    stock.isPickable = false;
+    const barrel = BABYLON.MeshBuilder.CreateCylinder("rifle-barrel", { height: 0.92, diameter: 0.055, tessellation: 10 }, scene);
+    barrel.parent = weaponRoot;
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(-0.035, 0.045, 0.78);
+    barrel.material = mat.metal;
+    barrel.isPickable = false;
+    const muzzle = BABYLON.MeshBuilder.CreateCylinder("muzzle", { height: 0.16, diameter: 0.085, tessellation: 10 }, scene);
+    muzzle.parent = weaponRoot;
+    muzzle.rotation.x = Math.PI / 2;
+    muzzle.position.set(-0.035, 0.045, 1.26);
+    muzzle.material = mat.black;
+    muzzle.isPickable = false;
+    const scope = BABYLON.MeshBuilder.CreateCylinder("rifle-scope", { height: 0.44, diameter: 0.105, tessellation: 12 }, scene);
+    scope.parent = weaponRoot;
+    scope.rotation.x = Math.PI / 2;
+    scope.position.set(-0.06, 0.15, 0.18);
+    scope.material = mat.black;
+    scope.isPickable = false;
+    const scopeGlass = BABYLON.MeshBuilder.CreateCylinder("scope-glass", { height: 0.025, diameter: 0.09, tessellation: 12 }, scene);
+    scopeGlass.parent = weaponRoot;
+    scopeGlass.rotation.x = Math.PI / 2;
+    scopeGlass.position.set(-0.06, 0.15, 0.41);
+    scopeGlass.material = mat.water;
+    scopeGlass.isPickable = false;
+    const grip = BABYLON.MeshBuilder.CreateBox("rifle-grip", { width: 0.12, height: 0.32, depth: 0.16 }, scene);
+    grip.parent = weaponRoot;
+    grip.position.set(-0.06, -0.2, 0.03);
+    grip.rotation.x = -0.24;
+    grip.material = mat.rifleWood;
+    grip.isPickable = false;
+    const sight = BABYLON.MeshBuilder.CreateBox("front-sight", { width: 0.035, height: 0.1, depth: 0.04 }, scene);
+    sight.parent = weaponRoot;
+    sight.position.set(-0.035, 0.115, 0.92);
+    sight.material = mat.gold;
+    sight.isPickable = false;
+    const muzzleFlash = BABYLON.MeshBuilder.CreateSphere("muzzle-flash", { diameter: 0.3, segments: 6 }, scene);
+    muzzleFlash.parent = weaponRoot;
+    muzzleFlash.position.set(-0.035, 0.045, 1.42);
+    muzzleFlash.material = makeMaterial("muzzle-flash-material", "#f6c875", 0.15);
+    muzzleFlash.material.emissiveColor = hex("#f69b35");
+    muzzleFlash.isPickable = false;
+    muzzleFlash.setEnabled(false);
+    weaponMaterials.flash = muzzleFlash;
+    weaponRoot.setEnabled(true);
+  }
+
+  function makeAnimalPart(parent, mesh, material, part) {
+    mesh.parent = parent;
+    mesh.material = material;
+    mesh.isPickable = true;
+    mesh.metadata = { animalId: parent.metadata.animalId, animalPart: part || "body" };
+    if (lights.shadows) {
+      try { lights.shadows.addShadowCaster(mesh); } catch (error) { /* optional */ }
+    }
+    return mesh;
+  }
+
+  function makeEye(parent, x, y, z, side) {
+    const eye = BABYLON.MeshBuilder.CreateSphere("wildlife-eye", { diameter: 0.085, segments: 8 }, scene);
+    eye.position.set(x + side * 0.16, y, z);
+    makeAnimalPart(parent, eye, mat.eye, "head");
+    return eye;
+  }
+
+  function createDeer(id, species, x, z) {
+    const info = speciesInfo[species];
+    const root = new BABYLON.TransformNode("wildlife-" + id, scene);
+    root.metadata = { animalId: id };
+    root.position.set(x, heightAt(x, z), z);
+    const coat = species === "buck" ? mat.deerDark : mat.deer;
+    const lightCoat = species === "buck" ? mat.deerLight : mat.fawn;
+    const body = BABYLON.MeshBuilder.CreateSphere("deer-body", { diameter: 1, segments: 10 }, scene);
+    body.scaling.set(0.62, 0.55, 1.12);
+    body.position.y = 1.3;
+    makeAnimalPart(root, body, coat, "body");
+    const rump = BABYLON.MeshBuilder.CreateSphere("deer-rump", { diameter: 1, segments: 9 }, scene);
+    rump.scaling.set(0.56, 0.55, 0.5);
+    rump.position.set(0, 1.35, -0.65);
+    makeAnimalPart(root, rump, lightCoat, "body");
+    const neck = BABYLON.MeshBuilder.CreateSphere("deer-neck", { diameter: 1, segments: 9 }, scene);
+    neck.scaling.set(0.3, 0.54, 0.38);
+    neck.position.set(0, 1.58, 0.66);
+    neck.rotation.x = -0.42;
+    makeAnimalPart(root, neck, coat, "body");
+    const chest = BABYLON.MeshBuilder.CreateSphere("deer-chest", { diameter: 1, segments: 8 }, scene);
+    chest.scaling.set(0.34, 0.48, 0.3);
+    chest.position.set(0, 1.12, 0.6);
+    makeAnimalPart(root, chest, mat.white, "body");
+    const head = BABYLON.MeshBuilder.CreateSphere("deer-head", { diameter: 1, segments: 10 }, scene);
+    head.scaling.set(0.28, 0.29, 0.38);
+    head.position.set(0, 1.94, 0.91);
+    makeAnimalPart(root, head, lightCoat, "head");
+    const muzzle = BABYLON.MeshBuilder.CreateSphere("deer-muzzle", { diameter: 1, segments: 8 }, scene);
+    muzzle.scaling.set(0.19, 0.13, 0.22);
+    muzzle.position.set(0, 1.82, 1.21);
+    makeAnimalPart(root, muzzle, mat.white, "head");
+    makeEye(root, -0.17, 1.99, 0.94, -1);
+    makeEye(root, 0.17, 1.99, 0.94, 1);
+
+    for (const side of [-1, 1]) {
+      const ear = BABYLON.MeshBuilder.CreateSphere("deer-ear", { diameter: 1, segments: 7 }, scene);
+      ear.scaling.set(0.09, 0.075, 0.22);
+      ear.position.set(side * 0.25, 2.02, 0.78);
+      ear.rotation.y = side * 0.45;
+      makeAnimalPart(root, ear, mat.deerLight, "head");
+    }
+
+    const legs = [];
+    for (const side of [-1, 1]) {
+      for (const front of [true, false]) {
+        const pivot = new BABYLON.TransformNode("deer-leg-pivot", scene);
+        pivot.parent = root;
+        pivot.position.set(side * 0.22, 0.94, front ? 0.48 : -0.58);
+        const upper = BABYLON.MeshBuilder.CreateCylinder("deer-leg", {
+          height: 0.68, diameterTop: 0.11, diameterBottom: 0.085, tessellation: 6
+        }, scene);
+        upper.position.y = -0.34;
+        makeAnimalPart(pivot, upper, coat, "body");
+        const hoof = BABYLON.MeshBuilder.CreateCylinder("deer-hoof", { height: 0.13, diameter: 0.13, tessellation: 6 }, scene);
+        hoof.position.y = -0.7;
+        makeAnimalPart(pivot, hoof, mat.hoof, "body");
+        legs.push(pivot);
+      }
+    }
+    const tail = BABYLON.MeshBuilder.CreateSphere("deer-tail", { diameter: 0.23, segments: 7 }, scene);
+    tail.scaling.set(0.75, 0.8, 1.2);
+    tail.position.set(0, 1.3, -1.18);
+    makeAnimalPart(root, tail, mat.white, "body");
+
+    if (species === "buck") {
+      for (const side of [-1, 1]) {
+        const antlerBase = new BABYLON.Vector3(side * 0.1, 2.16, 0.88);
+        const branchA = new BABYLON.Vector3(side * 0.28, 2.48, 0.83);
+        const branchB = new BABYLON.Vector3(side * 0.42, 2.72, 0.78);
+        const branchC = new BABYLON.Vector3(side * 0.18, 2.69, 0.81);
+        const branchD = new BABYLON.Vector3(side * 0.55, 2.5, 0.78);
+        const antler = BABYLON.MeshBuilder.CreateTube("buck-antler", {
+          path: [antlerBase, branchA, branchB], radius: 0.045, tessellation: 5
+        }, scene);
+        makeAnimalPart(root, antler, mat.antler, "head");
+        const tine1 = BABYLON.MeshBuilder.CreateTube("antler-tine", {
+          path: [branchA, branchC], radius: 0.035, tessellation: 5
+        }, scene);
+        makeAnimalPart(root, tine1, mat.antler, "head");
+        const tine2 = BABYLON.MeshBuilder.CreateTube("antler-tine", {
+          path: [branchA, branchD], radius: 0.035, tessellation: 5
+        }, scene);
+        makeAnimalPart(root, tine2, mat.antler, "head");
+      }
+    }
+
+    const animal = {
+      id, species, info, root, legs, health: info.health, maxHealth: info.health,
+      state: "graze", target: null, speed: 0, dead: false, harvested: false,
+      alertUntil: 0, lastTrack: 0, lastAnim: rand(0, 6),
+      spawn: { x, z }, respawnAt: 0, name: info.label
+    };
+    animals.push(animal);
+    return animal;
+  }
+
+  function createBoar(id, x, z) {
+    const info = speciesInfo.boar;
+    const root = new BABYLON.TransformNode("wildlife-" + id, scene);
+    root.metadata = { animalId: id };
+    root.position.set(x, heightAt(x, z), z);
+    const body = BABYLON.MeshBuilder.CreateSphere("boar-body", { diameter: 1, segments: 10 }, scene);
+    body.scaling.set(0.73, 0.7, 1.05);
+    body.position.y = 0.95;
+    makeAnimalPart(root, body, mat.boar, "body");
+    const head = BABYLON.MeshBuilder.CreateSphere("boar-head", { diameter: 1, segments: 9 }, scene);
+    head.scaling.set(0.47, 0.43, 0.5);
+    head.position.set(0, 1.1, 0.83);
+    makeAnimalPart(root, head, mat.boarLight, "head");
+    const snout = BABYLON.MeshBuilder.CreateSphere("boar-snout", { diameter: 1, segments: 8 }, scene);
+    snout.scaling.set(0.28, 0.22, 0.24);
+    snout.position.set(0, 0.98, 1.21);
+    makeAnimalPart(root, snout, mat.boar, "head");
+    makeEye(root, -0.27, 1.25, 0.94, -1);
+    makeEye(root, 0.27, 1.25, 0.94, 1);
+    for (const side of [-1, 1]) {
+      const ear = BABYLON.MeshBuilder.CreateSphere("boar-ear", { diameter: 1, segments: 7 }, scene);
+      ear.scaling.set(0.15, 0.22, 0.12);
+      ear.position.set(side * 0.31, 1.48, 0.72);
+      makeAnimalPart(root, ear, mat.boar, "head");
+      const tusk = BABYLON.MeshBuilder.CreateCylinder("boar-tusk", { height: 0.27, diameterTop: 0.01, diameterBottom: 0.09, tessellation: 6 }, scene);
+      tusk.position.set(side * 0.22, 0.84, 1.2);
+      tusk.rotation.x = -0.2;
+      makeAnimalPart(root, tusk, mat.boarTusks, "head");
+    }
+    const legs = [];
+    for (const side of [-1, 1]) for (const front of [true, false]) {
+      const pivot = new BABYLON.TransformNode("boar-leg-pivot", scene);
+      pivot.parent = root;
+      pivot.position.set(side * 0.34, 0.62, front ? 0.54 : -0.55);
+      const leg = BABYLON.MeshBuilder.CreateCylinder("boar-leg", { height: 0.55, diameter: 0.18, tessellation: 6 }, scene);
+      leg.position.y = -0.27;
+      makeAnimalPart(pivot, leg, mat.boar, "body");
+      legs.push(pivot);
+    }
+    const animal = {
+      id, species: "boar", info, root, legs, health: info.health, maxHealth: info.health,
+      state: "graze", target: null, speed: 0, dead: false, harvested: false,
+      alertUntil: 0, lastTrack: 0, lastAnim: rand(0, 6),
+      spawn: { x, z }, respawnAt: 0, name: info.label, attackCooldown: 0
+    };
+    animals.push(animal);
+    return animal;
+  }
+
+  function createWildlife() {
+    createDeer("doe-01", "deer", -19, 72);
+    createDeer("doe-02", "deer", 19, 91);
+    createDeer("doe-03", "deer", 40, 58);
+    createDeer("doe-04", "deer", -43, 25);
+    createDeer("doe-05", "deer", 65, 14);
+    createDeer("buck-01", "buck", -56, 91);
+    createDeer("buck-02", "buck", 81, 91);
+    createBoar("boar-01", -75, 45);
+    createBoar("boar-02", 76, -12);
+  }
+
+  function addTrack(animal) {
+    const x = animal.root.position.x + rand(-0.22, 0.22);
+    const z = animal.root.position.z - 0.7;
+    for (const side of [-1, 1]) {
+      const mark = BABYLON.MeshBuilder.CreateDisc("hoof-track", { radius: 0.11, tessellation: 5 }, scene);
+      mark.rotation.x = Math.PI / 2;
+      mark.position.set(x + side * 0.17, heightAt(x, z) + 0.035, z + rand(-0.1, 0.1));
+      mark.scaling.x = 0.8;
+      mark.material = mat.track;
+      mark.material.alpha = 0.66;
+      mark.isPickable = false;
+      mark.setEnabled(tracking);
+      footprints.push({ mesh: mark, createdAt: performance.now(), animalId: animal.id });
+    }
+    if (footprints.length > 280) {
+      const old = footprints.shift();
+      old.mesh.dispose();
+    }
+  }
+
+  function updateTracking() {
+    $("tracker-status").textContent = tracking ? "ACTIVE" : "OFF";
+    $("tracker-status").classList.toggle("active", tracking);
+    $("tracking-banner").classList.toggle("show", tracking);
+    $("tracking-panel").classList.toggle("tracking-active", tracking);
+    for (const track of footprints) track.mesh.setEnabled(tracking);
+    if (!tracking) {
+      $("tracker-content").innerHTML = "Press <kbd>Q</kbd> to focus on nearby animal signs.";
       return;
     }
-  }
-  $("start-error").textContent = "";
-  $("start-button").disabled = true;
-  $("start-button").textContent = "Connecting to Mythvale...";
-  connect();
-}
-
-function connect() {
-  if (socketState.socket) {
-    try { socketState.socket.close(); } catch {}
-  }
-  const requestedServer = $("server-input").value.trim() || serverFromQuery || configuredServer || localStorage.getItem("mythvale-server-url") || "";
-  const serverOrigin = requestedServer ? new URL(requestedServer).origin : location.origin;
-  const socketOrigin = serverOrigin.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
-  const ws = new WebSocket(socketOrigin);
-  socketState.socket = ws;
-  let opened = false;
-  ws.addEventListener("open", () => {
-    opened = true;
-    ws.send(JSON.stringify({ type: "hello", id: socketState.playerId, name: socketState.name }));
-  });
-  ws.addEventListener("message", (event) => {
-    let packet;
-    try { packet = JSON.parse(event.data); } catch { return; }
-    if (packet.type === "welcome") {
-      socketState.connected = true;
-      socketState.playerId = packet.player.id;
-      socketState.name = packet.player.name;
-      localStorage.setItem("mythvale-player-id", packet.player.id);
-      $("start-screen").style.display = "none";
-      $("disconnect-overlay").classList.remove("open");
-      $("connection-label").textContent = "WORLD CONNECTED";
-      $("connection-label").style.color = "#9ac69f";
-      $("character-name").textContent = packet.player.name;
-      addChat({ name: "WORLD", text: "Connected. Welcome to Mythvale, " + packet.player.name + ".", system: true });
-      showToast("Welcome to Moonhaven, adventurer.", "success");
+    const near = animals.filter((animal) => !animal.dead && !animal.harvested)
+      .map((animal) => ({ animal, distance: distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z }) }))
+      .filter((item) => item.distance < 110)
+      .sort((a, b) => a.distance - b.distance).slice(0, 3);
+    if (!near.length) {
+      $("tracker-content").textContent = "No fresh signs nearby. Move towards the meadow.";
       return;
     }
-    if (packet.type === "state") {
-      game = packet;
-      updateInterface();
-    }
-    if (packet.type === "chat") addChat(packet.message);
-    if (packet.type === "notice") showToast(packet.message, packet.tone || "normal");
-  });
-  ws.addEventListener("close", () => {
-    socketState.connected = false;
-    $("connection-label").textContent = "DISCONNECTED";
-    $("connection-label").style.color = "#d98c7e";
-    if (opened || $("start-screen").style.display === "none") $("disconnect-overlay").classList.add("open");
-    $("start-button").disabled = false;
-    $("start-button").innerHTML = 'Enter the world <span>→</span>';
-  });
-  ws.addEventListener("error", () => {
-    $("start-error").textContent = "Could not reach the game server. Check the server is running and try again.";
-    $("start-button").disabled = false;
-    $("start-button").innerHTML = 'Enter the world <span>→</span>';
-  });
-}
-
-function addChat(message) {
-  const line = document.createElement("div");
-  line.className = "chat-line" + (message.system ? " system-line" : "");
-  if (!message.system) {
-    const level = document.createElement("span");
-    level.className = "chat-level";
-    level.textContent = message.level ? "Lv." + message.level : "";
-    const name = document.createElement("strong");
-    name.textContent = message.name || "Unknown";
-    line.append(level, name, document.createTextNode(": " + (message.text || "")));
-  } else line.textContent = (message.name && message.name !== "WORLD" ? message.name + ": " : "") + (message.text || "");
-  $("chat-messages").appendChild(line);
-  while ($("chat-messages").children.length > 45) $("chat-messages").removeChild($("chat-messages").firstChild);
-  $("chat-messages").scrollTop = $("chat-messages").scrollHeight;
-}
-
-function showToast(message, tone) {
-  const toast = document.createElement("div");
-  toast.className = "toast " + (tone || "normal");
-  toast.textContent = message;
-  $("toast-stack").appendChild(toast);
-  setTimeout(() => toast.remove(), 3600);
-}
-
-function updateInterface() {
-  const me = game.me;
-  if (!me) return;
-  $("character-name").textContent = me.name;
-  $("character-level").textContent = "Level " + me.level + " · Wayfarer";
-  $("hp-value").textContent = me.hp + " / " + me.maxHp;
-  $("hp-fill").style.width = (100 * me.hp / me.maxHp) + "%";
-  $("xp-value").textContent = me.xp + " / " + me.xpToNext;
-  $("xp-fill").style.width = (100 * me.xp / me.xpToNext) + "%";
-  $("gold-value").textContent = me.gold;
-  $("potion-count").textContent = me.inventory.healthPotion;
-  $("slot-potion-count").textContent = me.inventory.healthPotion;
-  $("online-count").textContent = game.online + (game.online === 1 ? " adventurer" : " adventurers");
-  $("map-coords").textContent = Math.round(me.x) + " · " + Math.round(me.y);
-  updateQuest();
-  updateNearby();
-  updateInventory();
-}
-
-function updateQuest() {
-  const quest = game.me.quest;
-  const content = $("quest-content");
-  if (!quest.accepted) {
-    content.innerHTML = '<div class="quest-title">A Village in Need</div><p>Speak with Elder Rowan in Moonhaven to begin your first adventure.</p><div class="quest-hint">Find the golden marker near the village square.</div>';
-  } else if (quest.claimed) {
-    content.innerHTML = '<div class="quest-title">A Village in Need</div><p>The meadow is peaceful again. Elder Rowan has rewarded your efforts.</p><div class="quest-hint">Quest complete · A new chapter awaits.</div>';
-  } else {
-    const progress = Math.min(100, quest.kills / 5 * 100);
-    content.innerHTML = '<div class="quest-title">A Village in Need</div><p>Defeat the Moss Slimes threatening travellers beyond Moonhaven.</p><div class="quest-progress"><span style="width:' + progress + '%"></span></div><div class="quest-progress-label"><span>Moss Slimes</span><strong>' + quest.kills + ' / 5</strong></div><div class="quest-hint">' + (quest.kills >= 5 ? "Return to Elder Rowan to claim your reward." : "Look for green creatures in the meadows.") + '</div>';
+    $("tracker-content").innerHTML = near.map((item) => {
+      const dx = item.animal.root.position.x - camera.position.x;
+      const dz = item.animal.root.position.z - camera.position.z;
+      let dir = Math.round(Math.atan2(dx, dz) * 180 / Math.PI);
+      dir = (dir + 360) % 360;
+      return '<div class="tracker-line"><span><strong>' + item.animal.info.label + '</strong></span><span>' + Math.round(item.distance) + 'm · ' + bearingName(dir) + '</span></div>';
+    }).join("");
   }
-}
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
-}
+  function bearingName(degrees) {
+    return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(degrees / 45) % 8];
+  }
 
-function updateNearby() {
-  const me = game.me;
-  const people = (game.npcs || []).map((npc) => ({ ...npc, d: Math.hypot(npc.x - me.x, npc.y - me.y), kind: "npc" }));
-  const creatures = (game.mobs || []).filter((mob) => mob.hp > 0).map((mob) => ({ ...mob, d: Math.hypot(mob.x - me.x, mob.y - me.y), kind: "mob" }));
-  const others = (game.players || []).map((person) => ({ ...person, d: Math.hypot(person.x - me.x, person.y - me.y), kind: "player" }));
-  const nearby = [...people, ...creatures, ...others].filter((item) => item.d < 280).sort((a, b) => a.d - b.d).slice(0, 4);
-  $("nearby-content").innerHTML = nearby.length ? nearby.map((item) => {
-    const name = escapeHtml(item.name);
-    const label = item.kind === "npc" ? "NPC" : item.kind === "mob" ? "Creature" : "Adventurer";
-    return '<div class="nearby-row"><strong>' + name + '</strong><span>' + label + ' · ' + Math.round(item.d) + 'm</span></div>';
-  }).join("") : '<span class="muted">The meadow is quiet.</span>';
-}
+  function createScene() {
+    scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.67, 0.79, 0.82, 1);
+    scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+    scene.fogDensity = 0.0035;
+    scene.fogColor = hex("#b5c5ae");
+    scene.collisionsEnabled = false;
+    createMaterials();
+    setupLighting();
+    makeTerrain();
+    buildTrail();
+    createPinecrestLake();
+    scatterEnvironment();
+    createCabin();
+    createWildlife();
 
-function updateInventory() {
-  const me = game.me;
-  $("inventory-grid").innerHTML =
-    '<div class="inventory-item"><span class="item-icon">⚗</span><strong>Health potion</strong><span>× ' + me.inventory.healthPotion + '</span></div>' +
-    '<div class="inventory-item"><span class="item-icon">◈</span><strong>Gold</strong><span>× ' + me.gold + '</span></div>' +
-    '<div class="inventory-item"><span class="item-icon">✧</span><strong>Adventurer\'s charm</strong><span>Equipped</span></div>';
-  $("inventory-gold").textContent = me.gold + " gold";
-  $("profile-modal-name").textContent = me.name;
-  $("profile-summary").innerHTML =
-    '<div class="profile-stat"><strong>' + me.level + '</strong><span>LEVEL</span></div>' +
-    '<div class="profile-stat"><strong>' + me.xp + '</strong><span>EXPERIENCE</span></div>' +
-    '<div class="profile-stat"><strong>' + me.gold + '</strong><span>GOLD</span></div>';
-}
+    camera = new BABYLON.UniversalCamera("field camera", new BABYLON.Vector3(state.x || 0, heightAt(state.x || 0, state.z || 19) + 1.72, state.z || 19), scene);
+    camera.rotation.y = Number(state.yaw) || 0;
+    camera.minZ = 0.08;
+    camera.maxZ = 240;
+    camera.fov = 1.04;
+    camera.inertia = 0.08;
+    camera.angularSensibility = 2400;
+    camera.speed = 0;
+    camera.attachControl(canvas, true);
+    try { camera.inputs.removeByType("FreeCameraKeyboardMoveInput"); } catch (error) { /* no keyboard-driven camera translation */ }
+    createWeapon();
+    miniMapCtx = $("mini-map").getContext("2d");
+    worldMapCtx = $("world-map").getContext("2d");
+    drawWorldMap();
+    updateHud();
+    engine.runRenderLoop(() => {
+      if (!scene) return;
+      const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
+      if (gameStarted && !paused) updateGame(dt);
+      scene.render();
+    });
+  }
 
-function openModal(id) { $(id).classList.add("open"); }
-function closeModal(id) { $(id).classList.remove("open"); }
-function doAction(action) { send({ type: "action", action }); }
-function sendChat(event) {
-  event.preventDefault();
-  const input = $("chat-input");
-  const text = input.value.trim();
-  if (!text) return;
-  send({ type: "chat", text });
-  input.value = "";
-}
+  function updateGame(dt) {
+    const now = performance.now();
+    updatePlayer(dt);
+    updateAnimals(dt, now);
+    updateInteraction();
+    animateWeapon(dt);
+    updateDayCycle(dt);
+    if (now - hudTimer > 180) {
+      updateHud();
+      updateTracking();
+      drawMiniMap();
+      hudTimer = now;
+    }
+    if (now - autosaveTimer > 12000) {
+      saveGame(false);
+      autosaveTimer = now;
+    }
+    if (now - mapTimer > 1000) {
+      text("time-label", formatClock(dayTime));
+      text("bearing-value", bearingName((camera.rotation.y * 180 / Math.PI + 360) % 360));
+      mapTimer = now;
+    }
+  }
 
-function resizeCanvas() {
-  pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.round(canvas.clientWidth * pixelRatio);
-  canvas.height = Math.round(canvas.clientHeight * pixelRatio);
-  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-}
+  function updatePlayer(dt) {
+    const forwardInput = (keys.has("w") || keys.has("arrowup") || touchKeys.has("up") ? 1 : 0) -
+      (keys.has("s") || keys.has("arrowdown") || touchKeys.has("down") ? 1 : 0);
+    const rightInput = (keys.has("d") || keys.has("arrowright") || touchKeys.has("right") ? 1 : 0) -
+      (keys.has("a") || keys.has("arrowleft") || touchKeys.has("left") ? 1 : 0);
+    const moving = forwardInput !== 0 || rightInput !== 0;
+    const sprinting = (keys.has("shift") || touchKeys.has("sprint")) && state.stamina > 1 && moving;
+    const speed = sprinting ? 10.5 : 6.2;
+    let forward = camera.getDirection(BABYLON.Axis.Z);
+    forward.y = 0;
+    forward.normalize();
+    const right = BABYLON.Vector3.Cross(BABYLON.Axis.Y, forward).normalize();
+    let direction = forward.scale(forwardInput).add(right.scale(rightInput));
+    if (direction.lengthSquared() > 1) direction.normalize();
+    if (moving) {
+      if (sprinting) state.stamina = Math.max(0, state.stamina - 27 * dt);
+      else state.stamina = Math.min(100, state.stamina + 16 * dt);
+    } else state.stamina = Math.min(100, state.stamina + 22 * dt);
+    if (direction.lengthSquared() > 0.001) {
+      const step = direction.scale(speed * dt);
+      const nextX = camera.position.x + step.x;
+      const nextZ = camera.position.z + step.z;
+      if (canStandAt(nextX, nextZ)) {
+        camera.position.x = nextX;
+        camera.position.z = nextZ;
+      }
+    }
+    camera.position.x = clamp(camera.position.x, -WORLD_LIMIT, WORLD_LIMIT);
+    camera.position.z = clamp(camera.position.z, -WORLD_LIMIT, WORLD_LIMIT);
+    const ground = heightAt(camera.position.x, camera.position.z);
+    camera.position.y += (ground + 1.72 - camera.position.y) * Math.min(1, dt * 8);
+    if (weaponRoot) weaponRoot.position.y = (aiming ? -0.24 : -0.34) - (moving ? Math.abs(Math.sin(performance.now() * (sprinting ? 0.014 : 0.01))) * 0.012 : 0);
+  }
 
-function hash2(x, y) {
-  let n = (x * 374761393 + y * 668265263) | 0;
-  n = Math.imul(n ^ (n >>> 13), 1274126177);
-  return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
-}
+  function canStandAt(x, z) {
+    if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 20.5) return false;
+    for (const item of obstacles) {
+      if (Math.hypot(x - item.x, z - item.z) < item.radius + 0.48) return false;
+    }
+    if (Math.abs(x + 14) < 6.5 && Math.abs(z - 43) < 5.1) return false;
+    return true;
+  }
 
-function drawTree(x, y, scale) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
-  ctx.fillStyle = "rgba(15,26,19,.3)"; ctx.beginPath(); ctx.ellipse(3, 16, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#624b35"; ctx.fillRect(-4, -1, 8, 24);
-  ctx.fillStyle = "#254b36"; ctx.beginPath(); ctx.arc(-7, -7, 18, 0, Math.PI * 2); ctx.arc(8, -10, 19, 0, Math.PI * 2); ctx.arc(0, -22, 17, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#376444"; ctx.beginPath(); ctx.arc(-9, -12, 11, 0, Math.PI * 2); ctx.arc(6, -23, 12, 0, Math.PI * 2); ctx.arc(11, -5, 10, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "rgba(168,190,119,.2)"; ctx.beginPath(); ctx.arc(-9, -17, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
+  function pickWanderTarget(animal) {
+    const spread = animal.species === "boar" ? 26 : 36;
+    animal.target = {
+      x: clamp(animal.spawn.x + rand(-spread, spread), -WORLD_LIMIT + 6, WORLD_LIMIT - 6),
+      z: clamp(animal.spawn.z + rand(-spread, spread), -WORLD_LIMIT + 6, WORLD_LIMIT - 6)
+    };
+  }
 
-function drawWorld() {
-  if (!game.me) return;
-  const width = canvas.clientWidth, height = canvas.clientHeight, me = game.me;
-  const desiredX = me.x - width / 2, desiredY = me.y - height / 2;
-  camera.x += (desiredX - camera.x) * 0.12;
-  camera.y += (desiredY - camera.y) * 0.12;
-  camera.x = Math.max(0, Math.min(game.world.width - width, camera.x));
-  camera.y = Math.max(0, Math.min(game.world.height - height, camera.y));
-  ctx.clearRect(0, 0, width, height);
-  ctx.save(); ctx.translate(-camera.x, -camera.y);
-  ctx.fillStyle = "#55774a"; ctx.fillRect(0, 0, game.world.width, game.world.height);
-  const tile = 72, startX = Math.floor(camera.x / tile) * tile, startY = Math.floor(camera.y / tile) * tile;
-  for (let x = startX; x < camera.x + width + tile; x += tile) {
-    for (let y = startY; y < camera.y + height + tile; y += tile) {
-      const seed = hash2(x / tile, y / tile);
-      ctx.fillStyle = seed > .5 ? "rgba(160,187,111,.055)" : "rgba(25,59,38,.055)";
-      ctx.fillRect(x, y, tile, tile);
-      if (seed > .82) {
-        ctx.fillStyle = "rgba(207,211,136,.22)";
-        ctx.beginPath(); ctx.arc(x + 16 + seed * 24, y + 18 + seed * 25, 1.5, 0, Math.PI * 2); ctx.fill();
+  function updateAnimals(dt, now) {
+    for (const animal of animals) {
+      if (animal.harvested) {
+        if (now >= animal.respawnAt) respawnAnimal(animal);
+        continue;
+      }
+      if (animal.dead) continue;
+      const p = { x: camera.position.x, z: camera.position.z };
+      const a = { x: animal.root.position.x, z: animal.root.position.z };
+      const playerDistance = distance2D(p, a);
+      if (playerDistance < (animal.species === "boar" ? 15 : 20) || (shotAt > 0 && Date.now() - shotAt < 9000 && playerDistance < 65)) {
+        animal.state = "flee";
+        animal.alertUntil = now + 8500;
+      }
+      if (animal.species === "boar" && playerDistance < 7.5 && now > (animal.attackCooldown || 0)) {
+        animal.attackCooldown = now + 2300;
+        state.health = Math.max(0, state.health - 8);
+        $("damage-flash").classList.remove("show");
+        void $("damage-flash").offsetWidth;
+        $("damage-flash").classList.add("show");
+        sound(100, 0.16, "sawtooth", 0.035);
+        toast("A wild boar charged you. Create some distance.", "warning");
+        if (state.health <= 0) {
+          state.health = 100;
+          camera.position.x = 0;
+          camera.position.z = 19;
+          state.cash = Math.max(0, state.cash - 15);
+          announce("You were knocked out and escorted back to Pinecrest Outpost. $15 lost.", 4200);
+        }
+      }
+      if (animal.state === "flee") {
+        if (playerDistance > 72 && now > animal.alertUntil) {
+          animal.state = "graze";
+          pickWanderTarget(animal);
+        } else {
+          let dx = a.x - p.x;
+          let dz = a.z - p.z;
+          const length = Math.max(0.001, Math.hypot(dx, dz));
+          dx /= length; dz /= length;
+          animal.target = {
+            x: clamp(a.x + dx * 25 + rand(-5, 5), -WORLD_LIMIT + 5, WORLD_LIMIT - 5),
+            z: clamp(a.z + dz * 25 + rand(-5, 5), -WORLD_LIMIT + 5, WORLD_LIMIT - 5)
+          };
+          moveAnimal(animal, dt, animal.species === "boar" ? 8.5 : 10.5);
+        }
+      } else if (animal.target) {
+        const d = Math.hypot(animal.target.x - a.x, animal.target.z - a.z);
+        if (d < 1.5) {
+          animal.target = null;
+          animal.state = "graze";
+          animal.pauseUntil = now + rand(1500, 4200);
+        } else if (now > (animal.pauseUntil || 0)) {
+          moveAnimal(animal, dt, animal.species === "boar" ? 1.7 : 2.25);
+        }
+      } else if (now > (animal.pauseUntil || 0)) {
+        pickWanderTarget(animal);
+        animal.state = "walk";
+      }
+      animal.root.position.y = heightAt(animal.root.position.x, animal.root.position.z);
+      if (now - animal.lastTrack > 3000 && animal.state !== "graze") {
+        animal.lastTrack = now;
+        addTrack(animal);
+      }
+      const gait = now * (animal.state === "flee" ? 0.018 : 0.009) + animal.lastAnim;
+      animal.legs.forEach((leg, index) => { leg.rotation.x = Math.sin(gait + (index % 2) * Math.PI) * (animal.state === "graze" ? 0.03 : 0.32); });
+      if (animal.state === "graze") {
+        const bob = Math.sin(now * 0.0018 + animal.lastAnim) * 0.025;
+        animal.root.position.y += bob;
       }
     }
   }
 
-  ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#927d5b"; ctx.lineWidth = 116;
-  ctx.beginPath(); ctx.moveTo(180, 1040); ctx.bezierCurveTo(520, 1020, 660, 890, 980, 910); ctx.bezierCurveTo(1110, 920, 1190, 900, 1300, 900); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(1300, 900); ctx.bezierCurveTo(1480, 880, 1600, 700, 1770, 530); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(1300, 900); ctx.bezierCurveTo(1300, 1120, 1370, 1330, 1580, 1550); ctx.stroke();
-  ctx.strokeStyle = "rgba(219,195,147,.28)"; ctx.lineWidth = 3; ctx.setLineDash([13, 18]);
-  ctx.beginPath(); ctx.moveTo(180, 1040); ctx.bezierCurveTo(520, 1020, 660, 890, 980, 910); ctx.bezierCurveTo(1110, 920, 1190, 900, 1300, 900); ctx.stroke();
-  ctx.setLineDash([]);
+  function moveAnimal(animal, dt, speed) {
+    if (!animal.target) return;
+    const dx = animal.target.x - animal.root.position.x;
+    const dz = animal.target.z - animal.root.position.z;
+    const len = Math.max(0.001, Math.hypot(dx, dz));
+    animal.root.position.x += dx / len * speed * dt;
+    animal.root.position.z += dz / len * speed * dt;
+    animal.root.rotation.y = Math.atan2(dx, dz);
+    animal.speed = speed;
+  }
 
-  ctx.fillStyle = "#947c55"; ctx.beginPath(); ctx.ellipse(1960, 480, 190, 127, -.12, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#446f70"; ctx.beginPath(); ctx.ellipse(1960, 480, 174, 111, -.12, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "rgba(177,213,185,.19)"; ctx.beginPath(); ctx.ellipse(1918, 446, 78, 20, -.18, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(208,221,177,.23)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(1960, 480, 144, 83, -.12, 0, Math.PI * 2); ctx.stroke();
+  function respawnAnimal(animal) {
+    animal.harvested = false;
+    animal.dead = false;
+    animal.health = animal.maxHealth;
+    animal.root.position.set(animal.spawn.x, heightAt(animal.spawn.x, animal.spawn.z), animal.spawn.z);
+    animal.root.rotation.set(0, rand(0, Math.PI * 2), 0);
+    animal.root.setEnabled(true);
+    animal.target = null;
+    animal.state = "graze";
+    animal.pauseUntil = performance.now() + rand(1000, 3000);
+  }
 
-  for (let x = startX - 100; x < camera.x + width + 120; x += 105) {
-    for (let y = startY - 100; y < camera.y + height + 120; y += 105) {
-      const seed = hash2(Math.round(x / 105), Math.round(y / 105));
-      if (seed > .78 && Math.hypot(x - 1300, y - 900) > 250 && !(Math.abs(y - 970) < 100 && x < 1250) && !(((x - 1960) / 240) ** 2 + ((y - 480) / 170) ** 2 < 1)) {
-        drawTree(x + seed * 40, y + (1 - seed) * 35, .72 + seed * .48);
-      } else if (seed < .09) {
-        ctx.fillStyle = "rgba(195,190,151,.7)"; ctx.beginPath(); ctx.ellipse(x + 32, y + 38, 5, 3, seed * 3, 0, Math.PI * 2); ctx.fill();
-      }
+  function animateWeapon(dt) {
+    if (!weaponRoot) return;
+    weaponKick = Math.max(0, weaponKick - dt * 1.8);
+    weaponRoot.position.z = (aiming ? 0.78 : 0.72) - weaponKick * 0.22;
+    weaponRoot.position.x = aiming ? 0.13 : 0.36;
+    if (muzzleTimer > 0) {
+      muzzleTimer -= dt;
+      if (weaponMaterials.flash) weaponMaterials.flash.setEnabled(muzzleTimer > 0);
     }
   }
 
-  ctx.fillStyle = "#a18c66"; ctx.beginPath(); ctx.arc(1300, 900, 208, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#80936a"; ctx.beginPath(); ctx.arc(1300, 900, 193, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(237,220,170,.4)"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(1300, 900, 178, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = "#b8a17b"; ctx.beginPath(); ctx.arc(1300, 900, 55, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#668a78"; ctx.beginPath(); ctx.arc(1300, 900, 45, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#c9b889"; ctx.beginPath(); ctx.arc(1300, 900, 13, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#e8d6a4"; ctx.beginPath(); ctx.arc(1300, 900, 5, 0, Math.PI * 2); ctx.fill();
-
-  drawBuilding(1110, 710, 136, 88, "#957651", "#5b4938");
-  drawBuilding(1415, 1020, 124, 86, "#9c815d", "#574735");
-  drawBuilding(1460, 720, 102, 78, "#8c7354", "#544536");
-  for (const bed of [[1160, 1065], [1460, 950], [1080, 850]]) {
-    ctx.fillStyle = "#3f6844"; ctx.fillRect(bed[0], bed[1], 43, 24);
-    ctx.fillStyle = "#b7b577"; ctx.fillRect(bed[0] + 8, bed[1] + 7, 4, 4); ctx.fillRect(bed[0] + 23, bed[1] + 13, 4, 4);
+  function updateInteraction() {
+    const px = camera.position.x, pz = camera.position.z;
+    let found = null, closest = 4.2;
+    for (const animal of animals) {
+      if (!animal.dead || animal.harvested) continue;
+      const d = Math.hypot(px - animal.root.position.x, pz - animal.root.position.z);
+      if (d < closest) {
+        closest = d;
+        found = { kind: "harvest", target: animal, name: animal.info.label, distance: d };
+      }
+    }
+    if (!found) {
+      for (const item of interactables) {
+        const d = Math.hypot(px - item.x, pz - item.z);
+        if (d < closest) {
+          closest = d;
+          found = { kind: item.action, target: item, name: item.name, distance: d };
+        }
+      }
+    }
+    nearestInteraction = found;
+    if (found) {
+      $("interaction-prompt").classList.add("visible");
+      let label = "INTERACT";
+      if (found.kind === "harvest") label = "HARVEST " + found.name.toUpperCase();
+      if (found.kind === "shop") label = "OPEN OUTFITTERS";
+      if (found.kind === "contract") label = state.contractAccepted ? "CHECK CONTRACT" : "ACCEPT HUNTING CONTRACT";
+      if (found.kind === "sell") label = "SELL HARVEST";
+      text("interaction-text", label);
+    } else $("interaction-prompt").classList.remove("visible");
   }
 
-  const entities = [
-    ...(game.mobs || []).filter((mob) => mob.hp > 0).map((item) => ({ ...item, kind: "mob" })),
-    ...(game.npcs || []).map((item) => ({ ...item, kind: "npc" })),
-    ...(game.players || []).map((item) => ({ ...item, kind: "player" })),
-    { ...me, kind: "self" }
-  ].sort((a, b) => a.y - b.y);
-  for (const entity of entities) {
-    if (entity.x < camera.x - 80 || entity.x > camera.x + width + 80 || entity.y < camera.y - 100 || entity.y > camera.y + height + 80) continue;
-    if (entity.kind === "mob") drawSlime(entity);
-    else if (entity.kind === "npc") drawNpc(entity);
-    else drawPlayer(entity, entity.kind === "self");
+  function interact() {
+    if (paused) return;
+    if (!nearestInteraction) {
+      toast("Nothing close enough to interact with.", "warning");
+      return;
+    }
+    sound(520, 0.07, "sine", 0.02);
+    if (nearestInteraction.kind === "harvest") {
+      harvestAnimal(nearestInteraction.target);
+    } else if (nearestInteraction.kind === "shop") {
+      text("shop-cash", "$" + state.cash);
+      $("supplies-screen").classList.add("open");
+      paused = true;
+      document.exitPointerLock?.();
+    } else if (nearestInteraction.kind === "contract") {
+      if (!state.contractAccepted) {
+        state.contractAccepted = true;
+        announce("Contract accepted: harvest three deer and return to the valley.", 3500);
+        toast("New contract added to your field journal.", "success");
+        saveGame(false);
+      } else if (state.contractComplete) {
+        announce("First Harvest complete. The valley has more to offer.", 3000);
+      } else {
+        announce("First Harvest: harvest " + state.contractProgress + " of 3 deer.", 2600);
+      }
+    } else if (nearestInteraction.kind === "sell") {
+      sellHarvest();
+    }
   }
-  ctx.restore();
-}
 
-function drawBuilding(x, y, w, h, roof, wall) {
-  ctx.fillStyle = "rgba(20,30,20,.28)"; ctx.fillRect(x + 7, y + h - 2, w, 15);
-  ctx.fillStyle = wall; ctx.fillRect(x, y + 24, w, h - 24);
-  ctx.fillStyle = roof; ctx.beginPath(); ctx.moveTo(x - 10, y + 27); ctx.lineTo(x + w / 2, y - 18); ctx.lineTo(x + w + 10, y + 27); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "rgba(228,203,149,.3)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 10, y + 27); ctx.lineTo(x + w / 2, y - 18); ctx.lineTo(x + w + 10, y + 27); ctx.stroke();
-  ctx.fillStyle = "#302b22"; ctx.fillRect(x + w / 2 - 10, y + h - 37, 20, 37);
-  ctx.fillStyle = "rgba(232,202,135,.65)"; ctx.fillRect(x + 15, y + 38, 13, 15); ctx.fillRect(x + w - 28, y + 38, 13, 15);
-}
-
-function drawNameplate(name, level, x, y, color) {
-  ctx.font = "600 11px DM Sans, sans-serif";
-  const width = ctx.measureText(name).width + 20;
-  ctx.fillStyle = "rgba(14,22,19,.78)";
-  ctx.beginPath(); ctx.roundRect(x - width / 2, y - 31, width, 19, 5); ctx.fill();
-  ctx.fillStyle = color; ctx.textAlign = "center"; ctx.fillText(name, x, y - 18);
-  if (level) {
-    ctx.fillStyle = "rgba(229,211,161,.7)"; ctx.font = "8px DM Sans, sans-serif";
-    ctx.fillText("LEVEL " + level, x, y - 36);
+  function harvestAnimal(animal) {
+    if (!animal || !animal.dead || animal.harvested) return;
+    animal.harvested = true;
+    animal.respawnAt = performance.now() + 65000;
+    animal.root.setEnabled(false);
+    state.hides += animal.info.hide;
+    state.meat += animal.info.meat;
+    state.harvested += 1;
+    state.xp += animal.info.xp;
+    if (animal.species !== "boar") state.deerHarvested += 1;
+    if (state.contractAccepted && !state.contractComplete && animal.species !== "boar") {
+      state.contractProgress = Math.min(3, state.contractProgress + 1);
+    }
+    levelCheck();
+    const rows = [
+      ["Hides collected", "+" + animal.info.hide],
+      ["Meat collected", "+" + animal.info.meat],
+      ["Experience earned", "+" + animal.info.xp + " XP"]
+    ];
+    $("harvest-rows").innerHTML = rows.map((row) => '<div class="harvest-row"><span>' + row[0] + '</span><strong>' + row[1] + '</strong></div>').join("");
+    if (state.contractAccepted && state.contractProgress >= 3 && !state.contractComplete) {
+      state.contractComplete = true;
+      state.cash += 250;
+      state.xp += 180;
+      levelCheck();
+      $("harvest-rows").innerHTML += '<div class="harvest-row"><span>First Harvest contract bonus</span><strong>+$250 · +180 XP</strong></div>';
+      toast("Contract complete! $250 bonus added.", "success");
+    }
+    $("harvest-screen").classList.add("open");
+    paused = true;
+    document.exitPointerLock?.();
+    updateHud();
+    saveGame(false);
   }
-}
 
-function drawPlayer(person, isSelf) {
-  const x = person.x, y = person.y;
-  ctx.save(); ctx.translate(x, y);
-  ctx.fillStyle = "rgba(15,24,18,.3)"; ctx.beginPath(); ctx.ellipse(0, 10, 15, 7, 0, 0, Math.PI * 2); ctx.fill();
-  if (isSelf) {
-    ctx.strokeStyle = "rgba(243,211,145,.7)"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(0, 9, 22, 12, 0, 0, Math.PI * 2); ctx.stroke();
+  function sellHarvest() {
+    if (state.hides + state.meat < 1) {
+      toast("You have no harvest to sell yet. Bring back hides or meat.", "warning");
+      return;
+    }
+    const total = state.hides * 42 + state.meat * 18;
+    const hides = state.hides, meat = state.meat;
+    state.cash += total;
+    state.hides = 0;
+    state.meat = 0;
+    updateHud();
+    saveGame(false);
+    announce("Sold " + hides + " hides and " + meat + " meat for $" + total + ".", 3000);
   }
-  ctx.fillStyle = isSelf ? "#b28a55" : "#5e8193";
-  ctx.beginPath(); ctx.moveTo(-10, -3); ctx.lineTo(-8, 9); ctx.lineTo(0, 16); ctx.lineTo(8, 9); ctx.lineTo(10, -3); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = isSelf ? "#d2b57a" : "#a8c3bc";
-  ctx.beginPath(); ctx.roundRect(-8, -14, 16, 19, 5); ctx.fill();
-  ctx.fillStyle = "#d9bd91"; ctx.beginPath(); ctx.arc(0, -16, 8, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#503d2e"; ctx.beginPath(); ctx.arc(0, -20, 8, Math.PI, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#493b2d"; ctx.fillRect(-7, -5, 4, 9); ctx.fillRect(3, -5, 4, 9);
-  ctx.restore();
-  drawNameplate(person.name, person.level, x, y - 2, isSelf ? "#f2d49a" : "#c6dfd0");
-  if (person.emoteUntil > Date.now()) {
-    ctx.save();
-    ctx.fillStyle = "rgba(19,29,25,.92)";
-    ctx.strokeStyle = "rgba(226,202,150,.65)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(x - 15, y - 62, 30, 19, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#f0d7a0"; ctx.font = "bold 9px DM Sans, sans-serif"; ctx.textAlign = "center"; ctx.fillText("HI!", x, y - 49);
-    ctx.restore();
+
+  function levelCheck() {
+    while (state.xp >= xpRequired()) {
+      state.xp -= xpRequired();
+      state.level += 1;
+      state.health = 100;
+      state.stamina = 100;
+      toast("Hunter rank increased. You reached level " + state.level + ".", "success");
+      sound(780, 0.22, "sine", 0.06);
+    }
   }
-}
 
-function drawNpc(npc) {
-  ctx.save(); ctx.translate(npc.x, npc.y);
-  ctx.fillStyle = "rgba(15,24,18,.3)"; ctx.beginPath(); ctx.ellipse(0, 9, 15, 7, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = npc.kind === "merchant" ? "#668f79" : "#9d8b69";
-  ctx.beginPath(); ctx.moveTo(-11, -4); ctx.lineTo(-9, 11); ctx.lineTo(0, 14); ctx.lineTo(9, 11); ctx.lineTo(11, -4); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#e2c49c"; ctx.beginPath(); ctx.arc(0, -15, 8, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#d6d0b5"; ctx.beginPath(); ctx.arc(0, -20, 9, Math.PI, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  drawNameplate(npc.name, "", npc.x, npc.y - 1, "#e8d49c");
-  if (npc.id === "rowan" && game.me && (!game.me.quest.accepted || (game.me.quest.kills >= 5 && !game.me.quest.claimed))) {
-    ctx.fillStyle = "#f2d28b"; ctx.font = "bold 21px DM Sans"; ctx.textAlign = "center"; ctx.fillText("!", npc.x, npc.y - 51);
+  function xpRequired() { return 150 + (state.level - 1) * 110; }
+
+  function shoot() {
+    if (!gameStarted || paused || reloading) return;
+    const now = performance.now();
+    if (now - lastShot < 470) return;
+    if (state.ammo <= 0) {
+      toast("Magazine empty. Press R to reload.", "warning");
+      sound(120, 0.07, "square", 0.02);
+      return;
+    }
+    lastShot = now;
+    shotAt = Date.now();
+    state.ammo -= 1;
+    weaponKick = 1;
+    muzzleTimer = 0.065;
+    if (weaponMaterials.flash) weaponMaterials.flash.setEnabled(true);
+    sound(aiming ? 82 : 74, 0.22, "sawtooth", 0.075);
+    $("crosshair").classList.add("fired");
+    window.setTimeout(() => $("crosshair").classList.remove("fired"), 80);
+
+    const direction = camera.getDirection(BABYLON.Axis.Z).normalize();
+    const ray = new BABYLON.Ray(camera.position, direction, 165);
+    const pick = scene.pickWithRay(ray, (mesh) => mesh.metadata && mesh.metadata.animalId && !mesh.metadata.deadAnimal);
+    if (pick && pick.hit && pick.pickedMesh) {
+      const animal = animals.find((item) => item.id === pick.pickedMesh.metadata.animalId);
+      if (animal && !animal.dead && !animal.harvested) {
+        const damage = aiming ? 120 : 92;
+        animal.health = Math.max(0, animal.health - damage);
+        animal.state = "flee";
+        animal.alertUntil = performance.now() + 10000;
+        const hitPart = pick.pickedMesh.metadata.animalPart;
+        const headshot = hitPart === "head";
+        if (headshot) animal.health = 0;
+        showHitMarker();
+        if (animal.health <= 0) {
+          animal.dead = true;
+          animal.target = null;
+          animal.root.rotation.z = Math.PI / 2;
+          animal.root.position.y = heightAt(animal.root.position.x, animal.root.position.z) + 0.15;
+          animal.root.getChildMeshes().forEach((mesh) => { mesh.metadata = { ...(mesh.metadata || {}), deadAnimal: true }; });
+          toast(headshot ? "Clean headshot. Animal down." : "Animal down. Move closer to harvest.", "success");
+          announce(animal.info.label + " down · Approach and press E to harvest.", 2600);
+        } else {
+          toast("Hit confirmed. The animal is wounded and moving.", "warning");
+        }
+      }
+    } else {
+      // A missed shot still disturbs wildlife and changes the hunt.
+      for (const animal of animals) {
+        const d = distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z });
+        if (!animal.dead && d < 66) {
+          animal.state = "flee";
+          animal.alertUntil = performance.now() + 11000;
+        }
+      }
+    }
+    updateHud();
   }
-}
 
-function drawSlime(mob) {
-  ctx.save(); ctx.translate(mob.x, mob.y);
-  const pulse = Math.sin(Date.now() / 230 + mob.x) * 1.5;
-  ctx.fillStyle = "rgba(13,24,17,.3)"; ctx.beginPath(); ctx.ellipse(0, 9, 17, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#76a86e"; ctx.beginPath(); ctx.ellipse(0, -2, 16 + pulse, 13 - pulse * .3, 0, Math.PI, 0); ctx.lineTo(16 + pulse, 5); ctx.quadraticCurveTo(0, 17, -16 - pulse, 5); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#a9ce83"; ctx.beginPath(); ctx.ellipse(-5, -8, 5, 3, -.3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#263a2a"; ctx.beginPath(); ctx.arc(-5, 0, 1.6, 0, Math.PI * 2); ctx.arc(5, 0, 1.6, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  drawNameplate(mob.name, "", mob.x, mob.y, "#d6e4b1");
-  ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(mob.x - 15, mob.y - 22, 30, 3);
-  ctx.fillStyle = "#d47f70"; ctx.fillRect(mob.x - 15, mob.y - 22, 30 * mob.hp / mob.maxHp, 3);
-}
-
-function drawMinimap() {
-  if (!game.me) return;
-  const w = minimap.width, h = minimap.height;
-  miniCtx.clearRect(0, 0, w, h);
-  miniCtx.fillStyle = "#55774a"; miniCtx.fillRect(0, 0, w, h);
-  miniCtx.strokeStyle = "#927d5b"; miniCtx.lineWidth = 7;
-  miniCtx.beginPath(); miniCtx.moveTo(8, 79); miniCtx.quadraticCurveTo(62, 73, 110, 66); miniCtx.stroke();
-  miniCtx.beginPath(); miniCtx.moveTo(110, 66); miniCtx.lineTo(165, 32); miniCtx.stroke();
-  miniCtx.fillStyle = "#446f70"; miniCtx.beginPath(); miniCtx.ellipse(166, 35, 16, 10, -.1, 0, Math.PI * 2); miniCtx.fill();
-  miniCtx.fillStyle = "#80936a"; miniCtx.beginPath(); miniCtx.arc(110, 66, 17, 0, Math.PI * 2); miniCtx.fill();
-  const scaleX = w / game.world.width, scaleY = h / game.world.height;
-  for (const npc of game.npcs || []) { miniCtx.fillStyle = "#8cc6a8"; miniCtx.beginPath(); miniCtx.arc(npc.x * scaleX, npc.y * scaleY, 3, 0, Math.PI * 2); miniCtx.fill(); }
-  for (const mob of game.mobs || []) if (mob.hp > 0) { miniCtx.fillStyle = "#d78270"; miniCtx.beginPath(); miniCtx.arc(mob.x * scaleX, mob.y * scaleY, 2.5, 0, Math.PI * 2); miniCtx.fill(); }
-  for (const person of game.players || []) { miniCtx.fillStyle = "#a9d1d7"; miniCtx.beginPath(); miniCtx.arc(person.x * scaleX, person.y * scaleY, 2.5, 0, Math.PI * 2); miniCtx.fill(); }
-  miniCtx.fillStyle = "#f2d18d"; miniCtx.strokeStyle = "#fff1cc"; miniCtx.lineWidth = 1.5;
-  miniCtx.beginPath(); miniCtx.arc(game.me.x * scaleX, game.me.y * scaleY, 4, 0, Math.PI * 2); miniCtx.fill(); miniCtx.stroke();
-}
-
-function drawBigMap() {
-  const w = bigMap.width, h = bigMap.height;
-  bigMapCtx.fillStyle = "#55774a"; bigMapCtx.fillRect(0, 0, w, h);
-  for (let x = 0; x < w; x += 30) for (let y = 0; y < h; y += 30) {
-    const seed = hash2(x, y); bigMapCtx.fillStyle = seed > .5 ? "rgba(160,187,111,.07)" : "rgba(25,59,38,.06)"; bigMapCtx.fillRect(x, y, 30, 30);
+  function showHitMarker() {
+    const mark = $("hit-marker");
+    mark.classList.remove("show");
+    void mark.offsetWidth;
+    mark.classList.add("show");
   }
-  bigMapCtx.strokeStyle = "#927d5b"; bigMapCtx.lineWidth = 30; bigMapCtx.lineCap = "round";
-  bigMapCtx.beginPath(); bigMapCtx.moveTo(40, 290); bigMapCtx.bezierCurveTo(175, 285, 210, 230, 380, 235); bigMapCtx.stroke();
-  bigMapCtx.beginPath(); bigMapCtx.moveTo(380, 235); bigMapCtx.bezierCurveTo(450, 230, 485, 120, 530, 92); bigMapCtx.stroke();
-  bigMapCtx.beginPath(); bigMapCtx.moveTo(380, 235); bigMapCtx.lineTo(455, 420); bigMapCtx.stroke();
-  bigMapCtx.fillStyle = "#446f70"; bigMapCtx.beginPath(); bigMapCtx.ellipse(575, 125, 55, 35, -.1, 0, Math.PI * 2); bigMapCtx.fill();
-  bigMapCtx.fillStyle = "#80936a"; bigMapCtx.beginPath(); bigMapCtx.arc(380, 235, 45, 0, Math.PI * 2); bigMapCtx.fill();
-  bigMapCtx.fillStyle = "#ead19b"; bigMapCtx.font = "17px Marcellus"; bigMapCtx.textAlign = "center"; bigMapCtx.fillText("MOONHAVEN", 380, 304);
-  bigMapCtx.fillStyle = "#c9d9ba"; bigMapCtx.font = "12px DM Sans"; bigMapCtx.fillText("Whispering Meadows", 160, 170); bigMapCtx.fillText("Stillwater Pond", 575, 78);
-  const scaleX = w / game.world.width, scaleY = h / game.world.height;
-  for (const npc of game.npcs || []) { bigMapCtx.fillStyle = "#8cc6a8"; bigMapCtx.beginPath(); bigMapCtx.arc(npc.x * scaleX, npc.y * scaleY, 5, 0, Math.PI * 2); bigMapCtx.fill(); }
-  for (const mob of game.mobs || []) if (mob.hp > 0) { bigMapCtx.fillStyle = "#d78270"; bigMapCtx.beginPath(); bigMapCtx.arc(mob.x * scaleX, mob.y * scaleY, 4, 0, Math.PI * 2); bigMapCtx.fill(); }
-  if (game.me) {
-    bigMapCtx.fillStyle = "#f2d18d"; bigMapCtx.strokeStyle = "#fff1cc"; bigMapCtx.lineWidth = 2;
-    bigMapCtx.beginPath(); bigMapCtx.arc(game.me.x * scaleX, game.me.y * scaleY, 7, 0, Math.PI * 2); bigMapCtx.fill(); bigMapCtx.stroke();
+
+  function reload() {
+    if (reloading || state.ammo >= 8 || state.reserve <= 0 || paused || !gameStarted) return;
+    reloading = true;
+    reloadStarted = performance.now();
+    $("reload-indicator").classList.add("show");
+    sound(300, 0.07, "triangle", 0.018);
   }
-}
 
-function animationLoop(timestamp) {
-  drawWorld();
-  if (timestamp - lastMiniMap > 320) { drawMinimap(); lastMiniMap = timestamp; }
-  requestAnimationFrame(animationLoop);
-}
-
-function sendMovement() {
-  if (!socketState.connected) return;
-  const horizontal = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
-  const vertical = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
-  send({ type: "input", move: { x: horizontal, y: vertical }, target: horizontal || vertical ? null : clickTarget });
-  if (clickTarget && game.me && Math.hypot(clickTarget.x - game.me.x, clickTarget.y - game.me.y) < 22) clickTarget = null;
-}
-
-function worldPointFromEvent(event) {
-  const rect = canvas.getBoundingClientRect();
-  return { x: event.clientX - rect.left + camera.x, y: event.clientY - rect.top + camera.y };
-}
-
-document.addEventListener("keydown", (event) => {
-  const key = event.key.toLowerCase();
-  if (document.activeElement === $("chat-input") || document.activeElement === $("name-input")) return;
-  if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) {
-    if (document.activeElement === $("chat-input") || document.activeElement === $("name-input")) return;
-    event.preventDefault(); keys.add(key);
+  function updateReload() {
+    if (!reloading) return;
+    const progress = clamp((performance.now() - reloadStarted) / reloadDuration, 0, 1);
+    $("reload-fill").style.width = (progress * 100) + "%";
+    if (progress >= 1) {
+      const amount = Math.min(8 - state.ammo, state.reserve);
+      state.ammo += amount;
+      state.reserve -= amount;
+      reloading = false;
+      $("reload-indicator").classList.remove("show");
+      sound(480, 0.08, "triangle", 0.025);
+      toast("Reloaded. " + state.ammo + " rounds ready.", "success");
+      updateHud();
+    }
   }
-  if (event.repeat) return;
-  if (key === " " || key === "spacebar") doAction("attack");
-  if (key === "e") doAction("interact");
-  if (key === "1") doAction("potion");
-  if (key === "i") openModal("inventory-modal");
-  if (key === "g") doAction("wave");
-  if (key === "escape") document.querySelectorAll(".modal-backdrop.open").forEach((modal) => modal.classList.remove("open"));
-});
-document.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
-window.addEventListener("blur", () => keys.clear());
-canvas.addEventListener("pointerdown", (event) => {
-  if (!game.me || event.button !== 0) return;
-  clickTarget = worldPointFromEvent(event); keys.clear();
-});
 
-$("start-button").addEventListener("click", startGame);
-$("name-input").addEventListener("keydown", (event) => { if (event.key === "Enter") startGame(); });
-$("reconnect-button").addEventListener("click", connect);
-$("attack-button").addEventListener("click", () => doAction("attack"));
-$("interact-button").addEventListener("click", () => doAction("interact"));
-$("potion-button").addEventListener("click", () => doAction("potion"));
-$("emote-button").addEventListener("click", () => doAction("wave"));
-$("inventory-button").addEventListener("click", () => openModal("inventory-modal"));
-$("profile-button").addEventListener("click", () => openModal("profile-modal"));
-$("map-button").addEventListener("click", () => { drawBigMap(); openModal("map-modal"); });
-$("quest-track-button").addEventListener("click", () => {
-  if (!game.me) return;
-  if (!game.me.quest.accepted) showToast("Find Elder Rowan in the village square and press E.", "quest");
-  else showToast(game.me.quest.claimed ? "Quest complete. Explore the world." : "Defeat Moss Slimes in the meadows and return to Elder Rowan.", "quest");
-});
-document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => closeModal(button.dataset.close)));
-document.querySelectorAll(".modal-backdrop").forEach((modal) => modal.addEventListener("click", (event) => { if (event.target === modal) modal.classList.remove("open"); }));
-$("chat-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const input = $("chat-input"), text = input.value.trim();
-  if (!text) return;
-  send({ type: "chat", text }); input.value = "";
-});
-$("chat-toggle").addEventListener("click", () => {
-  chatCollapsed = !chatCollapsed;
-  $("chat-messages").style.display = chatCollapsed ? "none" : "block";
-  $("chat-form").style.display = chatCollapsed ? "none" : "flex";
-  $("chat-toggle").textContent = chatCollapsed ? "⌃" : "⌄";
-});
-$("menu-button").addEventListener("click", () => {
-  menuOpen = !menuOpen;
-  const panel = document.querySelector(".top-actions");
-  panel.style.display = menuOpen ? "flex" : "none";
-  panel.style.position = menuOpen ? "absolute" : "";
-  panel.style.top = menuOpen ? "60px" : "";
-  panel.style.right = menuOpen ? "8px" : "";
-  panel.style.padding = menuOpen ? "8px" : "";
-  panel.style.background = menuOpen ? "rgba(16,26,24,.96)" : "";
-  panel.style.border = menuOpen ? "1px solid rgba(219,203,153,.2)" : "";
-  panel.style.borderRadius = menuOpen ? "8px" : "";
-  panel.style.flexDirection = menuOpen ? "column" : "";
-});
-window.addEventListener("resize", resizeCanvas);
-setInterval(() => { if (socketState.connected) sendMovement(); }, 80);
-resizeCanvas();
-requestAnimationFrame(animationLoop);
+  function toggleAim(value) {
+    aiming = value === undefined ? !aiming : value;
+    $("game-shell").classList.toggle("aiming", aiming);
+    if (camera) camera.fov = aiming ? 0.62 : 1.04;
+    text("weapon-mode", aiming ? "AIMING · STEADY BREATH" : "SEMI-AUTOMATIC · IRON SIGHTS");
+  }
+
+  function toggleTracking() {
+    tracking = !tracking;
+    updateTracking();
+    if (tracking) {
+      announce("Tracking sense active. Look for fresh hoof prints and wildlife.", 2400);
+      sound(650, 0.11, "sine", 0.025);
+    } else toast("Tracking sense disabled.", "");
+  }
+
+  function updateHud() {
+    const rank = ["NOVICE", "SCOUT", "TRACKER", "RANGER", "STALKER", "WILDLANDER"][Math.min(5, Math.floor((state.level - 1) / 2))];
+    text("hunter-name", state.name.toUpperCase());
+    text("hunter-rank", rank + " · LEVEL " + state.level);
+    text("cash-value", "$" + state.cash.toLocaleString("en-AU"));
+    text("xp-text", state.xp + " / " + xpRequired() + " XP");
+    $("xp-fill").style.width = (state.xp / xpRequired() * 100) + "%";
+    text("ammo-current", state.ammo);
+    text("ammo-reserve", state.reserve);
+    text("shop-cash", "$" + state.cash);
+    text("contract-progress", state.contractProgress + " / 3");
+    $("contract-fill").style.width = (state.contractProgress / 3 * 100) + "%";
+    if (state.contractComplete) {
+      text("contract-title", "First Harvest · Complete");
+      text("contract-description", "Three deer harvested. Your first contract is complete. Sell your hides and meat at the harvest station.");
+      text("contract-reward", "REWARD CLAIMED");
+    } else if (state.contractAccepted) {
+      text("contract-title", "First Harvest");
+      text("contract-description", "Harvest 3 deer in Pinecrest Valley. Return to the outpost and sell your hides and meat.");
+      text("contract-reward", "$250 + 180 XP");
+    } else {
+      text("contract-title", "Trailhead Briefing");
+      text("contract-description", "Visit the contract board at Pinecrest Outpost to take your first hunting contract.");
+      text("contract-reward", "AVAILABLE AT CAMP");
+    }
+    const hp = $("health-fill");
+    if (hp) hp.style.width = state.health + "%";
+    text("health-value", state.health + " / 100");
+    const stamina = $("stamina-fill");
+    if (stamina) stamina.style.width = state.stamina + "%";
+    text("stamina-value", Math.round(state.stamina) + "%");
+    text("field-note-text", state.hides + " hides · " + state.meat + " meat in your pack. " +
+      (tracking ? "Tracking sense is active." : "Use Q to look for fresh wildlife tracks."));
+  }
+
+  function updateDayCycle(dt) {
+    dayTime = (dayTime + dt * 0.00036) % 1;
+    const daylight = 0.6 + Math.max(0, Math.sin(dayTime * Math.PI * 2)) * 0.4;
+    lights.hemi.intensity = 0.35 + daylight * 0.62;
+    lights.sun.intensity = 0.42 + daylight * 0.88;
+  }
+
+  function formatClock(t) {
+    const total = Math.floor(t * 24 * 60);
+    const hours24 = Math.floor(total / 60) % 24;
+    const mins = total % 60;
+    const suffix = hours24 >= 12 ? "PM" : "AM";
+    const hours = (hours24 % 12) || 12;
+    return String(hours).padStart(2, "0") + ":" + String(mins).padStart(2, "0") + " " + suffix;
+  }
+
+  function drawMiniMap() {
+    const c = miniMapCtx;
+    if (!c) return;
+    const w = 240, h = 174;
+    c.clearRect(0, 0, w, h);
+    c.fillStyle = "#627b54";
+    c.fillRect(0, 0, w, h);
+    c.strokeStyle = "rgba(186,198,141,.18)";
+    c.lineWidth = 1;
+    for (let x = 0; x < w; x += 24) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); }
+    for (let y = 0; y < h; y += 24) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    const sx = (x) => (x + 140) / 280 * w;
+    const sz = (z) => (140 - z) / 280 * h;
+    c.strokeStyle = "#b3996b";
+    c.lineWidth = 5;
+    c.beginPath();
+    c.moveTo(sx(0), sz(32)); c.quadraticCurveTo(sx(-6), sz(52), sx(0), sz(68)); c.quadraticCurveTo(sx(4), sz(84), sx(9), sz(103)); c.stroke();
+    c.fillStyle = "#6c9ba0";
+    c.beginPath(); c.ellipse(sx(55), sz(-44), 20, 13, -0.12, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#ad9167";
+    c.fillRect(sx(-25), sz(49) - 4, 15, 9);
+    c.fillStyle = "#e3d09a";
+    c.beginPath(); c.arc(sx(-5), sz(22), 3, 0, Math.PI * 2); c.fill();
+    for (const animal of animals) {
+      if (animal.dead || animal.harvested) continue;
+      c.fillStyle = animal.species === "boar" ? "#d18a6b" : "#e0bd82";
+      c.beginPath(); c.arc(sx(animal.root.position.x), sz(animal.root.position.z), 2.8, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = "#f6df9e"; c.strokeStyle = "#fff6db"; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(sx(camera.position.x), sz(camera.position.z), 4.2, 0, Math.PI * 2); c.fill(); c.stroke();
+    const dx = Math.sin(camera.rotation.y) * 10, dz = Math.cos(camera.rotation.y) * 10;
+    c.strokeStyle = "#f5e7bf"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(sx(camera.position.x), sz(camera.position.z)); c.lineTo(sx(camera.position.x + dx), sz(camera.position.z + dz)); c.stroke();
+  }
+
+  function drawWorldMap() {
+    const c = worldMapCtx;
+    if (!c) return;
+    c.fillStyle = "#657e55";
+    c.fillRect(0, 0, 720, 510);
+    for (let i = 0; i < 900; i++) {
+      const x = Math.random() * 720, y = Math.random() * 510;
+      c.fillStyle = Math.random() > 0.5 ? "rgba(162,188,121,.09)" : "rgba(29,67,43,.07)";
+      c.fillRect(x, y, rand(10, 32), rand(10, 32));
+    }
+    c.fillStyle = "#6b9aa0";
+    c.beginPath(); c.ellipse(520, 125, 120, 75, -0.12, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#789267";
+    c.beginPath(); c.ellipse(82, 403, 65, 48, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "#b39a6e"; c.lineWidth = 17; c.lineCap = "round";
+    c.beginPath(); c.moveTo(355, 455); c.bezierCurveTo(310, 350, 380, 280, 345, 208); c.bezierCurveTo(305, 135, 320, 90, 380, 45); c.stroke();
+    c.beginPath(); c.moveTo(345, 208); c.bezierCurveTo(420, 250, 475, 278, 600, 300); c.stroke();
+    c.fillStyle = "#8b976e"; c.beginPath(); c.ellipse(355, 455, 45, 30, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#d5bd88"; c.font = "700 17px Barlow Condensed"; c.textAlign = "center"; c.fillText("PINECREST OUTPOST", 355, 490);
+    c.fillStyle = "#d4e3cf"; c.font = "600 12px DM Sans"; c.fillText("STILLWATER LAKE", 520, 35);
+    c.fillText("NORTH RIDGE", 370, 90); c.fillText("WHISPERING MEADOWS", 165, 260);
+    for (const animal of animals) {
+      if (animal.dead || animal.harvested) continue;
+      c.fillStyle = animal.species === "boar" ? "#d28a69" : "#e3c98c";
+      const x = (animal.root.position.x + 140) / 280 * 720;
+      const y = (140 - animal.root.position.z) / 280 * 510;
+      c.beginPath(); c.arc(x, y, 4, 0, Math.PI * 2); c.fill();
+    }
+    const px = (camera.position.x + 140) / 280 * 720;
+    const py = (140 - camera.position.z) / 280 * 510;
+    c.fillStyle = "#f5e0a2"; c.strokeStyle = "#26372a"; c.lineWidth = 2;
+    c.beginPath(); c.arc(px, py, 7, 0, Math.PI * 2); c.fill(); c.stroke();
+  }
+
+  function enterWorld(useSave) {
+    const name = $("player-name").value.trim().replace(/[^a-zA-Z0-9 _-]/g, "").slice(0, 16);
+    if (name.length < 2) {
+      announce("Choose a hunter name with at least two characters.", 2400);
+      return;
+    }
+    if (useSave) loadSave();
+    else {
+      state = { ...defaults, name, x: 0, z: 19, yaw: 0 };
+      localStorage.removeItem(SAVE_KEY);
+    }
+    state.name = name;
+    if (!scene) {
+      engine = new BABYLON.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: false, adaptToDeviceRatio: true });
+      createScene();
+      window.addEventListener("resize", () => engine.resize());
+    }
+    gameStarted = true;
+    paused = false;
+    $("start-screen").style.display = "none";
+    $("pause-screen").classList.remove("open");
+    updateHud();
+    saveGame(false);
+    requestPointerLock();
+    announce("Welcome to Pinecrest Valley. Visit the contract board to get started.", 3800);
+  }
+
+  function requestPointerLock() {
+    if (canvas.requestPointerLock) {
+      try { canvas.requestPointerLock(); } catch (error) { /* some browsers require a direct click */ }
+    }
+  }
+
+  function pauseGame() {
+    if (!gameStarted) return;
+    paused = true;
+    $("pause-screen").classList.add("open");
+    document.exitPointerLock?.();
+    saveGame(false);
+  }
+
+  function resumeGame() {
+    paused = false;
+    $("pause-screen").classList.remove("open");
+    requestPointerLock();
+  }
+
+  function buy(item) {
+    const costs = { ammo: 35, medkit: 45, scent: 25 };
+    const cost = costs[item];
+    if (!cost || state.cash < cost) {
+      toast("Not enough funds for that supply.", "warning");
+      return;
+    }
+    state.cash -= cost;
+    if (item === "ammo") state.reserve += 20;
+    if (item === "medkit") state.medkits += 1;
+    if (item === "scent") state.scent += 1;
+    updateHud();
+    saveGame(false);
+    toast("Supply purchased. Head back into the valley.", "success");
+  }
+
+  function useMedkit() {
+    if (state.medkits < 1) { toast("No field kits left.", "warning"); return; }
+    if (state.health >= 100) { toast("You're already in good shape.", "warning"); return; }
+    state.medkits -= 1;
+    state.health = 100;
+    updateHud();
+    saveGame(false);
+    toast("Field kit used. Health restored.", "success");
+  }
+
+  function handleKeyDown(event) {
+    const key = event.key.toLowerCase();
+    if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key) &&
+        !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) event.preventDefault();
+    if (event.repeat) return;
+    if (key === "escape") {
+      if ($("supplies-screen").classList.contains("open")) {
+        $("supplies-screen").classList.remove("open");
+        paused = false;
+      } else if ($("harvest-screen").classList.contains("open")) {
+        $("harvest-screen").classList.remove("open");
+        paused = false;
+      } else if (gameStarted && !paused) pauseGame();
+      else if (paused) resumeGame();
+      return;
+    }
+    if (["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright","shift"].includes(key)) keys.add(key);
+    if (!gameStarted || paused) return;
+    if (key === "r") reload();
+    if (key === "e") interact();
+    if (key === "q") toggleTracking();
+    if (key === "f") useMedkit();
+    if (key === "m") { $("map-screen").classList.add("open"); paused = true; drawWorldMap(); document.exitPointerLock?.(); }
+  }
+
+  function handleKeyUp(event) { keys.delete(event.key.toLowerCase()); }
+
+  canvas.addEventListener("click", () => {
+    if (!gameStarted || paused) return;
+    if (!pointerLocked) requestPointerLock();
+    else shoot();
+  });
+  canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+  canvas.addEventListener("mousedown", (event) => {
+    if (event.button === 2 && gameStarted && !paused) toggleAim(true);
+  });
+  window.addEventListener("mouseup", (event) => { if (event.button === 2) toggleAim(false); });
+
+  document.addEventListener("pointerlockchange", () => {
+    pointerLocked = document.pointerLockElement === canvas;
+    $("bottom-tip").style.opacity = pointerLocked ? "0" : "1";
+    if (!pointerLocked && gameStarted && !paused && !$("supplies-screen").classList.contains("open") && !$("harvest-screen").classList.contains("open")) {
+      $("bottom-tip").textContent = "CLICK THE WORLD TO FOCUS · ESC TO PAUSE";
+    } else {
+      $("bottom-tip").textContent = "CLICK TO LOCK MOUSE · WASD TO MOVE · RMB TO AIM · LEFT CLICK TO FIRE";
+    }
+  });
+
+  document.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("keyup", handleKeyUp);
+  window.addEventListener("blur", () => { keys.clear(); touchKeys.clear(); firing = false; });
+
+  $("start-button").addEventListener("click", () => enterWorld(false));
+  $("continue-button").addEventListener("click", () => enterWorld(true));
+  $("pause-button").addEventListener("click", pauseGame);
+  $("resume-button").addEventListener("click", resumeGame);
+  $("resume-x").addEventListener("click", resumeGame);
+  $("save-button").addEventListener("click", () => saveGame(true));
+  $("reset-button").addEventListener("click", () => {
+    if (window.confirm("Reset all Wildrange solo progress in this browser? This cannot be undone.")) {
+      resetSave();
+      $("pause-screen").classList.remove("open");
+      paused = false;
+      saveGame(false);
+    }
+  });
+  $("harvest-close").addEventListener("click", () => {
+    $("harvest-screen").classList.remove("open");
+    paused = false;
+    requestPointerLock();
+  });
+  document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => {
+    $(button.dataset.close).classList.remove("open");
+    if (!$("pause-screen").classList.contains("open")) paused = false;
+    requestPointerLock();
+  }));
+  document.querySelectorAll("[data-buy]").forEach((button) => button.addEventListener("click", () => buy(button.dataset.buy)));
+  $("touch-aim").addEventListener("touchstart", (event) => { event.preventDefault(); toggleAim(true); }, { passive: false });
+  $("touch-aim").addEventListener("touchend", () => toggleAim(false));
+  $("touch-fire").addEventListener("touchstart", (event) => { event.preventDefault(); shoot(); }, { passive: false });
+  $("touch-interact").addEventListener("click", interact);
+  document.querySelectorAll("[data-move]").forEach((button) => {
+    const direction = button.dataset.move;
+    button.addEventListener("touchstart", (event) => { event.preventDefault(); touchKeys.add(direction); }, { passive: false });
+    button.addEventListener("touchend", () => touchKeys.delete(direction));
+    button.addEventListener("touchcancel", () => touchKeys.delete(direction));
+  });
+  $("mini-map").addEventListener("click", () => { $("map-screen").classList.add("open"); paused = true; drawWorldMap(); document.exitPointerLock?.(); });
+
+  function boot() {
+    loadSave();
+    if (localStorage.getItem(SAVE_KEY)) $("continue-button").style.display = "block";
+    else $("continue-button").style.display = "none";
+    // The title screen remains interactive while the local scene is prepared only after Play.
+  }
+
+  window.addEventListener("beforeunload", () => saveGame(false));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) saveGame(false);
+  });
+  window.setInterval(updateReload, 40);
+  boot();
+})();
