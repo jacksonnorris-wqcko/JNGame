@@ -27,7 +27,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.7.0", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.7.1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });

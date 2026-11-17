@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Visual asset build: **0.7.0**. Game assets are stored under `public/assets/`.
+Visual asset build: **0.7.1**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -95,9 +95,15 @@ Deer and boars have upgraded body proportions, articulated two-section legs, vis
 
 This update adds Space-to-jump with gravity, landing detection and a mobile jump button. Movement uses acceleration/deceleration and axis sliding. The renderer will also receive a fixed-step physics update and static-scene optimizations in this release.
 
-## Performance optimization — 0.7.0
+## Performance and movement — 0.7.1
 
 The game now uses fixed 60Hz simulation steps, a capped high-DPI render scale, static world transform freezing, lower shadow-map resolution and disabled bloom to reduce frame pacing spikes and GPU work. Performance remains dependent on the PC and browser.
+
+## Movement and optimization — 0.7.1
+
+Adds Space-to-jump with gravity, landing detection and mobile jump control. Player motion now uses acceleration/deceleration and collision sliding; the game simulation runs at a fixed 60Hz while rendering once per browser frame. High-DPI render scale, static-world transform freezing, shadow resolution and bloom are adjusted to reduce unnecessary GPU work.
+
+The current deer and boars remain procedural models, but the next wildlife pass will add distinct alert, flee and charge states, more stable turning, richer locomotion and more natural head/ear/tail motion.
 
 ## Cost
 

@@ -88,3 +88,9 @@
 .touch-actions{gap:5px}
 .touch-actions button{min-width:43px}
 @media(max-width:540px){.touch-actions{gap:4px}.touch-actions button{width:42px;min-width:42px;font-size:7px}}
+
+/* Wildrange 0.7.1 jump controls */
+.quick-actions{gap:10px}
+.touch-actions{gap:5px}
+.touch-actions button{min-width:43px}
+@media(max-width:540px){.touch-actions{gap:4px}.touch-actions button{width:42px;min-width:42px;font-size:7px}}
