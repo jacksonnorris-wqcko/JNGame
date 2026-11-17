@@ -1719,11 +1719,14 @@
     });
   }
 
-  function updateGame(dt) {
-    const now = performance.now();
+  function updateGame(dt, suppliedNow) {
+    const now = suppliedNow || performance.now();
     updatePlayer(dt);
     updateAnimals(dt, now);
-    updateInteraction();
+    if (now - interactionUpdateAt >= 90) {
+      updateInteraction();
+      interactionUpdateAt = now;
+    }
     animateWeapon(dt);
     animateWorld(now);
     updateDayCycle(dt);
@@ -1735,7 +1738,7 @@
         footprints = footprints.filter((track) => !expiredSet.has(track));
       }
       updateHud();
-      updateTracking();
+      if (tracking) updateTracking();
       drawMiniMap();
       hudTimer = now;
     }
