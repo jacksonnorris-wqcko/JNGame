@@ -27,6 +27,7 @@ jobs:
             const html = fs.readFileSync("public/index.html", "utf8");
             const js = fs.readFileSync("public/game.js", "utf8");
             const css = fs.readFileSync("public/styles.css", "utf8");
+            const playHtml = fs.readFileSync("public/play.html", "utf8");
             for (const file of ["public/index.html", "public/styles.css", "public/game.js", "public/favicon.svg"]) {
               if (!fs.existsSync(file)) throw new Error("Missing " + file);
             }
@@ -39,8 +40,16 @@ jobs:
             for (const cssRule of [".quick-actions", ".hud-panel"]) {
               if (!css.includes(cssRule)) throw new Error("Missing interface styling " + cssRule);
             }
-            if (!html.includes("styles.css?v=0.8.0") || !html.includes("game.js?v=0.8.0")) {
-              throw new Error("Graphics build asset version mismatch");
+            for (const [name, page] of [["index.html", html], ["play.html", playHtml]]) {
+              const coreLoader = page.indexOf("https://cdn.babylonjs.com/babylon.js");
+              const gltfLoader = page.indexOf("https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js");
+              const gameScript = page.indexOf("game.js?v=0.8.0");
+              if (!page.includes("styles.css?v=0.8.0") || gameScript < 0) {
+                throw new Error(name + " graphics build asset version mismatch");
+              }
+              if (coreLoader < 0 || gltfLoader <= coreLoader || gameScript <= gltfLoader) {
+                throw new Error(name + " must load Babylon glTF/GLB loader after core and before game.js");
+              }
             }
             if (!html.includes("scope-overlay") || !css.includes("#game-shell.aiming .scope-overlay")) throw new Error("Scope sight picture UI is missing");
             if (!html.includes("touch-jump") || !html.includes("SPACE")) throw new Error("Jump controls are missing");
