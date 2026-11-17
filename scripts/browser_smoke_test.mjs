@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.10&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.11&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -74,11 +74,14 @@ try {
   if (Math.abs(cabinFloor.playerHeight) > 0.08) {
     throw new Error("Hunter is not standing on the cabin floor: " + JSON.stringify(cabinFloor));
   }
+  const doorUpdatesBefore = await page.evaluate(() => window.WildrangeDiagnostics().cabinDoorUpdateCount);
   await page.evaluate(() => window.WildrangeQA.setDoor(true));
-  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle() - 1.48) < 0.025, { timeout: 5000 });
+  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle() - 1.48) < 0.025, null, { timeout: 5000 });
+  const openDoorState = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (openDoorState.cabinDoorUpdateCount <= doorUpdatesBefore) throw new Error("Cabin door hinge did not receive render-loop updates: " + JSON.stringify(openDoorState));
   const openDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
   await page.evaluate(() => window.WildrangeQA.setDoor(false));
-  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle()) < 0.025, { timeout: 5000 });
+  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle()) < 0.025, null, { timeout: 5000 });
   const closedDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
   if (diagnostics.pbrMaterialCount < 15) throw new Error("PBR materials were not created (" + diagnostics.pbrMaterialCount + ")");
   if (diagnostics.readyTextureCount < 12) throw new Error("Too few textures finished loading (" + diagnostics.readyTextureCount + ")");
