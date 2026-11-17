@@ -214,6 +214,7 @@
   }
 
   function heightAt(x, z) {
+    if (flatArea(x, z)) return 0.1;
     return Math.sin(x * 0.034) * 1.05 + Math.cos(z * 0.029) * 1.15 +
       Math.sin((x + z) * 0.018) * 1.35 + Math.cos((x - z) * 0.024) * 0.65;
   }
