@@ -69,6 +69,11 @@
   let smoothedFps = 60;
   let averageFrameMs = 16.67;
   let frozenStaticMeshCount = 0;
+  let forestRoots = [];
+  let windUpdateAt = 0;
+  let forestVisibilityUpdateAt = 0;
+  let interactionUpdateAt = 0;
+  let dayCycleUpdateAt = 0;
   let keys = new Set();
   let touchKeys = new Set();
   let currentTarget = null;
@@ -563,6 +568,7 @@
 
   function createTree(x, z, scale, broadleaf) {
     const root = new BABYLON.TransformNode("forest-tree-root", scene);
+    const forestItem = { root, x, z, visible: true };
     root.position.set(x, heightAt(x, z), z);
     root.rotation.y = rand(0, Math.PI * 2);
     const height = (broadleaf ? 6.8 : 8.4) * scale;
@@ -596,7 +602,7 @@
         crown.isPickable = false;
         crown.receiveShadows = true;
         if (lights.shadows && index < 2) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
-        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12), tree: forestItem });
       });
     } else {
       const whorls = [
@@ -616,7 +622,7 @@
         crown.isPickable = false;
         crown.receiveShadows = true;
         if (lights.shadows && index < 2) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
-        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+        windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12), tree: forestItem });
       });
       for (let branch = 0; branch < 7; branch++) {
         const angle = branch / 7 * Math.PI * 2 + rand(-0.15, 0.15);
@@ -636,6 +642,7 @@
       }
     }
     obstacles.push({ x, z, radius: broadleaf ? 1.35 * scale : 0.82 * scale });
+    forestRoots.push(forestItem);
     return root;
   }
 
@@ -1658,9 +1665,41 @@
     }
   }
 
+  function updateForestVisibility(now) {
+    if (!camera || now - forestVisibilityUpdateAt < 420) return;
+    forestVisibilityUpdateAt = now;
+    const px = camera.position.x, pz = camera.position.z;
+    const radiusSquared = 158 * 158;
+    for (const item of forestRoots) {
+      const dx = item.x - px, dz = item.z - pz;
+      const visible = dx * dx + dz * dz < radiusSquared;
+      if (visible !== item.visible) {
+        item.visible = visible;
+        item.root.setEnabled(visible);
+      }
+    }
+  }
+
   function animateWorld(now) {
-    for (const item of windMeshes) {
-      item.mesh.rotation.z = item.base + Math.sin(now * 0.00042 + item.phase) * 0.014;
+    updateForestVisibility(now);
+    if (now - windUpdateAt >= 82) {
+      windUpdateAt = now;
+      const px = camera ? camera.position.x : 0;
+      const pz = camera ? camera.position.z : 0;
+      const windRangeSquared = 92 * 92;
+      for (const item of windMeshes) {
+        if (item.tree && !item.tree.visible) continue;
+        const dx = item.tree ? item.tree.x - px : 0;
+        const dz = item.tree ? item.tree.z - pz : 0;
+        const near = dx * dx + dz * dz < windRangeSquared;
+        if (near) {
+          if (item.mesh.isWorldMatrixFrozen) item.mesh.unfreezeWorldMatrix();
+          item.mesh.rotation.z = item.base + Math.sin(now * 0.00042 + item.phase) * 0.014;
+        } else if (!item.mesh.isWorldMatrixFrozen) {
+          item.mesh.rotation.z = item.base;
+          item.mesh.freezeWorldMatrix();
+        }
+      }
     }
     for (const item of waterRipples) {
       const pulse = 0.94 + Math.sin(now * 0.00065 + item.phase) * 0.08;
@@ -1677,707 +1716,10 @@
     }
   }
 
-  function freezeStaticWorld() {
-    const dynamicRoots = new Set(animals.map((animal) => animal.root));
-    if (weaponRoot) dynamicRoots.add(weaponRoot);
-    const dynamicMeshes = new Set(waterRipples.map((item) => item.mesh));
-    let frozen = 0;
-    for (const mesh of scene.meshes) {
-      if (!mesh || mesh.isDisposed() || dynamicMeshes.has(mesh)) continue;
-      let node = mesh;
-      let dynamic = false;
-      while (node) {
-        if (dynamicRoots.has(node)) { dynamic = true; break; }
-        node = node.parent;
-      }
-      if (dynamic || mesh.isWorldMatrixFrozen) continue;
-      try {
-        mesh.freezeWorldMatrix();
-        frozen++;
-      } catch (error) {
-        // Unsupported meshes stay on the regular transform path.
-      }
-    }
-    frozenStaticMeshCount = frozen;
-    return frozen;
-  }
-
-  function createScene() {
-    scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0.67, 0.79, 0.82, 1);
-    scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    scene.fogDensity = 0.0021;
-    scene.fogColor = hex("#b5c5ae");
-    scene.collisionsEnabled = false;
-    createMaterials();
-    setupLighting();
-    createSkyDome();
-    makeTerrain();
-    createDistantRidgeBands();
-    buildTrail();
-    createPinecrestLake();
-    scatterEnvironment();
-    createGroundCover();
-    scatterUndergrowth();
-    createCabin();
-    createWildlife();
-
-    const spawnX = Number.isFinite(state.x) ? state.x : 0;
-    const spawnZ = Number.isFinite(state.z) ? state.z : 19;
-    camera = new BABYLON.UniversalCamera("field camera", new BABYLON.Vector3(spawnX, heightAt(spawnX, spawnZ) + 1.72, spawnZ), scene);
-    camera.rotation.y = Number(state.yaw) || 0;
-    camera.minZ = 0.08;
-    camera.maxZ = 430;
-    camera.fov = 1.04;
-    camera.inertia = 0.035;
-    camera.angularSensibility = 2400;
-    camera.speed = 0;
-    camera.attachControl(canvas, true);
-    try { camera.inputs.removeByType("FreeCameraKeyboardMoveInput"); } catch (error) { /* no keyboard-driven camera translation */ }
-    createWeapon();
-    setupPostProcessing();
-    freezeStaticWorld();
-    simulationClock = performance.now();
-    simulationAccumulator = 0;
-    miniMapCtx = $("mini-map").getContext("2d");
-    worldMapCtx = $("world-map").getContext("2d");
-    drawWorldMap();
-    updateHud();
-    let previousFrameAt = performance.now();
-    engine.runRenderLoop(() => {
-      if (!scene) return;
-      const frameAt = performance.now();
-      const frameMs = Math.max(0.1, frameAt - previousFrameAt);
-      previousFrameAt = frameAt;
-      averageFrameMs += (frameMs - averageFrameMs) * 0.08;
-      smoothedFps += (1000 / frameMs - smoothedFps) * 0.06;
-      if (camera) camera.rotation.x = clamp(camera.rotation.x, -0.25, 0.34);
-
-      const elapsed = Math.min(engine.getDeltaTime() / 1000, 0.1);
-      if (gameStarted && !paused) {
-        simulationAccumulator += elapsed;
-        const step = 1 / 60;
-        let steps = 0;
-        while (simulationAccumulator >= step && steps < 6) {
-          simulationClock += step * 1000;
-          updateGame(step, simulationClock);
-          simulationAccumulator -= step;
-          steps++;
-        }
-        if (steps === 6) simulationAccumulator = Math.min(simulationAccumulator, step);
-      } else {
-        simulationAccumulator = 0;
-        simulationClock = frameAt;
-      }
-      scene.render();
-    });
-  }
-
-  function updateGame(dt, suppliedNow) {
-    const now = suppliedNow || performance.now();
-    updatePlayer(dt);
-    updateAnimals(dt, now);
-    if (now - interactionUpdateAt >= 90) {
-      updateInteraction();
-      interactionUpdateAt = now;
-    }
-    animateWeapon(dt);
-    animateWorld(now);
-    updateDayCycle(dt);
-    if (now - hudTimer > 180) {
-      const expiredTracks = footprints.filter((track) => now - track.createdAt > 75000);
-      if (expiredTracks.length) {
-        const expiredSet = new Set(expiredTracks);
-        expiredTracks.forEach((track) => track.mesh.dispose());
-        footprints = footprints.filter((track) => !expiredSet.has(track));
-      }
-      updateHud();
-      if (tracking) updateTracking();
-      drawMiniMap();
-      hudTimer = now;
-    }
-    if (now - autosaveTimer > 12000) {
-      saveGame(false);
-      autosaveTimer = now;
-    }
-    if (now - mapTimer > 1000) {
-      text("time-label", formatClock(dayTime));
-      text("bearing-value", bearingName((camera.rotation.y * 180 / Math.PI + 360) % 360));
-      mapTimer = now;
-    }
-  }
-
-  function jump() {
-    if (!gameStarted || paused || aiming) return;
-    const now = performance.now();
-    if (!playerGrounded && now - lastGroundedAt > 120) return;
-    verticalVelocity = 7.4;
-    playerGrounded = false;
-    lastGroundedAt = 0;
-    jumpCount++;
-    jumpMaxHeight = 0;
-    sound(150, 0.055, "triangle", 0.012);
-  }
-
-  function updatePlayer(dt) {
-    const forwardInput = (keys.has("w") || keys.has("arrowup") || touchKeys.has("up") ? 1 : 0) -
-      (keys.has("s") || keys.has("arrowdown") || touchKeys.has("down") ? 1 : 0);
-    const rightInput = (keys.has("d") || keys.has("arrowright") || touchKeys.has("right") ? 1 : 0) -
-      (keys.has("a") || keys.has("arrowleft") || touchKeys.has("left") ? 1 : 0);
-    const moving = forwardInput !== 0 || rightInput !== 0;
-    const sprinting = !crouched && (keys.has("shift") || touchKeys.has("sprint")) && state.stamina > 1 && moving;
-    playerMoving = moving;
-    playerSprinting = sprinting;
-
-    const speed = crouched ? 2.8 : sprinting ? 10.5 : 6.2;
-    const forward = camera.getDirection(BABYLON.Axis.Z);
-    forward.y = 0;
-    forward.normalize();
-    const right = BABYLON.Vector3.Cross(BABYLON.Axis.Y, forward).normalize();
-    const direction = forward.scale(forwardInput).add(right.scale(rightInput));
-    if (direction.lengthSquared() > 1) direction.normalize();
-
-    const desiredX = direction.x * speed;
-    const desiredZ = direction.z * speed;
-    const acceleration = playerGrounded ? (moving ? 20 : 27) : 8;
-    const blend = Math.min(1, acceleration * dt);
-    playerVelocity.x += (desiredX - playerVelocity.x) * blend;
-    playerVelocity.z += (desiredZ - playerVelocity.z) * blend;
-
-    if (moving) {
-      if (sprinting) state.stamina = Math.max(0, state.stamina - 27 * dt);
-      else state.stamina = Math.min(100, state.stamina + 16 * dt);
-    } else state.stamina = Math.min(100, state.stamina + 22 * dt);
-
-    const nextX = clamp(camera.position.x + playerVelocity.x * dt, -WORLD_LIMIT, WORLD_LIMIT);
-    const nextZ = clamp(camera.position.z + playerVelocity.z * dt, -WORLD_LIMIT, WORLD_LIMIT);
-    if (canStandAt(nextX, camera.position.z)) camera.position.x = nextX;
-    else playerVelocity.x = 0;
-    if (canStandAt(camera.position.x, nextZ)) camera.position.z = nextZ;
-    else playerVelocity.z = 0;
-
-    const groundY = heightAt(camera.position.x, camera.position.z) + (crouched ? 1.12 : 1.72);
-    if (playerGrounded) {
-      lastGroundedAt = performance.now();
-      verticalVelocity = 0;
-      camera.position.y += (groundY - camera.position.y) * Math.min(1, dt * 18);
-      if (Math.abs(camera.position.y - groundY) < 0.012) camera.position.y = groundY;
-    } else {
-      verticalVelocity -= 19.6 * dt;
-      camera.position.y += verticalVelocity * dt;
-      jumpMaxHeight = Math.max(jumpMaxHeight, camera.position.y - groundY);
-      if (camera.position.y <= groundY) {
-        camera.position.y = groundY;
-        verticalVelocity = 0;
-        playerGrounded = true;
-        sound(95, 0.045, "triangle", 0.008);
-      }
-    }
-
-    if (weaponRoot) {
-      const rate = sprinting ? 0.016 : 0.011;
-      const bob = playerGrounded && moving ? Math.abs(Math.sin(performance.now() * rate)) * (sprinting ? 0.022 : 0.012) : 0;
-      const jumpOffset = playerGrounded ? 0 : clamp((camera.position.y - groundY) * 0.025, 0, 0.075);
-      weaponRoot.position.y = -0.43 - bob + jumpOffset;
-    }
-  }
-
-  function canStandAt(x, z) {
-    if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 20.5) return false;
-    for (const item of obstacles) {
-      if (Math.hypot(x - item.x, z - item.z) < item.radius + 0.48) return false;
-    }
-    if (Math.abs(x + 14) < 6.5 && Math.abs(z - 43) < 5.1) return false;
-    return true;
-  }
-
-  function pickWanderTarget(animal) {
-    const spread = animal.species === "boar" ? 26 : 36;
-    animal.target = {
-      x: clamp(animal.spawn.x + rand(-spread, spread), -WORLD_LIMIT + 6, WORLD_LIMIT - 6),
-      z: clamp(animal.spawn.z + rand(-spread, spread), -WORLD_LIMIT + 6, WORLD_LIMIT - 6)
-    };
-  }
-
-  function updateAnimals(dt, now) {
-    for (const animal of animals) {
-      if (animal.harvested) {
-        if (now >= animal.respawnAt) respawnAnimal(animal);
-        continue;
-      }
-      if (animal.dead) continue;
-      const p = { x: camera.position.x, z: camera.position.z };
-      const a = { x: animal.root.position.x, z: animal.root.position.z };
-      const playerDistance = distance2D(p, a);
-      const baseSense = animal.species === "boar" ? 15 : animal.species === "buck" ? 23 : 20;
-      const movementNoise = crouched ? 0.36 : playerSprinting ? 1.42 : playerMoving ? 1 : 0.68;
-      const scentFactor = performance.now() < scentActiveUntil ? 0.62 : 1;
-      const detectionRadius = baseSense * movementNoise * scentFactor;
-      if (playerDistance < detectionRadius || (shotAt > 0 && Date.now() - shotAt < 9000 && playerDistance < 65)) {
-        animal.state = "flee";
-        animal.alertUntil = now + 8500;
-      }
-      if (animal.species === "boar" && playerDistance < 7.5 && now > (animal.attackCooldown || 0)) {
-        animal.attackCooldown = now + 2300;
-        state.health = Math.max(0, state.health - 8);
-        $("damage-flash").classList.remove("show");
-        void $("damage-flash").offsetWidth;
-        $("damage-flash").classList.add("show");
-        sound(100, 0.16, "sawtooth", 0.035);
-        toast("A wild boar charged you. Create some distance.", "warning");
-        if (state.health <= 0) {
-          state.health = 100;
-          camera.position.x = 0;
-          camera.position.z = 19;
-          state.cash = Math.max(0, state.cash - 15);
-          announce("You were knocked out and escorted back to Pinecrest Outpost. $15 lost.", 4200);
-        }
-      }
-      if (animal.state === "flee") {
-        if (playerDistance > 72 && now > animal.alertUntil) {
-          animal.state = "graze";
-          pickWanderTarget(animal);
-        } else {
-          let dx = a.x - p.x;
-          let dz = a.z - p.z;
-          const length = Math.max(0.001, Math.hypot(dx, dz));
-          dx /= length; dz /= length;
-          animal.target = {
-            x: clamp(a.x + dx * 25 + rand(-5, 5), -WORLD_LIMIT + 5, WORLD_LIMIT - 5),
-            z: clamp(a.z + dz * 25 + rand(-5, 5), -WORLD_LIMIT + 5, WORLD_LIMIT - 5)
-          };
-          moveAnimal(animal, dt, animal.species === "boar" ? 8.5 : 10.5);
-        }
-      } else if (animal.target) {
-        const d = Math.hypot(animal.target.x - a.x, animal.target.z - a.z);
-        if (d < 1.5) {
-          animal.target = null;
-          animal.state = "graze";
-          animal.pauseUntil = now + rand(1500, 4200);
-        } else if (now > (animal.pauseUntil || 0)) {
-          moveAnimal(animal, dt, animal.species === "boar" ? 1.7 : 2.25);
-        }
-      } else if (now > (animal.pauseUntil || 0)) {
-        pickWanderTarget(animal);
-        animal.state = "walk";
-      }
-      animal.root.position.y = heightAt(animal.root.position.x, animal.root.position.z);
-      if (now - animal.lastTrack > 3000 && animal.state !== "graze") {
-        animal.lastTrack = now;
-        addTrack(animal);
-      }
-      const moving = animal.state === "walk" || animal.state === "flee";
-      const pace = animal.state === "flee" ? (animal.species === "boar" ? 0.026 : 0.034) : 0.012;
-      const gait = now * pace + animal.lastAnim;
-      const stride = animal.state === "flee" ? 0.72 : animal.species === "boar" ? 0.22 : 0.32;
-      animal.legs.forEach((leg) => {
-        const swing = Math.sin(gait + leg.phase);
-        leg.upper.rotation.x = moving ? swing * stride : Math.sin(now * 0.0015 + animal.lastAnim + leg.phase) * 0.018;
-        leg.lower.rotation.x = moving ? Math.max(0, Math.sin(gait + leg.phase + 0.72)) * (animal.state === "flee" ? 0.72 : 0.32) : 0.015;
-      });
-      if (animal.headPivot) {
-        const graze = animal.state === "graze";
-        const alert = animal.state === "flee";
-        const targetPitch = graze ? 0.34 + Math.sin(now * 0.0017 + animal.lastAnim) * 0.06 : alert ? -0.12 : Math.sin(now * 0.0012 + animal.lastAnim) * 0.045;
-        animal.headPivot.rotation.x += (targetPitch - animal.headPivot.rotation.x) * Math.min(1, dt * 4.5);
-        animal.headPivot.rotation.y = Math.sin(now * 0.0008 + animal.lastAnim) * (alert ? 0.03 : 0.065);
-      }
-      if (animal.tailPivot) {
-        const tailMotion = animal.species === "boar" ? 0.12 : 0.2;
-        animal.tailPivot.rotation.x = Math.sin(now * (animal.state === "flee" ? 0.012 : 0.004) + animal.lastAnim) * tailMotion;
-        animal.tailPivot.rotation.z = Math.sin(now * 0.0015 + animal.lastAnim) * 0.12;
-      }
-      if (moving) animal.root.position.y += Math.abs(Math.sin(gait * 2)) * (animal.state === "flee" ? 0.045 : 0.018);
-      else if (animal.state === "graze") animal.root.position.y += Math.sin(now * 0.0018 + animal.lastAnim) * 0.025;
-    }
-  }
-
-  function moveAnimal(animal, dt, speed) {
-    if (!animal.target) return;
-    const dx = animal.target.x - animal.root.position.x;
-    const dz = animal.target.z - animal.root.position.z;
-    const len = Math.max(0.001, Math.hypot(dx, dz));
-    animal.root.position.x += dx / len * speed * dt;
-    animal.root.position.z += dz / len * speed * dt;
-    animal.root.rotation.y = Math.atan2(dx, dz);
-    animal.speed = speed;
-  }
-
-  function respawnAnimal(animal) {
-    animal.harvested = false;
-    animal.dead = false;
-    animal.health = animal.maxHealth;
-    animal.root.position.set(animal.spawn.x, heightAt(animal.spawn.x, animal.spawn.z), animal.spawn.z);
-    animal.root.rotation.set(0, rand(0, Math.PI * 2), 0);
-    animal.root.setEnabled(true);
-    animal.target = null;
-    animal.state = "graze";
-    animal.hitCount = 0;
-    animal.cleanKill = false;
-    animal.lastShotDistance = 0;
-    animal.legs.forEach((leg) => { leg.upper.rotation.set(0, 0, 0); leg.lower.rotation.set(0, 0, 0); });
-    if (animal.headPivot) animal.headPivot.rotation.set(0, 0, 0);
-    if (animal.tailPivot) animal.tailPivot.rotation.set(0, 0, 0);
-    animal.pauseUntil = performance.now() + rand(1000, 3000);
-  }
-
-  function animateWeapon(dt) {
-    if (!weaponRoot) return;
-    weaponKick = Math.max(0, weaponKick - dt * 2.6);
-    const targetZ = aiming ? 0.74 : 0.9;
-    const targetX = aiming ? 0.34 : 0.34;
-    const targetY = aiming ? -0.43 : -0.43;
-    weaponRoot.position.z += (targetZ - weaponRoot.position.z) * Math.min(1, dt * 12);
-    weaponRoot.position.x += (targetX - weaponRoot.position.x) * Math.min(1, dt * 12);
-    weaponRoot.position.y += (targetY - weaponRoot.position.y) * Math.min(1, dt * 12);
-    weaponRoot.rotation.x += ((aiming ? -0.015 : 0) - weaponRoot.rotation.x) * Math.min(1, dt * 10);
-    weaponRoot.position.z -= weaponKick * 0.18;
-    if (muzzleTimer > 0) {
-      muzzleTimer -= dt;
-      if (weaponMaterials.flash) weaponMaterials.flash.setEnabled(muzzleTimer > 0 && !aiming);
-    }
-  }
-
-  function updateInteraction() {
-    const px = camera.position.x, pz = camera.position.z;
-    let found = null, closest = 7.0;
-    for (const animal of animals) {
-      if (!animal.dead || animal.harvested) continue;
-      const d = Math.hypot(px - animal.root.position.x, pz - animal.root.position.z);
-      if (d < closest) {
-        closest = d;
-        found = { kind: "harvest", target: animal, name: animal.info.label, distance: d };
-      }
-    }
-    if (!found) {
-      for (const item of interactables) {
-        const d = Math.hypot(px - item.x, pz - item.z);
-        if (d < closest) {
-          closest = d;
-          found = { kind: item.action, target: item, name: item.name, distance: d };
-        }
-      }
-    }
-    nearestInteraction = found;
-    if (found) {
-      $("interaction-prompt").classList.add("visible");
-      let label = "INTERACT";
-      if (found.kind === "harvest") label = "HARVEST " + found.name.toUpperCase();
-      if (found.kind === "shop") label = "OPEN OUTFITTERS";
-      if (found.kind === "contract") label = state.contractAccepted ? "CHECK CONTRACT" : "ACCEPT HUNTING CONTRACT";
-      if (found.kind === "sell") label = "SELL HARVEST";
-      text("interaction-text", label);
-    } else $("interaction-prompt").classList.remove("visible");
-  }
-
-  function interact() {
-    if (paused) return;
-    if (!nearestInteraction) {
-      toast("Nothing close enough to interact with.", "warning");
-      return;
-    }
-    sound(520, 0.07, "sine", 0.02);
-    if (nearestInteraction.kind === "harvest") {
-      harvestAnimal(nearestInteraction.target);
-    } else if (nearestInteraction.kind === "shop") {
-      text("shop-cash", "$" + state.cash);
-      $("supplies-screen").classList.add("open");
-      paused = true;
-      document.exitPointerLock?.();
-    } else if (nearestInteraction.kind === "contract") {
-      if (!state.contractAccepted) {
-        state.contractAccepted = true;
-        announce("Contract accepted: harvest three deer and return to the valley.", 3500);
-        toast("New contract added to your field journal.", "success");
-        saveGame(false);
-      } else if (state.contractComplete) {
-        announce("First Harvest complete. The valley has more to offer.", 3000);
-      } else {
-        announce("First Harvest: harvest " + state.contractProgress + " of 3 deer.", 2600);
-      }
-    } else if (nearestInteraction.kind === "sell") {
-      sellHarvest();
-    }
-  }
-
-  function harvestAnimal(animal) {
-    if (!animal || !animal.dead || animal.harvested) return;
-    animal.harvested = true;
-    animal.respawnAt = performance.now() + 65000;
-    animal.root.setEnabled(false);
-    state.hides += animal.info.hide;
-    state.meat += animal.info.meat;
-    state.harvested += 1;
-    state.xp += animal.info.xp;
-    if (animal.species !== "boar") state.deerHarvested += 1;
-    if (state.contractAccepted && !state.contractComplete && animal.species !== "boar") state.contractProgress = Math.min(3, state.contractProgress + 1);
-    const cleanBonus = Boolean(animal.cleanKill);
-    if (cleanBonus) {
-      state.cleanKills = (state.cleanKills || 0) + 1;
-      state.cash += 40;
-      state.xp += 30;
-    }
-    levelCheck();
-    const rows = [
-      ["Hides collected", "+" + animal.info.hide],
-      ["Meat collected", "+" + animal.info.meat],
-      ["Shot placement", cleanBonus ? "CLEAN · FIRST-SHOT HEADSHOT" : (animal.hitCount > 1 ? "FOLLOW-UP SHOT" : "BODY SHOT")],
-      ["Shot distance", Math.round(animal.lastShotDistance || 0) + "m"],
-      ["Experience earned", "+" + animal.info.xp + " XP"]
-    ];
-    if (cleanBonus) rows.push(["Clean harvest bonus", "+$40 · +30 XP"]);
-    $("harvest-rows").innerHTML = rows.map((row) => '<div class="harvest-row"><span>' + row[0] + '</span><strong>' + row[1] + '</strong></div>').join("");
-    if (state.contractAccepted && state.contractProgress >= 3 && !state.contractComplete) {
-      state.contractComplete = true;
-      state.cash += 250;
-      state.xp += 180;
-      levelCheck();
-      $("harvest-rows").innerHTML += '<div class="harvest-row"><span>First Harvest contract bonus</span><strong>+$250 · +180 XP</strong></div>';
-      toast("Contract complete! $250 bonus added.", "success");
-    }
-    $("harvest-screen").classList.add("open");
-    paused = true;
-    document.exitPointerLock?.();
-    updateHud();
-    saveGame(false);
-  }
-
-  function sellHarvest() {
-    if (state.hides + state.meat < 1) {
-      toast("You have no harvest to sell yet. Bring back hides or meat.", "warning");
-      return;
-    }
-    const total = state.hides * 42 + state.meat * 18;
-    const hides = state.hides, meat = state.meat;
-    state.cash += total;
-    state.hides = 0;
-    state.meat = 0;
-    updateHud();
-    saveGame(false);
-    announce("Sold " + hides + " hides and " + meat + " meat for $" + total + ".", 3000);
-  }
-
-  function levelCheck() {
-    while (state.xp >= xpRequired()) {
-      state.xp -= xpRequired();
-      state.level += 1;
-      state.health = 100;
-      state.stamina = 100;
-      toast("Hunter rank increased. You reached level " + state.level + ".", "success");
-      sound(780, 0.22, "sine", 0.06);
-    }
-  }
-
-  function xpRequired() { return 150 + (state.level - 1) * 110; }
-
-  function shoot() {
-    if (!gameStarted || paused || reloading) return;
-    const now = performance.now();
-    if (now - lastShot < 470) return;
-    if (state.ammo <= 0) {
-      toast("Magazine empty. Press R to reload.", "warning");
-      sound(120, 0.07, "square", 0.02);
-      return;
-    }
-    lastShot = now;
-    shotAt = Date.now();
-    state.ammo -= 1;
-    weaponKick = 1;
-    muzzleTimer = 0.065;
-    if (weaponMaterials.flash) weaponMaterials.flash.setEnabled(true);
-    sound(aiming ? 82 : 74, 0.22, "sawtooth", 0.075);
-    $("crosshair").classList.add("fired");
-    window.setTimeout(() => $("crosshair").classList.remove("fired"), 80);
-
-    const direction = camera.getDirection(BABYLON.Axis.Z).normalize();
-    const ray = new BABYLON.Ray(camera.position, direction, 165);
-    const pick = scene.pickWithRay(ray, (mesh) => mesh.metadata && mesh.metadata.animalId && !mesh.metadata.deadAnimal);
-    if (pick && pick.hit && pick.pickedMesh) {
-      const animal = animals.find((item) => item.id === pick.pickedMesh.metadata.animalId);
-      if (animal && !animal.dead && !animal.harvested) {
-        animal.hitCount = (animal.hitCount || 0) + 1;
-        animal.lastShotDistance = distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z });
-        const damage = aiming ? 120 : 92;
-        animal.health = Math.max(0, animal.health - damage);
-        animal.state = "flee";
-        animal.alertUntil = performance.now() + 10000;
-        const hitPart = pick.pickedMesh.metadata.animalPart;
-        const headshot = hitPart === "head";
-        if (headshot) {
-          animal.health = 0;
-          animal.cleanKill = animal.hitCount === 1;
-        }
-        showHitMarker();
-        if (animal.health <= 0) {
-          animal.dead = true;
-          animal.target = null;
-          animal.root.rotation.z = Math.PI / 2;
-          animal.root.position.y = heightAt(animal.root.position.x, animal.root.position.z) + 0.15;
-          animal.root.getChildMeshes().forEach((mesh) => { mesh.metadata = { ...(mesh.metadata || {}), deadAnimal: true }; });
-          toast(headshot ? "Clean headshot. Animal down." : "Animal down. Move closer to harvest.", "success");
-          announce(animal.info.label + " down · Approach and press E to harvest.", 2600);
-        } else {
-          toast("Hit confirmed. The animal is wounded and moving.", "warning");
-        }
-      }
-    } else {
-      // A missed shot still disturbs wildlife and changes the hunt.
-      for (const animal of animals) {
-        const d = distance2D({ x: camera.position.x, z: camera.position.z }, { x: animal.root.position.x, z: animal.root.position.z });
-        if (!animal.dead && d < 66) {
-          animal.state = "flee";
-          animal.alertUntil = performance.now() + 11000;
-        }
-      }
-    }
-    updateHud();
-  }
-
-  function showHitMarker() {
-    const mark = $("hit-marker");
-    mark.classList.remove("show");
-    void mark.offsetWidth;
-    mark.classList.add("show");
-  }
-
-  function reload() {
-    if (reloading || state.ammo >= 8 || state.reserve <= 0 || paused || !gameStarted) return;
-    reloading = true;
-    reloadStarted = performance.now();
-    $("reload-indicator").classList.add("show");
-    sound(300, 0.07, "triangle", 0.018);
-  }
-
-  function updateReload() {
-    if (!reloading) return;
-    const progress = clamp((performance.now() - reloadStarted) / reloadDuration, 0, 1);
-    $("reload-fill").style.width = (progress * 100) + "%";
-    if (progress >= 1) {
-      const amount = Math.min(8 - state.ammo, state.reserve);
-      state.ammo += amount;
-      state.reserve -= amount;
-      reloading = false;
-      $("reload-indicator").classList.remove("show");
-      sound(480, 0.08, "triangle", 0.025);
-      toast("Reloaded. " + state.ammo + " rounds ready.", "success");
-      updateHud();
-    }
-  }
-
-  function toggleAim(value) {
-    aiming = value === undefined ? !aiming : value;
-    const shell = $("game-shell");
-    shell.classList.toggle("aiming", aiming);
-    const overlay = $("scope-overlay");
-    if (overlay) overlay.setAttribute("aria-hidden", aiming ? "false" : "true");
-    if (camera) camera.fov = aiming ? scopeFovs[scopeZoomIndex] : 1.04;
-    if (weaponRoot) weaponRoot.setEnabled(!aiming);
-    text("scope-zoom-label", scopeMagnifications[scopeZoomIndex] + "X");
-    text("weapon-mode", aiming
-      ? "RANGER OPTIC · " + scopeMagnifications[scopeZoomIndex] + "X"
-      : "SEMI-AUTOMATIC · RIFLE SCOPE");
-  }
-
-  function adjustScopeZoom(event) {
-    if (!aiming || paused) return;
-    event.preventDefault();
-    const direction = Math.sign(event.deltaY);
-    if (!direction) return;
-    scopeZoomIndex = clamp(scopeZoomIndex + (direction < 0 ? 1 : -1), 0, scopeMagnifications.length - 1);
-    if (camera) camera.fov = scopeFovs[scopeZoomIndex];
-    text("scope-zoom-label", scopeMagnifications[scopeZoomIndex] + "X");
-    sound(410 + scopeZoomIndex * 35, 0.045, "sine", 0.012);
-  }
-
-  function toggleTracking() {
-    tracking = !tracking;
-    updateTracking();
-    if (tracking) {
-      announce("Tracking sense active. Look for fresh hoof prints and wildlife.", 2400);
-      sound(650, 0.11, "sine", 0.025);
-    } else toast("Tracking sense disabled.", "");
-  }
-
-  function toggleCrouch() {
-    crouched = !crouched;
-    $("game-shell").classList.toggle("crouched", crouched);
-    updateHud();
-    toast(crouched ? "Low profile. Wildlife will tolerate a closer approach." : "Standing upright. Your movement is easier to hear.", crouched ? "success" : "");
-    sound(crouched ? 240 : 360, 0.07, "triangle", 0.018);
-  }
-
-  function useScent() {
-    const now = performance.now();
-    if (now < scentActiveUntil) {
-      toast("Trail scent is already masking your approach.", "warning");
-      return;
-    }
-    if (state.scent < 1) {
-      toast("No trail scent available. Buy a vial at Pinecrest Outfitters.", "warning");
-      return;
-    }
-    state.scent -= 1;
-    scentActiveUntil = now + 45000;
-    updateHud();
-    saveGame(false);
-    toast("Trail scent applied. Wildlife detection is reduced for 45 seconds.", "success");
-    sound(590, 0.12, "sine", 0.025);
-  }
-
-  function updateHud() {
-    const rank = ["NOVICE", "SCOUT", "TRACKER", "RANGER", "STALKER", "WILDLANDER"][Math.min(5, Math.floor((state.level - 1) / 2))];
-    text("hunter-name", state.name.toUpperCase());
-    text("hunter-rank", rank + " · LEVEL " + state.level);
-    text("cash-value", "$" + state.cash.toLocaleString("en-AU"));
-    text("xp-text", state.xp + " / " + xpRequired() + " XP");
-    $("xp-fill").style.width = (state.xp / xpRequired() * 100) + "%";
-    text("ammo-current", state.ammo);
-    text("ammo-reserve", state.reserve);
-    text("shop-cash", "$" + state.cash);
-    const scentSeconds = Math.max(0, Math.ceil((scentActiveUntil - performance.now()) / 1000));
-    text("fieldcraft-value", (crouched ? "CROUCHED" : "STANDING") + " · " + (scentSeconds > 0 ? "SCENT " + scentSeconds + "s" : "VIALS " + state.scent));
-    const crouchAction = $("crouch-action");
-    if (crouchAction) crouchAction.classList.toggle("active", crouched);
-    text("crouch-label", crouched ? "LOW PROFILE" : "CROUCH");
-    const scentAction = $("scent-action");
-    if (scentAction) scentAction.classList.toggle("active", scentSeconds > 0);
-    text("scent-label", scentSeconds > 0 ? scentSeconds + "s LEFT" : "SCENT " + state.scent);
-    text("contract-progress", state.contractProgress + " / 3");
-    $("contract-fill").style.width = (state.contractProgress / 3 * 100) + "%";
-    if (state.contractComplete) {
-      text("contract-title", "First Harvest · Complete");
-      text("contract-description", "Three deer harvested. Your first contract is complete. Sell your hides and meat at the harvest station.");
-      text("contract-reward", "REWARD CLAIMED");
-    } else if (state.contractAccepted) {
-      text("contract-title", "First Harvest");
-      text("contract-description", "Harvest 3 deer in Pinecrest Valley. Return to the outpost and sell your hides and meat.");
-      text("contract-reward", "$250 + 180 XP");
-    } else {
-      text("contract-title", "Trailhead Briefing");
-      text("contract-description", "Visit the contract board at Pinecrest Outpost to take your first hunting contract.");
-      text("contract-reward", "AVAILABLE AT CAMP");
-    }
-    const hp = $("health-fill");
-    if (hp) hp.style.width = state.health + "%";
-    text("health-value", state.health + " / 100");
-    const stamina = $("stamina-fill");
-    if (stamina) stamina.style.width = state.stamina + "%";
-    text("stamina-value", Math.round(state.stamina) + "%");
-    const fieldTip = !state.contractAccepted
-      ? "You're at Pinecrest Outpost. The contract board is nearby — press E to accept First Harvest."
-      : state.contractComplete
-        ? "First Harvest complete. Sell your hides and meat at the harvest station to build your funds."
-        : (tracking
-          ? "Tracking sense is active. Follow fresh hoof prints to locate wildlife."
-          : "Look for deer beyond the outpost. Press Q to reveal nearby tracks.");
-    const scentNoteSeconds = Math.max(0, Math.ceil((scentActiveUntil - performance.now()) / 1000));
-    const fieldcraftTip = crouched ? " You're crouched and quieter." : "";
-    const scentTip = scentNoteSeconds > 0 ? " Scent cover: " + scentNoteSeconds + "s." : "";
-    text("field-note-text", state.hides + " hides · " + state.meat + " meat. " + fieldTip + fieldcraftTip + scentTip);
-  }
-
   function updateDayCycle(dt) {
     dayTime = (dayTime + dt * 0.00036) % 1;
+    if (simulationClock - dayCycleUpdateAt < 180) return;
+    dayCycleUpdateAt = simulationClock;
     const daylight = 0.18 + Math.max(0, Math.sin(dayTime * Math.PI * 2)) * 0.82;
     lights.hemi.intensity = 0.16 + daylight * 0.48;
     lights.sun.intensity = 0.06 + daylight * 0.9;
