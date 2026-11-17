@@ -63,6 +63,9 @@
   let touchKeys = new Set();
   let currentTarget = null;
   let currentAnimal = null;
+  let windMeshes = [];
+  let waterRipples = [];
+  let skySun = null;
 
   const mat = {};
   const rand = (min, max) => min + Math.random() * (max - min);
@@ -177,6 +180,82 @@
     return material;
   }
 
+  function createProceduralSurfaceTexture(name, kind) {
+    const size = 512;
+    const texture = new BABYLON.DynamicTexture(name, { width: size, height: size }, scene, true);
+    const ctx = texture.getContext();
+    let seed = kind === "grass" ? 7319 : kind === "dirt" ? 28411 : kind === "water" ? 9127 : 4417;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+
+    if (kind === "grass") {
+      ctx.fillStyle = "#718856";
+      ctx.fillRect(0, 0, size, size);
+      for (let i = 0; i < 760; i++) {
+        const x = random() * size, y = random() * size, r = 5 + random() * 34;
+        const shade = random() > 0.5 ? "rgba(39,75,43,.17)" : "rgba(174,190,116,.16)";
+        const g = ctx.createRadialGradient(x, y, 1, x, y, r);
+        g.addColorStop(0, shade); g.addColorStop(1, "rgba(100,130,72,0)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      for (let i = 0; i < 18000; i++) {
+        const light = random() > 0.52;
+        ctx.fillStyle = light ? "rgba(190,204,139,.12)" : "rgba(26,56,36,.13)";
+        const x = random() * size, y = random() * size;
+        ctx.fillRect(x, y, 1 + random() * 2, 1 + random() * 2);
+      }
+      for (let i = 0; i < 780; i++) {
+        const x = random() * size, y = random() * size;
+        ctx.strokeStyle = random() > 0.5 ? "rgba(190,202,134,.12)" : "rgba(34,71,39,.12)";
+        ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + random() * 3, y - 3 - random() * 6); ctx.stroke();
+      }
+      texture.uScale = 10; texture.vScale = 10;
+    } else if (kind === "dirt") {
+      ctx.fillStyle = "#a58b66"; ctx.fillRect(0, 0, size, size);
+      for (let i = 0; i < 900; i++) {
+        const x = random() * size, y = random() * size, r = 3 + random() * 26;
+        ctx.fillStyle = random() > 0.5 ? "rgba(72,53,36,.13)" : "rgba(225,198,145,.19)";
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * (0.28 + random() * 0.55), random() * 3, 0, Math.PI * 2); ctx.fill();
+      }
+      for (let i = 0; i < 14500; i++) {
+        ctx.fillStyle = random() > 0.5 ? "rgba(54,42,30,.16)" : "rgba(239,216,170,.2)";
+        ctx.fillRect(random() * size, random() * size, 1 + random() * 2, 1);
+      }
+      texture.uScale = 7; texture.vScale = 7;
+    } else if (kind === "water") {
+      const g = ctx.createLinearGradient(0, 0, size, size);
+      g.addColorStop(0, "#477b86"); g.addColorStop(0.5, "#679ca2"); g.addColorStop(1, "#477d88");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+      for (let i = 0; i < 1550; i++) {
+        const x = random() * size, y = random() * size, len = 4 + random() * 42;
+        ctx.strokeStyle = random() > 0.55 ? "rgba(211,236,222,.18)" : "rgba(25,67,79,.12)";
+        ctx.lineWidth = 0.6 + random() * 1.4;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + len * 0.5, y - 2, x + len, y + random() * 2); ctx.stroke();
+      }
+      texture.uScale = 3; texture.vScale = 3;
+    } else {
+      ctx.fillStyle = "#73543b"; ctx.fillRect(0, 0, size, size);
+      for (let i = 0; i < 230; i++) {
+        const x = random() * size, w = 1 + random() * 5;
+        ctx.fillStyle = random() > 0.5 ? "rgba(36,27,19,.2)" : "rgba(193,143,86,.17)";
+        ctx.fillRect(x, 0, w, size);
+      }
+      for (let i = 0; i < 360; i++) {
+        ctx.strokeStyle = "rgba(31,24,18,.14)"; ctx.lineWidth = 1;
+        const x = random() * size, y = random() * size;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + random() * 18, y + random() * 70); ctx.stroke();
+      }
+      texture.uScale = 2; texture.vScale = 3;
+    }
+    texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+    texture.anisotropicFilteringLevel = 8;
+    texture.update(false);
+    return texture;
+  }
+
   function createMaterials() {
     mat.grass = makeMaterial("meadow-grass", "#758d58");
     mat.grassLight = makeMaterial("sunlit-grass", "#89a46a");
@@ -218,7 +297,36 @@
     mat.fawn = makeMaterial("fawn-coat", "#b88758");
     mat.white = makeMaterial("wildlife-cream", "#eadbb9");
     mat.eye = makeMaterial("wildlife-eye", "#211d18");
-    mat.grassBlade = makeMaterial("grass-blade", "#9aae6b");
+    mat.grassBlade = makeMaterial("grass-blade", "#ffffff");
+    mat.grassBlade.useVertexColors = true;
+    mat.grassBlade.backFaceCulling = false;
+    mat.grassBlade.specularColor = new BABYLON.Color3(0.015, 0.02, 0.012);
+    mat.shore = makeMaterial("lake-sand", "#bca77d");
+    mat.waterRipple = makeMaterial("lake-ripple", "#c5e0db");
+    mat.waterRipple.alpha = 0.18;
+    mat.waterRipple.disableLighting = true;
+    mat.mountain1 = makeMaterial("distant-ridge-1", "#4f6859");
+    mat.mountain2 = makeMaterial("distant-ridge-2", "#617665");
+    mat.mountain3 = makeMaterial("distant-ridge-3", "#72836d");
+    mat.flowerGold = makeMaterial("meadow-flower-gold", "#e6c77b");
+    mat.flowerCream = makeMaterial("meadow-flower-cream", "#e7e4ca");
+    mat.grass.diffuseTexture = createProceduralSurfaceTexture("pinecrest-grass-texture", "grass");
+    mat.grass.diffuseColor = hex("#e2e9d2");
+    mat.grass.specularColor = new BABYLON.Color3(0.025, 0.035, 0.018);
+    mat.dirt.diffuseTexture = createProceduralSurfaceTexture("pinecrest-earth-texture", "dirt");
+    mat.dirt.diffuseColor = hex("#eee0c6");
+    mat.water.diffuseTexture = createProceduralSurfaceTexture("stillwater-ripple-texture", "water");
+    mat.water.diffuseColor = hex("#d7e7e6");
+    mat.water.alpha = 0.96;
+    mat.water.specularColor = new BABYLON.Color3(0.68, 0.8, 0.84);
+    mat.water.specularPower = 96;
+    mat.bark.diffuseTexture = createProceduralSurfaceTexture("pinecrest-bark-texture", "bark");
+    mat.bark.diffuseColor = hex("#ead7bd");
+    mat.rifleWood.diffuseTexture = createProceduralSurfaceTexture("rifle-walnut-texture", "bark");
+    mat.rifleWood.diffuseColor = hex("#e8d8c3");
+    [mat.pine1, mat.pine2, mat.pine3, mat.leaf1, mat.leaf2, mat.leaf3].forEach((material) => {
+      material.specularColor = new BABYLON.Color3(0.025, 0.04, 0.025);
+    });
   }
 
   function heightAt(x, z) {
@@ -293,42 +401,62 @@
   function createTree(x, z, scale, broadleaf) {
     const root = new BABYLON.TransformNode("tree-root", scene);
     root.position.set(x, heightAt(x, z), z);
+    root.rotation.y = rand(0, Math.PI * 2);
     const trunk = BABYLON.MeshBuilder.CreateCylinder("tree-trunk", {
-      height: 3.2 * scale, diameterTop: 0.28 * scale, diameterBottom: 0.48 * scale, tessellation: 6
+      height: 3.65 * scale, diameterTop: 0.19 * scale, diameterBottom: 0.52 * scale, tessellation: 7
     }, scene);
-    trunk.position.y = 1.55 * scale;
+    trunk.position.y = 1.78 * scale;
     trunk.parent = root;
     trunk.material = mat.bark;
     trunk.isPickable = false;
     trunk.receiveShadows = true;
+    if (lights.shadows) {
+      try { lights.shadows.addShadowCaster(trunk); } catch (error) { /* optional */ }
+    }
     if (broadleaf) {
-      const leaves = [mat.leaf1, mat.leaf2, mat.leaf3];
-      const sizes = [1.65, 1.3, 0.95];
-      for (let i = 0; i < 3; i++) {
+      const leaves = [mat.leaf1, mat.leaf2, mat.leaf3, mat.leaf2, mat.leaf1];
+      const sizes = [1.72, 1.45, 1.2, 0.95, 0.72];
+      for (let i = 0; i < sizes.length; i++) {
         const crown = BABYLON.MeshBuilder.CreatePolyhedron("broadleaf-crown", {
           type: 4, size: sizes[i] * scale
         }, scene);
-        crown.position.set(rand(-0.25, 0.25) * scale, (2.5 + i * 0.7) * scale, rand(-0.18, 0.18) * scale);
+        crown.position.set(rand(-0.48, 0.48) * scale, (2.35 + i * 0.47) * scale, rand(-0.42, 0.42) * scale);
         crown.rotation.y = rand(0, Math.PI * 2);
         crown.parent = root;
         crown.material = leaves[i];
         crown.isPickable = false;
         crown.receiveShadows = true;
+        if (i === 0) {
+          if (lights.shadows) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
+          windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+        }
       }
     } else {
-      const layers = [mat.pine1, mat.pine2, mat.pine3];
-      for (let i = 0; i < 3; i++) {
+      const layers = [mat.pine1, mat.pine2, mat.pine3, mat.pine2];
+      const widths = [4.25, 3.6, 2.9, 2.1];
+      for (let i = 0; i < layers.length; i++) {
         const crown = BABYLON.MeshBuilder.CreateCylinder("pine-crown", {
-          height: 3.1 * scale, diameterTop: 0, diameterBottom: (3.6 - i * 0.55) * scale, tessellation: 6
+          height: 2.95 * scale, diameterTop: 0.03 * scale, diameterBottom: widths[i] * scale, tessellation: 7
         }, scene);
-        crown.position.y = (2.4 + i * 1.05) * scale;
+        crown.position.y = (2.25 + i * 0.73) * scale;
         crown.parent = root;
         crown.material = layers[i];
         crown.isPickable = false;
         crown.receiveShadows = true;
+        if (i === 0) {
+          if (lights.shadows) { try { lights.shadows.addShadowCaster(crown); } catch (error) { /* optional */ } }
+          windMeshes.push({ mesh: crown, base: crown.rotation.z, phase: rand(0, 12) });
+        }
       }
+      const leader = BABYLON.MeshBuilder.CreateCylinder("pine leader", {
+        height: 1.55 * scale, diameterTop: 0, diameterBottom: 1.25 * scale, tessellation: 7
+      }, scene);
+      leader.position.y = 5.12 * scale;
+      leader.parent = root;
+      leader.material = mat.pine1;
+      leader.isPickable = false;
     }
-    obstacles.push({ x, z, radius: broadleaf ? 1.15 * scale : 0.65 * scale });
+    obstacles.push({ x, z, radius: broadleaf ? 1.28 * scale : 0.72 * scale });
     return root;
   }
 
@@ -355,14 +483,27 @@
     water.scaling.set(1.3, 0.8, 1);
     water.material = mat.water;
     water.isPickable = false;
-    const shimmer = BABYLON.MeshBuilder.CreateDisc("lake shimmer", { radius: 8, tessellation: 36 }, scene);
+    water.receiveShadows = false;
+    const waterGlow = makeMaterial("lake-glint", "#b7d4d0");
+    waterGlow.alpha = 0.16;
+    waterGlow.disableLighting = true;
+    const shimmer = BABYLON.MeshBuilder.CreateDisc("lake shimmer", { radius: 8, tessellation: 48 }, scene);
     shimmer.rotation.x = Math.PI / 2;
     shimmer.position.set(49, heightAt(49, -43) + 0.15, -43);
     shimmer.scaling.set(1.3, 0.25, 1);
-    const waterGlow = makeMaterial("lake-glint", "#a8c5ae");
-    waterGlow.alpha = 0.26;
     shimmer.material = waterGlow;
     shimmer.isPickable = false;
+    for (let i = 0; i < 5; i++) {
+      const ring = BABYLON.MeshBuilder.CreateTorus("Stillwater ripple", {
+        diameter: rand(3.2, 8.5), thickness: 0.035 + rand(0, 0.02), tessellation: 48
+      }, scene);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(55 + rand(-13, 13), water.position.y + 0.08 + i * 0.003, -44 + rand(-7, 7));
+      ring.scaling.set(1.35, 0.78, 1);
+      ring.material = waterGlow;
+      ring.isPickable = false;
+      waterRipples.push({ mesh: ring, baseX: ring.scaling.x, baseY: ring.scaling.y, phase: rand(0, 10) });
+    }
   }
 
   function box(name, size, position, material, parent) {
@@ -423,7 +564,7 @@
 
   function scatterEnvironment() {
     let placed = 0, attempts = 0;
-    while (placed < 148 && attempts < 1200) {
+    while (placed < 188 && attempts < 1600) {
       attempts++;
       const x = rand(-125, 125);
       const z = rand(-124, 125);
@@ -437,35 +578,33 @@
       createTree(x, z, scale, broadleaf);
       placed++;
     }
-    for (let i = 0; i < 36; i++) {
+    for (let i = 0; i < 50; i++) {
       const x = rand(-115, 115), z = rand(-115, 120);
       if (flatArea(x, z) || (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 24)) continue;
       createRock(x, z, rand(0.45, 1.25));
     }
-    for (let i = 0; i < 46; i++) {
-      const x = rand(-90, 90), z = rand(-100, 115);
-      if (flatArea(x, z)) continue;
-      const tuft = BABYLON.MeshBuilder.CreatePolyhedron("grass-tuft", { type: 1, size: rand(0.1, 0.22) }, scene);
-      tuft.position.set(x, heightAt(x, z) + 0.16, z);
-      tuft.scaling.set(0.7, rand(1.4, 2.8), 0.65);
-      tuft.material = mat.grassBlade;
-      tuft.isPickable = false;
-    }
+    // Dense ground cover and undergrowth are built after trees and rocks are placed.
   }
 
   function setupLighting() {
     const hemi = new BABYLON.HemisphericLight("sky-fill", new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.intensity = 0.86;
-    hemi.groundColor = hex("#53604a");
-    const sun = new BABYLON.DirectionalLight("morning-sun", new BABYLON.Vector3(-0.45, -1, 0.35), scene);
-    sun.position = new BABYLON.Vector3(65, 95, -70);
-    sun.intensity = 1.15;
+    hemi.intensity = 0.78;
+    hemi.groundColor = hex("#465541");
+    hemi.diffuse = hex("#e5e8d6");
+    const sun = new BABYLON.DirectionalLight("morning-sun", new BABYLON.Vector3(-0.38, -1, 0.24), scene);
+    sun.position = new BABYLON.Vector3(65, 105, -70);
+    sun.intensity = 1.35;
+    sun.diffuse = hex("#ffe1b2");
+    sun.specular = hex("#fff0d3");
     lights.hemi = hemi;
     lights.sun = sun;
     try {
       const shadows = new BABYLON.ShadowGenerator(1024, sun);
       shadows.useBlurExponentialShadowMap = true;
-      shadows.blurKernel = 12;
+      shadows.blurKernel = 18;
+      shadows.bias = 0.00045;
+      shadows.normalBias = 0.025;
+      shadows.darkness = 0.26;
       lights.shadows = shadows;
     } catch (error) {
       console.warn("Shadow map unavailable; continuing without shadows.", error);
@@ -521,6 +660,26 @@
     sight.position.set(-0.035, 0.115, 0.92);
     sight.material = mat.gold;
     sight.isPickable = false;
+    const scopeBands = [-0.19, 0.19].map((offset) => {
+      const band = BABYLON.MeshBuilder.CreateTorus("scope mounting ring", { diameter: 0.15, thickness: 0.025, tessellation: 12 }, scene);
+      band.parent = weaponRoot;
+      band.rotation.x = Math.PI / 2;
+      band.position.set(-0.06, 0.15, 0.18 + offset);
+      band.material = mat.gold;
+      band.isPickable = false;
+      return band;
+    });
+    const bolt = BABYLON.MeshBuilder.CreateCylinder("rifle bolt", { height: 0.18, diameter: 0.045, tessellation: 8 }, scene);
+    bolt.parent = weaponRoot;
+    bolt.rotation.z = Math.PI / 2;
+    bolt.position.set(0.04, 0.045, -0.03);
+    bolt.material = mat.metal;
+    bolt.isPickable = false;
+    const magazine = BABYLON.MeshBuilder.CreateBox("rifle magazine", { width: 0.12, height: 0.29, depth: 0.19 }, scene);
+    magazine.parent = weaponRoot;
+    magazine.position.set(-0.045, -0.2, 0.18);
+    magazine.material = mat.black;
+    magazine.isPickable = false;
     const muzzleFlash = BABYLON.MeshBuilder.CreateSphere("muzzle-flash", { diameter: 0.3, segments: 6 }, scene);
     muzzleFlash.parent = weaponRoot;
     muzzleFlash.position.set(-0.035, 0.045, 1.42);
@@ -772,19 +931,223 @@
     return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(degrees / 45) % 8];
   }
 
+  function createSkyDome() {
+    const canvasTexture = new BABYLON.DynamicTexture("pinecrest-sky-gradient", { width: 1024, height: 512 }, scene, true);
+    const ctx = canvasTexture.getContext();
+    const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+    gradient.addColorStop(0, "#527b9a");
+    gradient.addColorStop(0.36, "#83a8b4");
+    gradient.addColorStop(0.58, "#c2d0c6");
+    gradient.addColorStop(0.76, "#e2d5b9");
+    gradient.addColorStop(1, "#75846b");
+    ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1024, 512);
+    for (let i = 0; i < 34; i++) {
+      const x = Math.random() * 1024, y = 135 + Math.random() * 180;
+      const w = 45 + Math.random() * 150, h = 9 + Math.random() * 23;
+      const cloud = ctx.createRadialGradient(x, y, 1, x, y, w);
+      cloud.addColorStop(0, "rgba(246,244,225,.27)");
+      cloud.addColorStop(0.55, "rgba(230,237,226,.12)");
+      cloud.addColorStop(1, "rgba(230,237,226,0)");
+      ctx.fillStyle = cloud; ctx.beginPath(); ctx.ellipse(x, y, w, h, (Math.random() - .5) * .12, 0, Math.PI * 2); ctx.fill();
+    }
+    const sunGlow = ctx.createRadialGradient(755, 224, 2, 755, 224, 190);
+    sunGlow.addColorStop(0, "rgba(255,240,204,.48)");
+    sunGlow.addColorStop(0.28, "rgba(255,235,197,.18)");
+    sunGlow.addColorStop(1, "rgba(255,235,197,0)");
+    ctx.fillStyle = sunGlow; ctx.fillRect(560, 40, 390, 370);
+    canvasTexture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    canvasTexture.update(false);
+
+    const sky = BABYLON.MeshBuilder.CreateSphere("Pinecrest sky dome", { diameter: 900, segments: 32 }, scene);
+    sky.infiniteDistance = true;
+    sky.isPickable = false;
+    sky.applyFog = false;
+    sky.renderingGroupId = 0;
+    const skyMaterial = new BABYLON.StandardMaterial("Pinecrest sky material", scene);
+    skyMaterial.backFaceCulling = false;
+    skyMaterial.disableLighting = true;
+    skyMaterial.fogEnabled = false;
+    skyMaterial.emissiveTexture = canvasTexture;
+    skyMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+    skyMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+    skyMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+    sky.material = skyMaterial;
+    lights.sky = sky;
+    lights.skyMaterial = skyMaterial;
+
+    const sun = BABYLON.MeshBuilder.CreateSphere("distant sun", { diameter: 10, segments: 16 }, scene);
+    const sunMaterial = new BABYLON.StandardMaterial("distant sun material", scene);
+    sunMaterial.disableLighting = true;
+    sunMaterial.emissiveColor = hex("#ffe6b1");
+    sunMaterial.diffuseColor = hex("#ffe6b1");
+    sunMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+    sun.material = sunMaterial;
+    sun.isPickable = false;
+    sun.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+    skySun = sun;
+    lights.sunDisc = sun;
+  }
+
+  function setupPostProcessing() {
+    try {
+      if (!BABYLON.DefaultRenderingPipeline) return;
+      const pipeline = new BABYLON.DefaultRenderingPipeline("Wildrange cinematic pipeline", true, scene, [camera]);
+      pipeline.fxaaEnabled = true;
+      pipeline.bloomEnabled = true;
+      pipeline.bloomThreshold = 0.88;
+      pipeline.bloomWeight = 0.14;
+      pipeline.bloomKernel = 64;
+      pipeline.imageProcessingEnabled = true;
+      pipeline.imageProcessing.exposure = 1.06;
+      pipeline.imageProcessing.contrast = 1.16;
+      pipeline.imageProcessing.toneMappingEnabled = true;
+      pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+      lights.pipeline = pipeline;
+    } catch (error) {
+      console.warn("Cinematic post-processing unavailable; using standard rendering.", error);
+    }
+  }
+
+  function createHorizonRidges() {
+    const peaks = [
+      [-172, -104, 78, 112], [-94, -178, 91, 128], [15, -184, 70, 118],
+      [132, -162, 92, 132], [185, -34, 82, 128], [156, 118, 84, 126],
+      [42, 184, 70, 116], [-91, 177, 90, 132], [-184, 47, 82, 132]
+    ];
+    peaks.forEach((peak, index) => {
+      const [x, z, height, diameter] = peak;
+      const ridge = BABYLON.MeshBuilder.CreateCylinder("distant mountain", {
+        height, diameterTop: 1.5, diameterBottom: diameter, tessellation: 6
+      }, scene);
+      ridge.position.set(x, heightAt(clamp(x, -138, 138), clamp(z, -138, 138)) + height * 0.46 - 2, z);
+      ridge.rotation.y = rand(0, Math.PI);
+      ridge.material = [mat.mountain1, mat.mountain2, mat.mountain3][index % 3];
+      ridge.isPickable = false;
+      ridge.receiveShadows = true;
+      ridge.applyFog = true;
+      const shoulder = BABYLON.MeshBuilder.CreateCylinder("distant mountain shoulder", {
+        height: height * 0.67, diameterTop: 1, diameterBottom: diameter * 0.56, tessellation: 6
+      }, scene);
+      shoulder.position.set(x + rand(-17, 17), ridge.position.y + height * 0.13, z + rand(-13, 13));
+      shoulder.rotation.y = rand(0, Math.PI);
+      shoulder.material = [mat.mountain2, mat.mountain3, mat.mountain1][index % 3];
+      shoulder.isPickable = false;
+      shoulder.applyFog = true;
+    });
+  }
+
+  function createGroundCover() {
+    const positions = [], indices = [], colors = [];
+    let placed = 0, attempts = 0;
+    while (placed < 1050 && attempts < 3600) {
+      attempts++;
+      const x = rand(-132, 132), z = rand(-132, 132);
+      if (flatArea(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 25) continue;
+      const roadX = 0.003 * z * z - 0.12 * z - 1;
+      if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
+      if (obstacles.some((item) => Math.hypot(x - item.x, z - item.z) < item.radius + 1.6)) continue;
+      const y = heightAt(x, z) + 0.06;
+      const shade = rand(0.82, 1.13);
+      for (let blade = 0; blade < 3; blade++) {
+        const angle = rand(0, Math.PI * 2);
+        const half = rand(0.025, 0.065);
+        const height = rand(0.18, 0.5);
+        const lean = rand(0.015, 0.12);
+        const sideX = Math.cos(angle) * half, sideZ = Math.sin(angle) * half;
+        const tipX = x + Math.cos(angle + 0.9) * lean;
+        const tipZ = z + Math.sin(angle + 0.9) * lean;
+        const base = positions.length / 3;
+        positions.push(x - sideX, y, z - sideZ, x + sideX, y, z + sideZ, tipX, y + height, tipZ);
+        const green = clamp(0.42 * shade + rand(-0.035, 0.035), 0.32, 0.58);
+        for (let v = 0; v < 3; v++) colors.push(0.27 * shade, green, 0.13 * shade, 1);
+        indices.push(base, base + 1, base + 2);
+      }
+      placed++;
+    }
+    const grass = new BABYLON.Mesh("Pinecrest meadow grass", scene);
+    const vertexData = new BABYLON.VertexData();
+    const normals = [];
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    vertexData.positions = positions;
+    vertexData.indices = indices;
+    vertexData.normals = normals;
+    vertexData.colors = colors;
+    vertexData.applyToMesh(grass, false);
+    grass.material = mat.grassBlade;
+    grass.isPickable = false;
+    grass.receiveShadows = false;
+    grass.hasVertexAlpha = false;
+    lights.grassMesh = grass;
+  }
+
+  function createBush(x, z, scale) {
+    const root = new BABYLON.TransformNode("wild shrub", scene);
+    root.position.set(x, heightAt(x, z), z);
+    const clumps = 3 + Math.floor(rand(0, 3));
+    for (let i = 0; i < clumps; i++) {
+      const size = rand(0.55, 1.05) * scale;
+      const leaf = BABYLON.MeshBuilder.CreateIcoSphere("shrub foliage", { radius: size, subdivisions: 1 }, scene);
+      leaf.parent = root;
+      leaf.position.set(rand(-0.65, 0.65) * scale, size * 0.62, rand(-0.55, 0.55) * scale);
+      leaf.scaling.y = rand(0.65, 1.05);
+      leaf.material = [mat.leaf1, mat.leaf2, mat.leaf3][Math.floor(rand(0, 3))];
+      leaf.isPickable = false;
+    }
+    obstacles.push({ x, z, radius: 0.65 * scale });
+  }
+
+  function scatterUndergrowth() {
+    let placed = 0, attempts = 0;
+    while (placed < 34 && attempts < 280) {
+      attempts++;
+      const x = rand(-120, 120), z = rand(-120, 120);
+      if (flatArea(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 26) continue;
+      const roadX = 0.003 * z * z - 0.12 * z - 1;
+      if (Math.abs(x - roadX) < 5.5 && z > 25 && z < 108) continue;
+      if (obstacles.some((item) => Math.hypot(x - item.x, z - item.z) < item.radius + 3)) continue;
+      createBush(x, z, rand(0.85, 1.35));
+      placed++;
+    }
+  }
+
+  function animateWorld(now) {
+    for (const item of windMeshes) {
+      item.mesh.rotation.z = item.base + Math.sin(now * 0.00042 + item.phase) * 0.014;
+    }
+    for (const item of waterRipples) {
+      const pulse = 0.94 + Math.sin(now * 0.00065 + item.phase) * 0.08;
+      item.mesh.scaling.x = item.baseX * pulse;
+      item.mesh.scaling.y = item.baseY * (1.03 - (pulse - 0.94));
+    }
+    if (skySun && camera) {
+      const angle = dayTime * Math.PI * 2;
+      skySun.position.set(
+        camera.position.x + Math.cos(angle) * 165,
+        16 + Math.max(-0.08, Math.sin(angle)) * 104,
+        camera.position.z + Math.sin(angle) * 165
+      );
+    }
+  }
+
   function createScene() {
     scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color4(0.67, 0.79, 0.82, 1);
     scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    scene.fogDensity = 0.0035;
+    scene.fogDensity = 0.0027;
     scene.fogColor = hex("#b5c5ae");
     scene.collisionsEnabled = false;
     createMaterials();
     setupLighting();
+    createSkyDome();
     makeTerrain();
     buildTrail();
     createPinecrestLake();
     scatterEnvironment();
+    createGroundCover();
+    scatterUndergrowth();
+    createHorizonRidges();
     createCabin();
     createWildlife();
 
@@ -801,6 +1164,7 @@
     camera.attachControl(canvas, true);
     try { camera.inputs.removeByType("FreeCameraKeyboardMoveInput"); } catch (error) { /* no keyboard-driven camera translation */ }
     createWeapon();
+    setupPostProcessing();
     miniMapCtx = $("mini-map").getContext("2d");
     worldMapCtx = $("world-map").getContext("2d");
     drawWorldMap();
@@ -819,6 +1183,7 @@
     updateAnimals(dt, now);
     updateInteraction();
     animateWeapon(dt);
+    animateWorld(now);
     updateDayCycle(dt);
     if (now - hudTimer > 180) {
       const expiredTracks = footprints.filter((track) => now - track.createdAt > 75000);
@@ -1332,9 +1697,21 @@
 
   function updateDayCycle(dt) {
     dayTime = (dayTime + dt * 0.00036) % 1;
-    const daylight = 0.6 + Math.max(0, Math.sin(dayTime * Math.PI * 2)) * 0.4;
-    lights.hemi.intensity = 0.35 + daylight * 0.62;
-    lights.sun.intensity = 0.42 + daylight * 0.88;
+    const daylight = 0.18 + Math.max(0, Math.sin(dayTime * Math.PI * 2)) * 0.82;
+    lights.hemi.intensity = 0.22 + daylight * 0.66;
+    lights.sun.intensity = 0.08 + daylight * 1.28;
+    const nightFog = hex("#354450"), dayFog = hex("#b6c4b4");
+    const fog = BABYLON.Color3.Lerp(nightFog, dayFog, daylight);
+    scene.fogColor.copyFrom(fog);
+    scene.clearColor = new BABYLON.Color4(fog.r, fog.g, fog.b, 1);
+    if (lights.skyMaterial) {
+      const skyLight = BABYLON.Color3.Lerp(hex("#687887"), hex("#ffffff"), daylight);
+      lights.skyMaterial.emissiveColor.copyFrom(skyLight);
+    }
+    const angle = dayTime * Math.PI * 2;
+    lights.sun.direction = new BABYLON.Vector3(-Math.cos(angle), -Math.max(0.16, Math.sin(angle)), 0.28).normalize();
+    if (camera) lights.sun.position.copyFrom(camera.position.add(new BABYLON.Vector3(Math.cos(angle) * 100, 120, Math.sin(angle) * 100)));
+    if (skySun) skySun.setEnabled(daylight > 0.22);
   }
 
   function formatClock(t) {

@@ -47,3 +47,9 @@
 .track-age{display:block;margin-top:2px;color:#d1b97e;font-size:7px;letter-spacing:.7px}
 .game-shell.crouched #crosshair{opacity:.72;transform:translate(-50%,-50%) scale(.88)}
 @media(max-width:720px){.quick-actions{gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 20px)}.quick-action{font-size:6px}.quick-action kbd{font-size:6px}.fieldcraft-line b{font-size:6px}}
+
+/* Wildrange 0.3.0 — field presentation polish */
+#render-canvas{filter:saturate(1.06) contrast(1.025)}
+.vignette{background:radial-gradient(ellipse at center,transparent 48%,rgba(8,17,13,.16) 100%)}
+.hud-panel{box-shadow:0 12px 34px rgba(5,12,8,.24),inset 0 1px rgba(255,255,255,.045)}
+.region-pill,.weather-pill{border-color:rgba(231,216,177,.2)}
