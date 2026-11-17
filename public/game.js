@@ -34,8 +34,8 @@
   let modelLoadFailures = [];
   let weaponModelReady = false, weaponModelFailed = false;
   let weaponAssetMeshCount = 0, weaponScopePartCount = 0;
-  let weaponBoltNode = null, weaponBoltBase = null, weaponBoltCycleElapsed = -1;
-  let weaponModelRoot = null, weaponScopeRoot = null;
+  let weaponBoltNode = null, weaponModelRoot = null;
+  let weaponAnimationGroups = [], weaponAnimationClipNames = [], weaponActiveAnimation = null;
   let weaponBaseY = -0.34;
   let footprints = [];
   let obstacles = [];
@@ -938,140 +938,71 @@
   }
 
   function createWeapon() {
-    weaponRoot = new BABYLON.TransformNode("Ranger .308 imported bolt-action rifle", scene);
+    weaponRoot = new BABYLON.TransformNode("Wildrange scoped marksman rifle", scene);
     weaponRoot.parent = camera;
     weaponRoot.position.set(0.34, -0.34, 0.76);
     weaponRoot.rotation.set(0, 0, 0);
 
-    const scopeMetal = new BABYLON.PBRMaterial("Ranger optic anodised metal", scene);
-    scopeMetal.albedoColor = hex("#171d1d");
-    scopeMetal.metallic = 0.86;
-    scopeMetal.roughness = 0.34;
-    const scopeEdge = new BABYLON.PBRMaterial("Ranger optic machined edges", scene);
-    scopeEdge.albedoColor = hex("#53605d");
-    scopeEdge.metallic = 0.92;
-    scopeEdge.roughness = 0.25;
-    const scopeGlass = new BABYLON.PBRMaterial("Ranger optic coated lenses", scene);
-    scopeGlass.albedoColor = hex("#426169");
-    scopeGlass.emissiveColor = hex("#101e22");
-    scopeGlass.metallic = 0.4;
-    scopeGlass.roughness = 0.1;
-    scopeGlass.alpha = 0.84;
-    scopeGlass.backFaceCulling = false;
-
-    weaponScopeRoot = new BABYLON.TransformNode("Ranger optic assembly", scene);
-    weaponScopeRoot.parent = weaponRoot;
-    weaponScopeRoot.position.set(0, 0.285, -0.18);
-
-    const scopePart = (name, mesh, material, x, y, z) => {
-      mesh.name = name;
-      mesh.parent = weaponScopeRoot;
-      mesh.position.set(x, y, z);
-      mesh.material = material;
-      mesh.isPickable = false;
-      mesh.receiveShadows = true;
-      weaponScopePartCount++;
-      return mesh;
-    };
-    const cylinderZ = (name, length, diameter, x, y, z, material) => {
-      const mesh = BABYLON.MeshBuilder.CreateCylinder(name, {
-        height: length, diameter, tessellation: 24
-      }, scene);
-      mesh.rotation.x = Math.PI / 2;
-      return scopePart(name, mesh, material, x, y, z);
-    };
-    const ringZ = (name, diameter, thickness, x, y, z, material) => {
-      const mesh = BABYLON.MeshBuilder.CreateTorus(name, {
-        diameter, thickness, tessellation: 28
-      }, scene);
-      mesh.rotation.x = Math.PI / 2;
-      return scopePart(name, mesh, material, x, y, z);
-    };
-
-    cylinderZ("30mm riflescope tube", 0.58, 0.083, 0, 0, 0, scopeMetal);
-    cylinderZ("Riflescope ocular housing", 0.145, 0.132, 0, 0, -0.35, scopeMetal);
-    cylinderZ("Riflescope objective bell", 0.17, 0.17, 0, 0, 0.365, scopeMetal);
-    cylinderZ("Riflescope rear lens", 0.012, 0.112, 0, 0, -0.426, scopeGlass);
-    cylinderZ("Riflescope front lens", 0.012, 0.145, 0, 0, 0.452, scopeGlass);
-    ringZ("Ocular knurled rim", 0.135, 0.014, 0, 0, -0.265, scopeEdge);
-    ringZ("Objective knurled rim", 0.172, 0.016, 0, 0, 0.29, scopeEdge);
-    for (const z of [-0.16, 0.16]) {
-      const foot = BABYLON.MeshBuilder.CreateBox("Riflescope ring riser", {
-        width: 0.082, height: 0.09, depth: 0.07
-      }, scene);
-      scopePart("Riflescope ring riser", foot, scopeMetal, 0, -0.075, z);
-      ringZ("Riflescope mounting ring", 0.13, 0.018, 0, -0.018, z, scopeEdge);
-    }
-    const elevation = BABYLON.MeshBuilder.CreateCylinder("Elevation turret", {
-      height: 0.11, diameter: 0.105, tessellation: 20
-    }, scene);
-    scopePart("Elevation turret", elevation, scopeMetal, 0, 0.105, 0.045);
-    const elevationCap = BABYLON.MeshBuilder.CreateCylinder("Elevation turret cap", {
-      height: 0.025, diameter: 0.09, tessellation: 20
-    }, scene);
-    scopePart("Elevation turret cap", elevationCap, scopeEdge, 0, 0.17, 0.045);
-    const windage = BABYLON.MeshBuilder.CreateCylinder("Windage turret", {
-      height: 0.1, diameter: 0.095, tessellation: 20
-    }, scene);
-    windage.rotation.z = Math.PI / 2;
-    scopePart("Windage turret", windage, scopeMetal, 0.076, 0, 0.045);
-    const windageCap = BABYLON.MeshBuilder.CreateCylinder("Windage turret cap", {
-      height: 0.022, diameter: 0.081, tessellation: 20
-    }, scene);
-    windageCap.rotation.z = Math.PI / 2;
-    scopePart("Windage turret cap", windageCap, scopeEdge, 0.135, 0, 0.045);
-    const zoomLever = BABYLON.MeshBuilder.CreateBox("Optic magnification lever", {
-      width: 0.035, height: 0.09, depth: 0.075
-    }, scene);
-    zoomLever.rotation.z = -0.22;
-    scopePart("Optic magnification lever", zoomLever, scopeEdge, 0.03, 0.07, -0.16);
-
+    // Small visual effect only; the rifle, scope and bipod are imported GLB geometry.
     const flashMaterial = new BABYLON.StandardMaterial("Rifle muzzle flash material", scene);
     flashMaterial.diffuseColor = hex("#f6c875");
     flashMaterial.emissiveColor = hex("#f69b35");
     flashMaterial.alpha = 0.88;
     const flash = BABYLON.MeshBuilder.CreateSphere("Rifle muzzle flash", { diameter: 0.16, segments: 10 }, scene);
     flash.parent = weaponRoot;
-    flash.position.set(0, 0.02, 0.91);
+    flash.position.set(0, 0.02, 0.69);
     flash.material = flashMaterial;
     flash.isPickable = false;
     flash.setEnabled(false);
     weaponMaterials.flash = flash;
     weaponRoot.setEnabled(true);
 
-    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/weapons/", "bolt-action-rifle.glb", scene)
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/weapons/", "marksman-rifle.glb", scene)
       .then((container) => {
-        const entries = container.instantiateModelsToScene((name) => "RANGER308__" + name, true);
+        const entries = container.instantiateModelsToScene((name) => "WILDRANGE_MARKSMAN__" + name, true);
         entries.rootNodes.forEach((node) => {
           node.parent = weaponRoot;
-          // Source GLB is authored along local +X; point its barrel along the camera's +Z.
+          // The asset is metre-scaled, Y-up, and the barrel faces +Z (camera forward).
           node.rotationQuaternion = null;
-          node.rotation.set(0, -Math.PI / 2, 0);
+          node.rotation.set(0, 0, 0);
           node.position.set(0, 0, 0);
-          node.scaling.scaleInPlace(1.62);
+          node.scaling.set(1, 1, 1);
         });
         weaponModelRoot = entries.rootNodes[0] || null;
-        const nodes = weaponModelRoot ? [weaponModelRoot, ...weaponModelRoot.getDescendants(false)] : [];
-        weaponBoltNode = nodes.find((node) => node.name.endsWith("__bolt")) || null;
-        if (weaponBoltNode) weaponBoltBase = {
-          position: weaponBoltNode.position.clone(),
-          rotation: weaponBoltNode.rotation.clone()
-        };
-        const meshes = entries.rootNodes.flatMap((node) => node.getChildMeshes(false));
+        const nodes = entries.rootNodes.flatMap((root) => [root, ...root.getDescendants(false)]);
+        weaponBoltNode = nodes.find((node) => String(node.name).toLowerCase().includes("bolt")) || null;
+        weaponScopePartCount = nodes.filter((node) => /scope|optic/i.test(String(node.name))).length;
+        weaponAnimationGroups = entries.animationGroups || [];
+        weaponAnimationClipNames = weaponAnimationGroups.map((group) => String(group.name));
+        weaponAnimationGroups.forEach((group) => group.stop());
+
+        const meshes = entries.rootNodes.flatMap((root) => root.getChildMeshes(false));
         meshes.forEach((mesh) => {
           mesh.isPickable = false;
           mesh.receiveShadows = true;
           mesh.metadata = { ...(mesh.metadata || {}), weaponPart: true };
+          if (lights.shadows) {
+            try { lights.shadows.addShadowCaster(mesh); } catch (error) { /* optional */ }
+          }
         });
         weaponAssetMeshCount = meshes.length;
-        weaponModelReady = meshes.length > 0;
-        if (!weaponModelReady) throw new Error("Imported rifle model contained no renderable meshes");
+        weaponModelReady = Boolean(weaponModelRoot && meshes.length);
+        const requiredClips = ["magazine-open", "magazine-close", "bolt-open", "bolt-close"];
+        const missingClips = requiredClips.filter((clip) =>
+          !weaponAnimationClipNames.some((name) => name.toLowerCase().includes(clip))
+        );
+        if (!weaponModelReady) {
+          throw new Error("Imported marksman rifle contained no renderable model geometry");
+        }
+        if (missingClips.length) {
+          throw new Error("Imported marksman rifle is missing animation clips: " + missingClips.join(", "));
+        }
         updateHud();
       })
       .catch((error) => {
         weaponModelFailed = true;
         modelLoadFailures.push("rifle: " + (error && error.message ? error.message : String(error)));
-        console.error("Wildrange rifle model failed to load:", error);
+        console.error("Wildrange marksman rifle failed to load:", error);
       });
   }
 
@@ -2101,9 +2032,32 @@
     setAnimalAnimation(animal, "Idle");
   }
 
+  function playWeaponAnimation(clipFragment, onEnd) {
+    const key = String(clipFragment || "").toLowerCase();
+    const group = weaponAnimationGroups.find((candidate) =>
+      String(candidate.name).toLowerCase().includes(key)
+    );
+    if (!group) {
+      if (typeof onEnd === "function") onEnd();
+      return false;
+    }
+    weaponAnimationGroups.forEach((candidate) => {
+      if (candidate !== group) candidate.stop();
+    });
+    group.stop();
+    weaponActiveAnimation = group;
+    if (group.onAnimationGroupEndObservable) {
+      group.onAnimationGroupEndObservable.addOnce(() => {
+        if (weaponActiveAnimation === group) weaponActiveAnimation = null;
+        if (typeof onEnd === "function") onEnd();
+      });
+    }
+    group.start(false, 1);
+    return true;
+  }
+
   function cycleRifleBolt() {
-    if (!weaponBoltNode || !weaponBoltBase) return;
-    weaponBoltCycleElapsed = 0;
+    playWeaponAnimation("bolt-open", () => playWeaponAnimation("bolt-close"));
     sound(290, 0.055, "metal", 0.015);
   }
 
@@ -2122,19 +2076,6 @@
     weaponRoot.rotation.x += ((aiming ? -0.012 : 0) - weaponRoot.rotation.x) * Math.min(1, dt * 10);
     weaponRoot.rotation.z += ((reloading ? -reloadLift * 0.075 : 0) - weaponRoot.rotation.z) * Math.min(1, dt * 10);
     weaponRoot.position.z -= weaponKick * 0.14;
-
-    if (weaponBoltNode && weaponBoltBase && weaponBoltCycleElapsed >= 0) {
-      weaponBoltCycleElapsed += dt;
-      const phase = clamp(weaponBoltCycleElapsed / 0.42, 0, 1);
-      const draw = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
-      // The named bolt pivots at its hinge; animate the authored 45-degree throw.
-      weaponBoltNode.rotation.y = weaponBoltBase.rotation.y + draw * (Math.PI / 4);
-      if (phase >= 1) {
-        weaponBoltNode.position.copyFrom(weaponBoltBase.position);
-        weaponBoltNode.rotation.copyFrom(weaponBoltBase.rotation);
-        weaponBoltCycleElapsed = -1;
-      }
-    }
 
     if (muzzleTimer > 0) {
       muzzleTimer -= dt;
@@ -2356,7 +2297,7 @@
     if (reloading || state.ammo >= 8 || state.reserve <= 0 || paused || !gameStarted) return;
     reloading = true;
     reloadStarted = performance.now();
-    cycleRifleBolt();
+    playWeaponAnimation("magazine-open");
     $("reload-indicator").classList.add("show");
     sound(300, 0.07, "triangle", 0.018);
   }
@@ -2370,11 +2311,7 @@
       state.ammo += amount;
       state.reserve -= amount;
       reloading = false;
-      weaponBoltCycleElapsed = -1;
-      if (weaponBoltNode && weaponBoltBase) {
-        weaponBoltNode.position.copyFrom(weaponBoltBase.position);
-        weaponBoltNode.rotation.copyFrom(weaponBoltBase.rotation);
-      }
+      playWeaponAnimation("magazine-close");
       $("reload-indicator").classList.remove("show");
       sound(480, 0.08, "triangle", 0.025);
       toast("Reloaded. " + state.ammo + " rounds ready.", "success");
@@ -2868,8 +2805,11 @@
     weaponModelReady,
     weaponModelFailed,
     weaponAssetMeshCount,
-    weaponBoltReady: Boolean(weaponBoltNode),
+    weaponBoltReady: Boolean(weaponBoltNode) || weaponAnimationClipNames.some((name) => name.toLowerCase().includes("bolt-open")),
     weaponScopePartCount,
+    weaponAnimationClipCount: weaponAnimationClipNames.length,
+    weaponAnimationClipNames: weaponAnimationClipNames.slice(),
+    weaponHasIntegratedScope: weaponModelReady && weaponAssetMeshCount > 0,
     modelLoadFailures: modelLoadFailures.slice(),
     jumpCount,
     playerGrounded,
