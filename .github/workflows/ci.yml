@@ -43,8 +43,8 @@ jobs:
             for (const [name, page] of [["index.html", html], ["play.html", playHtml]]) {
               const coreLoader = page.indexOf("https://cdn.babylonjs.com/babylon.js");
               const gltfLoader = page.indexOf("https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js");
-              const gameAsset = /game\\.js\\?v=([0-9.]+)/.exec(page);
-              const styleAsset = /styles\\.css\\?v=([0-9.]+)/.exec(page);
+              const gameAsset = /game\.js\?v=([0-9.]+)/.exec(page);
+              const styleAsset = /styles\.css\?v=([0-9.]+)/.exec(page);
               const gameScript = gameAsset ? page.indexOf(gameAsset[0]) : -1;
               if (!gameAsset || !styleAsset || gameAsset[1] !== styleAsset[1] || gameScript < 0) {
                 throw new Error(name + " graphics build asset version mismatch");
