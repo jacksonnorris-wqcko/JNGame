@@ -961,7 +961,7 @@
 
     weaponScopeRoot = new BABYLON.TransformNode("Ranger optic assembly", scene);
     weaponScopeRoot.parent = weaponRoot;
-    weaponScopeRoot.position.set(0, 0.285, 0.39);
+    weaponScopeRoot.position.set(0, 0.285, -0.18);
 
     const scopePart = (name, mesh, material, x, y, z) => {
       mesh.name = name;
@@ -1032,7 +1032,7 @@
     flashMaterial.alpha = 0.88;
     const flash = BABYLON.MeshBuilder.CreateSphere("Rifle muzzle flash", { diameter: 0.16, segments: 10 }, scene);
     flash.parent = weaponRoot;
-    flash.position.set(0, 0.02, 1.68);
+    flash.position.set(0, 0.02, 0.91);
     flash.material = flashMaterial;
     flash.isPickable = false;
     flash.setEnabled(false);
@@ -1044,6 +1044,9 @@
         const entries = container.instantiateModelsToScene((name) => "RANGER308__" + name, true);
         entries.rootNodes.forEach((node) => {
           node.parent = weaponRoot;
+          // Source GLB is authored along local +X; point its barrel along the camera's +Z.
+          node.rotationQuaternion = null;
+          node.rotation.set(0, -Math.PI / 2, 0);
           node.position.set(0, 0, 0);
           node.scaling.scaleInPlace(1.62);
         });
@@ -2124,8 +2127,8 @@
       weaponBoltCycleElapsed += dt;
       const phase = clamp(weaponBoltCycleElapsed / 0.42, 0, 1);
       const draw = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
-      weaponBoltNode.position.z = weaponBoltBase.position.z - draw * 0.055;
-      weaponBoltNode.rotation.y = weaponBoltBase.rotation.y + draw * 0.28;
+      // The named bolt pivots at its hinge; animate the authored 45-degree throw.
+      weaponBoltNode.rotation.y = weaponBoltBase.rotation.y + draw * (Math.PI / 4);
       if (phase >= 1) {
         weaponBoltNode.position.copyFrom(weaponBoltBase.position);
         weaponBoltNode.rotation.copyFrom(weaponBoltBase.rotation);
@@ -2867,6 +2870,7 @@
     weaponAssetMeshCount,
     weaponBoltReady: Boolean(weaponBoltNode),
     weaponScopePartCount,
+    modelLoadFailures: modelLoadFailures.slice(),
     jumpCount,
     playerGrounded,
     playerHeight: camera ? camera.position.y - heightAt(camera.position.x, camera.position.z) - (crouched ? 1.12 : 1.72) : 0,
