@@ -53,6 +53,7 @@ try {
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
+  if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
   if (diagnostics.pbrMaterialCount < 15) throw new Error("PBR materials were not created (" + diagnostics.pbrMaterialCount + ")");
   if (diagnostics.readyTextureCount < 12) throw new Error("Too few textures finished loading (" + diagnostics.readyTextureCount + ")");
   if (!diagnostics.canvasWidth || !diagnostics.canvasHeight || !diagnostics.webglEnabled) {
