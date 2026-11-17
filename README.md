@@ -37,12 +37,13 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Visual asset build: **0.6.0**. Game assets are stored under `public/assets/`.
+Visual asset build: **0.7.0**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
 | --- | --- |
 | Move | W A S D |
+| Jump | Space |
 | Look | Mouse |
 | Aim | Hold right mouse button |
 | Fire | Left mouse click |
@@ -89,6 +90,10 @@ The material and HDR downloads are imported by `.github/workflows/import-cc0-ass
 The 0.6.0 update rebuilds the Ranger .308 first-person model with a shaped walnut stock, recoil pad, receiver, ejection port, bolt assembly, trigger guard, pistol grip, detachable magazine, fore-end, free-floating barrel, muzzle brake, mounted optic, objective/ocular bells and adjustment turrets. Holding right mouse raises a scoped sight picture; the camera zooms through the centre reticle and the mouse wheel switches between 2x, 4x, 6x and 8x magnification.
 
 Deer and boars have upgraded body proportions, articulated two-section legs, visible joints and hooves, movable heads, ear and tail motion, deer antlers and boar tusks/bristles. Their walking, grazing and fleeing states now drive the limb/head/tail animation. This remains an in-engine procedural model pass, not imported motion-captured animal models.
+
+## Living world and movement — 0.7.0
+
+This update adds Space-to-jump with gravity, landing detection and a mobile jump button. Movement uses acceleration/deceleration and axis sliding. The renderer will also receive a fixed-step physics update and static-scene optimizations in this release.
 
 ## Cost
 

@@ -39,10 +39,11 @@ jobs:
             for (const cssRule of [".quick-actions", ".hud-panel"]) {
               if (!css.includes(cssRule)) throw new Error("Missing interface styling " + cssRule);
             }
-            if (!html.includes("styles.css?v=0.6.0") || !html.includes("game.js?v=0.6.0")) {
+            if (!html.includes("styles.css?v=0.7.0") || !html.includes("game.js?v=0.7.0")) {
               throw new Error("Graphics build asset version mismatch");
             }
             if (!html.includes("scope-overlay") || !css.includes("#game-shell.aiming .scope-overlay")) throw new Error("Scope sight picture UI is missing");
+            if (!html.includes("touch-jump") || !html.includes("SPACE")) throw new Error("Jump controls are missing");
             const requiredAssets = [
               "public/assets/nature_reserve_forest_1k.hdr",
               "public/assets/pbr/grass/grass_albedo.jpg",

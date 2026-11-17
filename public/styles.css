@@ -82,3 +82,9 @@
 #game-shell.aiming .vignette{opacity:0}
 #game-shell.aiming #render-canvas{filter:saturate(1.03) contrast(1.06)}
 @media(max-width:720px){.scope-meta{bottom:5%;gap:7px;padding:6px 8px;font-size:6px}.scope-meta small{display:none}.scope-edge-label{top:6%}}
+
+/* Wildrange 0.7.0 — jump control layout */
+.quick-actions{gap:10px}
+.touch-actions{gap:5px}
+.touch-actions button{min-width:43px}
+@media(max-width:540px){.touch-actions{gap:4px}.touch-actions button{width:42px;min-width:42px;font-size:7px}}

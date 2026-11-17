@@ -59,6 +59,11 @@
   let nearestInteraction = null;
   let audioContext = null;
   let playerVelocity = new BABYLON.Vector3(0, 0, 0);
+  let verticalVelocity = 0;
+  let playerGrounded = true;
+  let lastGroundedAt = 0;
+  let jumpCount = 0;
+  let jumpMaxHeight = 0;
   let keys = new Set();
   let touchKeys = new Set();
   let currentTarget = null;
@@ -1745,6 +1750,18 @@
     }
   }
 
+  function jump() {
+    if (!gameStarted || paused || aiming) return;
+    const now = performance.now();
+    if (!playerGrounded && now - lastGroundedAt > 120) return;
+    verticalVelocity = 7.4;
+    playerGrounded = false;
+    lastGroundedAt = 0;
+    jumpCount++;
+    jumpMaxHeight = 0;
+    sound(150, 0.055, "triangle", 0.012);
+  }
+
   function updatePlayer(dt) {
     const forwardInput = (keys.has("w") || keys.has("arrowup") || touchKeys.has("up") ? 1 : 0) -
       (keys.has("s") || keys.has("arrowdown") || touchKeys.has("down") ? 1 : 0);
@@ -1754,32 +1771,58 @@
     const sprinting = !crouched && (keys.has("shift") || touchKeys.has("sprint")) && state.stamina > 1 && moving;
     playerMoving = moving;
     playerSprinting = sprinting;
+
     const speed = crouched ? 2.8 : sprinting ? 10.5 : 6.2;
-    let forward = camera.getDirection(BABYLON.Axis.Z);
+    const forward = camera.getDirection(BABYLON.Axis.Z);
     forward.y = 0;
     forward.normalize();
     const right = BABYLON.Vector3.Cross(BABYLON.Axis.Y, forward).normalize();
-    let direction = forward.scale(forwardInput).add(right.scale(rightInput));
+    const direction = forward.scale(forwardInput).add(right.scale(rightInput));
     if (direction.lengthSquared() > 1) direction.normalize();
+
+    const desiredX = direction.x * speed;
+    const desiredZ = direction.z * speed;
+    const acceleration = playerGrounded ? (moving ? 20 : 27) : 8;
+    const blend = Math.min(1, acceleration * dt);
+    playerVelocity.x += (desiredX - playerVelocity.x) * blend;
+    playerVelocity.z += (desiredZ - playerVelocity.z) * blend;
+
     if (moving) {
       if (sprinting) state.stamina = Math.max(0, state.stamina - 27 * dt);
       else state.stamina = Math.min(100, state.stamina + 16 * dt);
     } else state.stamina = Math.min(100, state.stamina + 22 * dt);
-    if (direction.lengthSquared() > 0.001) {
-      const step = direction.scale(speed * dt);
-      const nextX = camera.position.x + step.x;
-      const nextZ = camera.position.z + step.z;
-      if (canStandAt(nextX, nextZ)) {
-        camera.position.x = nextX;
-        camera.position.z = nextZ;
+
+    const nextX = clamp(camera.position.x + playerVelocity.x * dt, -WORLD_LIMIT, WORLD_LIMIT);
+    const nextZ = clamp(camera.position.z + playerVelocity.z * dt, -WORLD_LIMIT, WORLD_LIMIT);
+    if (canStandAt(nextX, camera.position.z)) camera.position.x = nextX;
+    else playerVelocity.x = 0;
+    if (canStandAt(camera.position.x, nextZ)) camera.position.z = nextZ;
+    else playerVelocity.z = 0;
+
+    const groundY = heightAt(camera.position.x, camera.position.z) + (crouched ? 1.12 : 1.72);
+    if (playerGrounded) {
+      lastGroundedAt = performance.now();
+      verticalVelocity = 0;
+      camera.position.y += (groundY - camera.position.y) * Math.min(1, dt * 18);
+      if (Math.abs(camera.position.y - groundY) < 0.012) camera.position.y = groundY;
+    } else {
+      verticalVelocity -= 19.6 * dt;
+      camera.position.y += verticalVelocity * dt;
+      jumpMaxHeight = Math.max(jumpMaxHeight, camera.position.y - groundY);
+      if (camera.position.y <= groundY) {
+        camera.position.y = groundY;
+        verticalVelocity = 0;
+        playerGrounded = true;
+        sound(95, 0.045, "triangle", 0.008);
       }
     }
-    camera.position.x = clamp(camera.position.x, -WORLD_LIMIT, WORLD_LIMIT);
-    camera.position.z = clamp(camera.position.z, -WORLD_LIMIT, WORLD_LIMIT);
-    const ground = heightAt(camera.position.x, camera.position.z);
-    const eyeHeight = crouched ? 1.12 : 1.72;
-    camera.position.y += (ground + eyeHeight - camera.position.y) * Math.min(1, dt * 8);
-    if (weaponRoot) weaponRoot.position.y = (aiming ? -0.24 : -0.34) - (moving ? Math.abs(Math.sin(performance.now() * (sprinting ? 0.014 : 0.01))) * 0.012 : 0);
+
+    if (weaponRoot) {
+      const rate = sprinting ? 0.016 : 0.011;
+      const bob = playerGrounded && moving ? Math.abs(Math.sin(performance.now() * rate)) * (sprinting ? 0.022 : 0.012) : 0;
+      const jumpOffset = playerGrounded ? 0 : clamp((camera.position.y - groundY) * 0.025, 0, 0.075);
+      weaponRoot.position.y = -0.43 - bob + jumpOffset;
+    }
   }
 
   function canStandAt(x, z) {
@@ -2509,6 +2552,7 @@
     if (key === "g") useScent();
     if (key === "f") useMedkit();
     if (key === "m") openMap();
+    if (key === " " && gameStarted && !paused) jump();
   }
 
   function handleKeyUp(event) { keys.delete(event.key.toLowerCase()); }
@@ -2537,7 +2581,10 @@
 
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("keyup", handleKeyUp);
-  window.addEventListener("blur", () => { keys.clear(); touchKeys.clear(); firing = false; });
+  window.addEventListener("blur", () => {
+    keys.clear(); touchKeys.clear(); firing = false;
+    if (aiming) toggleAim(false);
+  });
 
   $("start-button").addEventListener("click", () => enterWorld(false));
   $("continue-button").addEventListener("click", () => enterWorld(true));
@@ -2575,6 +2622,7 @@
   $("touch-aim").addEventListener("touchstart", (event) => { event.preventDefault(); toggleAim(true); }, { passive: false });
   $("touch-aim").addEventListener("touchend", () => toggleAim(false));
   $("touch-fire").addEventListener("touchstart", (event) => { event.preventDefault(); shoot(); }, { passive: false });
+  $("touch-jump").addEventListener("touchstart", (event) => { event.preventDefault(); jump(); }, { passive: false });
   $("touch-interact").addEventListener("click", interact);
   document.querySelectorAll("[data-move]").forEach((button) => {
     const direction = button.dataset.move;
@@ -2630,7 +2678,13 @@
     animalCount: animals.length,
     animalLegRigCount: animals.reduce((sum, animal) => sum + animal.legs.length, 0),
     animalHeadRigCount: animals.filter((animal) => Boolean(animal.headPivot)).length,
+    animalStates: animals.reduce((result, animal) => { result[animal.state] = (result[animal.state] || 0) + 1; return result; }, {}),
+    animalAnimatedEarCount: animals.reduce((sum, animal) => sum + (animal.ears ? animal.ears.length : 0), 0),
     riflePartCount: weaponRoot ? weaponRoot.getChildMeshes().length : 0,
+    jumpCount,
+    playerGrounded,
+    playerHeight: camera ? camera.position.y - heightAt(camera.position.x, camera.position.z) - (crouched ? 1.12 : 1.72) : 0,
+    jumpMaxHeight,
     aiming,
     scopeZoom: scopeMagnifications[scopeZoomIndex],
     scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")

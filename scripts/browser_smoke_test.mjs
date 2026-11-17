@@ -27,7 +27,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.6.0", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.7.0", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -71,9 +71,16 @@ try {
   await page.waitForFunction(() => window.WildrangeDiagnostics?.().scopeZoom === 6, { timeout: 3000 });
   await page.mouse.up({ button: "right" });
   await page.waitForFunction(() => !window.WildrangeDiagnostics?.().aiming, { timeout: 3000 });
+  const jumpsBefore = await page.evaluate(() => window.WildrangeDiagnostics().jumpCount);
+  await page.keyboard.press("Space");
+  await page.waitForFunction((before) => window.WildrangeDiagnostics?.().jumpCount > before, jumpsBefore, { timeout: 3000 });
+  const airborne = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (airborne.playerGrounded || airborne.playerHeight < 0.12) throw new Error("Jump impulse failed: " + JSON.stringify(airborne));
+  await page.waitForFunction(() => window.WildrangeDiagnostics?.().playerGrounded, { timeout: 3000 });
+  const landed = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (landed.jumpCount !== jumpsBefore + 1) throw new Error("Jump was not counted exactly once");
   if (failures.length) throw new Error(failures.join("\\n"));
-
-  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, failures }, null, 2));
+  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, airborne, landed, failures }, null, 2));
 
 } finally {
   await browser.close();
