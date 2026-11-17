@@ -1412,16 +1412,24 @@
   }
 
   function openMap() {
-    $("map-screen").hidden = false;
-    $("map-screen").classList.add("open");
+    const map = $("map-screen");
+    map.hidden = false;
+    map.classList.add("open");
+    map.style.setProperty("display", "flex", "important");
+    map.style.setProperty("visibility", "visible", "important");
+    map.style.setProperty("pointer-events", "auto", "important");
     paused = true;
     drawWorldMap();
     document.exitPointerLock?.();
   }
 
   function closeMap(restoreLock) {
-    $("map-screen").classList.remove("open");
-    $("map-screen").hidden = true;
+    const map = $("map-screen");
+    map.classList.remove("open");
+    map.hidden = true;
+    map.style.setProperty("display", "none", "important");
+    map.style.setProperty("visibility", "hidden", "important");
+    map.style.setProperty("pointer-events", "none", "important");
     paused = false;
     keys.clear();
     if (restoreLock) requestPointerLock();
@@ -1531,8 +1539,12 @@
   function boot() {
     // Always enter through the title screen. Never restore an open modal from a stale page session.
     ["pause-screen", "harvest-screen", "supplies-screen"].forEach((id) => $(id).classList.remove("open"));
-    $("map-screen").classList.remove("open");
-    $("map-screen").hidden = true;
+    const map = $("map-screen");
+    map.classList.remove("open");
+    map.hidden = true;
+    map.style.setProperty("display", "none", "important");
+    map.style.setProperty("visibility", "hidden", "important");
+    map.style.setProperty("pointer-events", "none", "important");
     $("start-screen").style.display = "flex";
     loadSave();
     if (localStorage.getItem(SAVE_KEY)) $("continue-button").style.display = "block";
