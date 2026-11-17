@@ -1411,6 +1411,22 @@
     toast("Field kit used. Health restored.", "success");
   }
 
+  function openMap() {
+    $("map-screen").hidden = false;
+    $("map-screen").classList.add("open");
+    paused = true;
+    drawWorldMap();
+    document.exitPointerLock?.();
+  }
+
+  function closeMap(restoreLock) {
+    $("map-screen").classList.remove("open");
+    $("map-screen").hidden = true;
+    paused = false;
+    keys.clear();
+    if (restoreLock) requestPointerLock();
+  }
+
   function handleKeyDown(event) {
     const key = event.key.toLowerCase();
     if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key) &&
@@ -1419,9 +1435,12 @@
     if (key === "escape") {
       const openOverlay = ["map-screen", "supplies-screen", "harvest-screen"].find((id) => $(id).classList.contains("open"));
       if (openOverlay) {
-        $(openOverlay).classList.remove("open");
-        paused = false;
-        keys.clear();
+        if (openOverlay === "map-screen") closeMap(false);
+        else {
+          $(openOverlay).classList.remove("open");
+          paused = false;
+          keys.clear();
+        }
         return;
       }
       if (gameStarted && !paused) pauseGame();
@@ -1434,7 +1453,7 @@
     if (key === "e") interact();
     if (key === "q") toggleTracking();
     if (key === "f") useMedkit();
-    if (key === "m") { $("map-screen").classList.add("open"); paused = true; drawWorldMap(); document.exitPointerLock?.(); }
+    if (key === "m") openMap();
   }
 
   function handleKeyUp(event) { keys.delete(event.key.toLowerCase()); }
@@ -1467,12 +1486,7 @@
   $("start-button").addEventListener("click", () => enterWorld(false));
   $("continue-button").addEventListener("click", () => enterWorld(true));
   $("pause-button").addEventListener("click", pauseGame);
-  $("map-close-button").addEventListener("click", () => {
-    $("map-screen").classList.remove("open");
-    paused = false;
-    keys.clear();
-    requestPointerLock();
-  });
+  $("map-close-button").addEventListener("click", () => closeMap(true));
   $("resume-button").addEventListener("click", resumeGame);
   $("resume-x").addEventListener("click", resumeGame);
   $("save-button").addEventListener("click", () => saveGame(true));
@@ -1507,22 +1521,18 @@
   });
   $("map-button").addEventListener("click", () => {
     if (!gameStarted) return;
-    $("map-screen").classList.add("open");
-    paused = true;
-    drawWorldMap();
-    document.exitPointerLock?.();
+    openMap();
   });
   $("mini-map").addEventListener("click", () => {
     if (!gameStarted) return;
-    $("map-screen").classList.add("open");
-    paused = true;
-    drawWorldMap();
-    document.exitPointerLock?.();
+    openMap();
   });
 
   function boot() {
     // Always enter through the title screen. Never restore an open modal from a stale page session.
-    ["map-screen", "pause-screen", "harvest-screen", "supplies-screen"].forEach((id) => $(id).classList.remove("open"));
+    ["pause-screen", "harvest-screen", "supplies-screen"].forEach((id) => $(id).classList.remove("open"));
+    $("map-screen").classList.remove("open");
+    $("map-screen").hidden = true;
     $("start-screen").style.display = "flex";
     loadSave();
     if (localStorage.getItem(SAVE_KEY)) $("continue-button").style.display = "block";

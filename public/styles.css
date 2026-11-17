@@ -36,3 +36,6 @@
 .modal-overlay:not(.open){display:none!important;pointer-events:none!important}
 #map-screen:not(.open){display:none!important;visibility:hidden!important}
 #map-screen.open{display:flex!important;visibility:visible!important;pointer-events:auto!important}
+
+/* Native hidden state is authoritative for the field map on first load. */
+.modal-overlay[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
