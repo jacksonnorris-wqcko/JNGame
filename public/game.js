@@ -1862,6 +1862,7 @@
   function updateGame(dt, suppliedNow) {
     const now = suppliedNow || performance.now();
     updatePlayer(dt, now);
+    updateCabinDoor(dt);
     // Wildlife decision/movement logic is intentionally capped at 30 Hz; the player
     // and camera remain on the full fixed 60 Hz simulation step.
     animalUpdateAccumulator += dt;
@@ -2379,12 +2380,17 @@
 
   function setCabinDoor(open) {
     cabinDoorOpen = Boolean(open);
-    if (cabinDoorPivot) {
-      cabinDoorPivot.rotation.y = cabinDoorOpen ? 1.48 : 0;
-    }
     sound(cabinDoorOpen ? 180 : 145, 0.18, "triangle", 0.025);
     announce(cabinDoorOpen ? "Pinecrest lodge door opened." : "Pinecrest lodge door closed.", 1500);
     updateInteraction();
+  }
+
+  function updateCabinDoor(dt) {
+    if (!cabinDoorPivot) return;
+    const target = cabinDoorOpen ? 1.48 : 0;
+    const difference = target - cabinDoorPivot.rotation.y;
+    if (Math.abs(difference) < 0.002) cabinDoorPivot.rotation.y = target;
+    else cabinDoorPivot.rotation.y += difference * Math.min(1, dt * 7.5);
   }
 
   function updateInteraction() {
