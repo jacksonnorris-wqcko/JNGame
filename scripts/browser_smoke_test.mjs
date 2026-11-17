@@ -59,8 +59,14 @@ try {
   if (!canvas.width || !canvas.height || !canvas.webgl2) throw new Error("3D WebGL2 canvas is unavailable");
   if (failures.length) throw new Error(failures.join("\n"));
 
-  await page.screenshot({ path: "artifacts/wildrange-0.4.0-chrome.png" });
   console.log(JSON.stringify({ titleVisible, diagnostics, canvas, failures }, null, 2));
+  await page.screenshot({
+    path: "artifacts/wildrange-0.4.0-chrome.png",
+    timeout: 90000,
+    animations: "disabled",
+    caret: "hide",
+    scale: "css"
+  });
 } finally {
   await browser.close();
 }
