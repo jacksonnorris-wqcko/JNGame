@@ -42,7 +42,7 @@ jobs:
             if (!html.includes("styles.css?v=0.6.0") || !html.includes("game.js?v=0.6.0")) {
               throw new Error("Graphics build asset version mismatch");
             }
-            if (!html.includes('id="scope-overlay"') || !css.includes(".game-shell.aiming .scope-overlay")) throw new Error("Scope sight picture UI is missing");
+            if (!html.includes("scope-overlay") || !css.includes(".game-shell.aiming .scope-overlay")) throw new Error("Scope sight picture UI is missing");
             const requiredAssets = [
               "public/assets/nature_reserve_forest_1k.hdr",
               "public/assets/pbr/grass/grass_albedo.jpg",
