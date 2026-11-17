@@ -2415,8 +2415,9 @@
     cabinDoorUpdateCount++;
     const target = cabinDoorOpen ? 1.48 : 0;
     const difference = target - cabinDoorPivot.rotation.y;
-    if (Math.abs(difference) < 0.002) cabinDoorPivot.rotation.y = target;
-    else cabinDoorPivot.rotation.y += difference * Math.min(1, dt * 7.5);
+    const maxStep = Math.max(0, dt) * 3.2;
+    cabinDoorPivot.rotation.y += Math.max(-maxStep, Math.min(maxStep, difference));
+    if (Math.abs(target - cabinDoorPivot.rotation.y) < 0.001) cabinDoorPivot.rotation.y = target;
     cabinDoorPivot.computeWorldMatrix(true);
   }
 
@@ -3209,7 +3210,8 @@
         playerGrounded = true;
         updateInteraction();
         return true;
-      }
+      },
+      canStandAt: (x, z) => canStandAt(Number(x), Number(z))
     };
   }
 
