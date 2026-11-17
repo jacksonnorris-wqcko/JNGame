@@ -70,6 +70,7 @@
   let playerVelocity = new BABYLON.Vector3(0, 0, 0);
   let cabinDoorPivot = null;
   let cabinDoorOpen = false;
+  let cabinDoorUpdateCount = 0;
   let contractBoardTexture = null;
   let contractBoardMaterial = null;
   let cabinFireFlame = null;
@@ -1874,6 +1875,8 @@
         simulationAccumulator = 0;
         simulationClock = frameAt;
       }
+      // Door easing belongs to the render loop so it cannot stall with gameplay simulation.
+      updateCabinDoor(elapsed);
       scene.render();
     });
   }
@@ -1881,7 +1884,6 @@
   function updateGame(dt, suppliedNow) {
     const now = suppliedNow || performance.now();
     updatePlayer(dt, now);
-    updateCabinDoor(dt);
     // Wildlife decision/movement logic is intentionally capped at 30 Hz; the player
     // and camera remain on the full fixed 60 Hz simulation step.
     animalUpdateAccumulator += dt;
@@ -2406,6 +2408,7 @@
 
   function updateCabinDoor(dt) {
     if (!cabinDoorPivot) return;
+    cabinDoorUpdateCount++;
     const target = cabinDoorOpen ? 1.48 : 0;
     const difference = target - cabinDoorPivot.rotation.y;
     if (Math.abs(difference) < 0.002) cabinDoorPivot.rotation.y = target;
@@ -3168,6 +3171,7 @@
     playerGrounded,
     playerHeight: camera ? camera.position.y - ((Math.abs(camera.position.x + 14) < 5.2 && camera.position.z > 39.0 && camera.position.z < 47.4) ? 1.02 : heightAt(camera.position.x, camera.position.z)) - (crouched ? 1.12 : 1.72) : 0,
     cabinDoorAngle: cabinDoorPivot ? Number(cabinDoorPivot.rotation.y.toFixed(3)) : null,
+    cabinDoorUpdateCount,
     boardTextureUScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.uScale : null,
     boardTextureVScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.vScale : null,
     sceneInitError,
