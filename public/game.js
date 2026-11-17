@@ -2035,7 +2035,7 @@
             };
             animal.chargeRetargetAt = now + 430;
           }
-          if (animal.target) moveAnimal(animal, dt, 7.6);
+          if (animal.target) moveAnimal(animal, animalDt, 7.6);
         }
       } else if (animal.state === "flee") {
         if (playerDistance > 92 && now > animal.alertUntil) {
@@ -2057,7 +2057,7 @@
             };
             animal.fleeRetargetAt = now + rand(850, 1250);
           }
-          if (animal.target) moveAnimal(animal, dt, animal.species === "boar" ? 8.8 : 10.8);
+          if (animal.target) moveAnimal(animal, animalDt, animal.species === "boar" ? 8.8 : 10.8);
         }
       } else if (animal.target) {
         const distanceToTarget = Math.hypot(animal.target.x - current.x, animal.target.z - current.z);
@@ -2067,7 +2067,7 @@
           animal.speed = 0;
           animal.pauseUntil = now + rand(2200, 5600);
         } else if (now > (animal.pauseUntil || 0)) {
-          moveAnimal(animal, dt, animal.species === "boar" ? 1.65 : 2.05);
+          moveAnimal(animal, animalDt, animal.species === "boar" ? 1.65 : 2.05);
         }
       } else if (now > (animal.pauseUntil || 0) && animal.state !== "alert") {
         pickWanderTarget(animal);
