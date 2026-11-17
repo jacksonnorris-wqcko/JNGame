@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.14&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.15&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -63,6 +63,9 @@ try {
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
   if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
+  if (diagnostics.outpostTreeIntrusionCount !== 0) {
+    throw new Error("Trees are still being generated inside the Pinecrest compound: " + diagnostics.outpostTreeIntrusionCount);
+  }
   if (diagnostics.boardTextureUScale !== -1 || diagnostics.boardTextureVScale !== 1 ||
       !diagnostics.boardFrontReady || !diagnostics.boardBackReady) {
     throw new Error("Contract notice front/back faces are not ready or correctly oriented: " + JSON.stringify(diagnostics));
@@ -96,12 +99,25 @@ try {
     pathHeight: window.WildrangeQA.surfaceAt(-14, 31.2),
     hingeUpdates: window.WildrangeDiagnostics().cabinDoorUpdateCount
   }));
+  const compoundBoundary = await page.evaluate(() => ({
+    southRailBlocked: !window.WildrangeQA.canStandAt(-4.25, 29),
+    southFenceExtensionClear: window.WildrangeQA.canStandAt(3.25, 29),
+    southGateOpeningClear: window.WildrangeQA.canStandAt(-14, 29),
+    westRailBlocked: !window.WildrangeQA.canStandAt(-1, 43),
+    westFenceExtensionClear: window.WildrangeQA.canStandAt(3, 43),
+    outpostTreeIntrusions: window.WildrangeDiagnostics().outpostTreeIntrusionCount
+  }));
   if (!cabinCollision.interiorWalkableWithDoorClosed || !cabinCollision.doorwayBlockedWithDoorClosed ||
       !cabinCollision.deckWalkable || !cabinCollision.stairsWalkable || !cabinCollision.entryPathWalkable ||
       Math.abs(cabinCollision.deckHeight - 1.335) > 0.02 ||
       Math.abs(cabinCollision.stairHeight - 1.0) > 0.02 ||
       Math.abs(cabinCollision.pathHeight - 0.26) > 0.02) {
     throw new Error("Cabin floor, deck, stairs or compound path collision failed: " + JSON.stringify(cabinCollision));
+  }
+  if (!compoundBoundary.southRailBlocked || !compoundBoundary.southFenceExtensionClear ||
+      !compoundBoundary.southGateOpeningClear || !compoundBoundary.westRailBlocked ||
+      !compoundBoundary.westFenceExtensionClear || compoundBoundary.outpostTreeIntrusions !== 0) {
+    throw new Error("Compound fence limits or tree clearance failed: " + JSON.stringify(compoundBoundary));
   }
   await page.evaluate(() => window.WildrangeQA.setDoor(true));
   const openDoorwayWalkable = await page.evaluate(() => window.WildrangeQA.canStandAt(-14, 38.7));
@@ -155,7 +171,7 @@ try {
   const landed = await page.evaluate(() => window.WildrangeDiagnostics());
   if (landed.jumpCount !== jumpsBefore + 1) throw new Error("Jump was not counted exactly once");
   if (failures.length) throw new Error(failures.join("\\n") + "\\nConsole: " + consoleErrors.join("\\n"));
-  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, cabinCollision, openDoorwayWalkable, airborne, landed, failures, consoleErrors }, null, 2));
+  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, cabinCollision, compoundBoundary, openDoorwayWalkable, airborne, landed, failures, consoleErrors }, null, 2));
 
 } finally {
   await browser.close();
