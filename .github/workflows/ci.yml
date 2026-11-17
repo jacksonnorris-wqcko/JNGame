@@ -33,13 +33,13 @@ jobs:
             for (const id of ["render-canvas", "start-button", "continue-button", "interaction-prompt", "health-fill", "ammo-current", "contract-progress", "map-close-button"]) {
               if (!html.includes(id)) throw new Error("Missing UI reference " + id);
             }
-            for (const feature of ["makePbrSurface", "makeFoliageMaterial", "createSkyDome", "createDistantRidgeBands", "createCabin", "createGroundCover", "setupPostProcessing", "animateWorld", "createFurTexture", "createWeapon", "createWildlifeLeg", "createDeer", "createBoar", "adjustScopeZoom"]) {
+            for (const feature of ["makePbrSurface", "makeFoliageMaterial", "createSkyDome", "createDistantRidgeBands", "createCabin", "createGroundCover", "setupPostProcessing", "animateWorld", "createFurTexture", "createWeapon", "getAnimalModelContainer", "attachAnimalModel", "setAnimalAnimation", "createDeer", "createBoar", "adjustScopeZoom"]) {
               if (!js.includes("function " + feature + "(")) throw new Error("Missing graphics system " + feature);
             }
             for (const cssRule of [".quick-actions", ".hud-panel"]) {
               if (!css.includes(cssRule)) throw new Error("Missing interface styling " + cssRule);
             }
-            if (!html.includes("styles.css?v=0.7.3") || !html.includes("game.js?v=0.7.3")) {
+            if (!html.includes("styles.css?v=0.8.0") || !html.includes("game.js?v=0.8.0")) {
               throw new Error("Graphics build asset version mismatch");
             }
             if (!html.includes("scope-overlay") || !css.includes("#game-shell.aiming .scope-overlay")) throw new Error("Scope sight picture UI is missing");
@@ -56,10 +56,38 @@ jobs:
               "public/assets/pbr/wood_planks/wood_planks_normal.jpg",
               "public/assets/pbr/bark/bark_albedo.jpg",
               "public/assets/pbr/rock/rock_albedo.jpg",
+              "public/assets/animals/deer-base.glb",
+              "public/assets/animals/pig-base.glb",
+              "public/assets/weapons/bolt-action-rifle.glb",
+              "public/assets/models/ATTRIBUTION.md",
               "public/assets/asset-manifest.json"
             ];
             for (const file of requiredAssets) {
               if (!fs.existsSync(file)) throw new Error("Missing imported graphics asset " + file);
+            }
+            const manifest = JSON.parse(fs.readFileSync("public/assets/asset-manifest.json", "utf8"));
+            const models = new Map((manifest.assets || []).filter((asset) => asset.path).map((asset) => [asset.path, asset]));
+            const modelChecks = [
+              { path: "animals/deer-base.glb", minBytes: 100000, meshes: 1, skins: 1, nodes: ["Head", "Neck", "LeftFrontUpLeg", "RightHindUpLeg"], clips: ["Idle", "Walk", "Run"] },
+              { path: "animals/pig-base.glb", minBytes: 100000, meshes: 1, skins: 1, nodes: ["Head", "Jaw", "LeftFrontUpLeg", "RightHindUpLeg"], clips: ["Idle", "Walk", "Run"] },
+              { path: "weapons/bolt-action-rifle.glb", minBytes: 50000, meshes: 2, skins: 0, nodes: ["bolt", "rifle-body"], clips: [] }
+            ];
+            for (const model of modelChecks) {
+              const record = models.get(model.path);
+              const file = "public/assets/" + model.path;
+              const bytes = fs.readFileSync(file);
+              if (!record || record.bytes !== bytes.length || bytes.length < model.minBytes || bytes.subarray(0, 4).toString("ascii") !== "glTF") {
+                throw new Error("Invalid or unmanifested GLB asset: " + model.path);
+              }
+              if (!record.license || !record.source || record.mesh_count !== model.meshes || record.skin_count !== model.skins) {
+                throw new Error("Missing licence, source or geometry metadata for " + model.path);
+              }
+              for (const name of model.nodes) {
+                if (!(record.node_names || []).includes(name)) throw new Error("Missing named node " + name + " in " + model.path);
+              }
+              for (const clip of model.clips) {
+                if (!(record.animation_names || []).includes(clip)) throw new Error("Missing animation " + clip + " in " + model.path);
+              }
             }
             console.log("Wildrange browser build validation passed.");
           '
