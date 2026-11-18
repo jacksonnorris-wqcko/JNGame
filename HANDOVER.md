@@ -42,6 +42,7 @@ The 0.8.21 pass responds to the Pinecrest Outpost screenshot:
 The 0.8.22 pass builds on the cabin and sign structural fixes:
 
 - Exposed gable trusses, collar ties, king posts and louvered gable vents on both ends of the lodge.
+- The Pinecrest Lodge plaque is carried by two timber uprights and a structural header, with knee braces, stone shoes, iron straps and brass fixings.
 - Roof gutters with support brackets, four downpipes and outlet shoes.
 - Two detailed front window flower boxes with iron brackets and layered planting.
 - A dedicated firewood shelter on the east side of the yard with four structural posts, stone footings, rear slats, lean-to roof, rafters, stacked split logs and cut end grain.
@@ -55,7 +56,7 @@ The compound pass is built in the buildPinecrestCompoundLife() helper and called
 
 ## Validation notes for 0.8.22
 
-The latest source files and test assertions were checked after the updates. This confirms that the expected geometry, diagnostics, cache-buster versions and regression checks are present in main. A completed GitHub Actions run and a visual browser review have not yet been confirmed; treat the release as source-committed until those checks are available.
+The latest source files and test assertions were checked after the updates, including the two Pinecrest Lodge sign uprights and the gate sign posts. This confirms that the expected geometry, diagnostics, cache-buster versions and regression checks are present in main. A completed GitHub Actions run and a visual browser review have not yet been confirmed; treat the release as source-committed until those checks are available.
 
 ## Validation status
 
