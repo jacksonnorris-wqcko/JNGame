@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.15&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.16&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -63,6 +63,14 @@ try {
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
   if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
+  if (!diagnostics.gateSignReady || !diagnostics.outpostApproachReady) {
+    throw new Error("Pinecrest entrance sign or access road did not initialise: " + JSON.stringify(diagnostics));
+  }
+  if (!diagnostics.contractBoardPosition || Math.abs(diagnostics.contractBoardPosition.x + 21.8) > 0.05 ||
+      Math.abs(diagnostics.contractBoardPosition.z - 33.0) > 0.05) {
+    throw new Error("Contract board was not moved inside the compound beside the entrance: " + JSON.stringify(diagnostics.contractBoardPosition));
+  }
+  if (diagnostics.bearingLabel === "undefined") throw new Error("Compass bearing label is still undefined");
   if (diagnostics.outpostTreeIntrusionCount !== 0) {
     throw new Error("Trees are still being generated inside the Pinecrest compound: " + diagnostics.outpostTreeIntrusionCount);
   }
@@ -105,6 +113,12 @@ try {
     southGateOpeningClear: window.WildrangeQA.canStandAt(-14, 29),
     westRailBlocked: !window.WildrangeQA.canStandAt(-1, 43),
     westFenceExtensionClear: window.WildrangeQA.canStandAt(3, 43),
+    northRailBlocked: !window.WildrangeQA.canStandAt(-14, 55),
+    northFenceExtensionClear: window.WildrangeQA.canStandAt(-14, 57),
+    boardWalkable: window.WildrangeQA.canStandAt(-21.8, 33),
+    nanBearing: window.WildrangeQA.bearingFor("not-a-number"),
+    negativeBearing: window.WildrangeQA.bearingFor(-45),
+    fullTurnBearing: window.WildrangeQA.bearingFor(360),
     outpostTreeIntrusions: window.WildrangeDiagnostics().outpostTreeIntrusionCount
   }));
   if (!cabinCollision.interiorWalkableWithDoorClosed || !cabinCollision.doorwayBlockedWithDoorClosed ||
@@ -116,8 +130,11 @@ try {
   }
   if (!compoundBoundary.southRailBlocked || !compoundBoundary.southFenceExtensionClear ||
       !compoundBoundary.southGateOpeningClear || !compoundBoundary.westRailBlocked ||
-      !compoundBoundary.westFenceExtensionClear || compoundBoundary.outpostTreeIntrusions !== 0) {
-    throw new Error("Compound fence limits or tree clearance failed: " + JSON.stringify(compoundBoundary));
+      !compoundBoundary.westFenceExtensionClear || !compoundBoundary.northRailBlocked ||
+      !compoundBoundary.northFenceExtensionClear || !compoundBoundary.boardWalkable ||
+      compoundBoundary.nanBearing !== "N" || compoundBoundary.negativeBearing !== "NW" ||
+      compoundBoundary.fullTurnBearing !== "N" || compoundBoundary.outpostTreeIntrusions !== 0) {
+    throw new Error("Compound limits, noticeboard access, compass or tree clearance failed: " + JSON.stringify(compoundBoundary));
   }
   await page.evaluate(() => window.WildrangeQA.setDoor(true));
   const openDoorwayWalkable = await page.evaluate(() => window.WildrangeQA.canStandAt(-14, 38.7));
