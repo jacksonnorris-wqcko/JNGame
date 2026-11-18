@@ -82,7 +82,7 @@ try {
   const yardPropCollision = await page.evaluate(() => ({
     woodshedBlocked: !window.WildrangeQA.canStandAt(-5.55, 48.45),
     waterTroughBlocked: !window.WildrangeQA.canStandAt(-2.95, 48.65),
-    servicePathClear: window.WildrangeQA.canStandAt(-4.5, 43.2)
+    servicePathClear: window.WildrangeQA.canStandAt(-7.1, 43.5)
   }));
   if (!yardPropCollision.woodshedBlocked || !yardPropCollision.waterTroughBlocked || !yardPropCollision.servicePathClear) {
     throw new Error("Woodshed and trough collision or service path clearance failed: " + JSON.stringify(yardPropCollision));
