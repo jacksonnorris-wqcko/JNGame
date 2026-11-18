@@ -56,13 +56,17 @@ try {
       !startupDiagnostics.pinecrestRoofShingleMaterialReady ||
       startupDiagnostics.pinecrestLogEndgrainCount !== 94 ||
       startupDiagnostics.compoundShadowCasterCount < 100 ||
-      startupDiagnostics.compoundShadowMapSize !== 1536) {
+      startupDiagnostics.compoundShadowMapSize !== 1536 ||
+      startupDiagnostics.compoundFencePostCount !== 31 ||
+      startupDiagnostics.compoundFenceRailCount !== 48) {
     throw new Error("Pinecrest high-fidelity material and shadow systems are not ready: " + JSON.stringify({
       roofSurfaces: startupDiagnostics.pinecrestRoofSurfaceCount,
       roofMaterial: startupDiagnostics.pinecrestRoofShingleMaterialReady,
       logEndgrain: startupDiagnostics.pinecrestLogEndgrainCount,
       shadowCasters: startupDiagnostics.compoundShadowCasterCount,
-      shadowMapSize: startupDiagnostics.compoundShadowMapSize
+      shadowMapSize: startupDiagnostics.compoundShadowMapSize,
+      fencePosts: startupDiagnostics.compoundFencePostCount,
+      fenceRails: startupDiagnostics.compoundFenceRailCount
     }));
   }
   if (startupDiagnostics.cabinSignSupportPostCount !== 2 ||
