@@ -1444,7 +1444,6 @@
     secondPorchLight.intensity = 0.20;
     secondPorchLight.range = 9;
     const lanternLight = new BABYLON.PointLight("warm porch lantern light", new BABYLON.Vector3(-12.3, 3.6, 38.1), scene);
-    lanternLight.diffuse = hex("#f1bd78"); lanternLight.intensity = 0.24; lanternLight.range = 10;    const lanternLight = new BABYLON.PointLight("warm porch lantern light", new BABYLON.Vector3(-12.3, 3.6, 38.1), scene);
     lanternLight.diffuse = hex("#f1bd78"); lanternLight.intensity = 0.24; lanternLight.range = 10;
     // Small trailhead details make the spawn feel like a working ranger outpost.
     const flagPole = BABYLON.MeshBuilder.CreateCylinder("outpost flag pole", { height: 7.2, diameter: 0.12, tessellation: 10 }, scene);
