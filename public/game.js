@@ -1265,6 +1265,40 @@
     cabinSignTexture.update(true);
     cabinSignMaterial = makeReadableSignMaterial("Pinecrest lodge sign material", cabinSignTexture, true);
     cabinSignFrontMesh.material = cabinSignMaterial;
+
+    // The lodge plaque is carried by a visible timber portal tied into the door
+    // lintel and front cross-beam, rather than appearing pasted onto the facade.
+    box("Pinecrest lodge sign structural header",
+      { width: 4.18, height: 0.22, depth: 0.28 },
+      new BABYLON.Vector3(0, 6.00, -4.54), mat.wood, root);
+    for (const side of [-1, 1]) {
+      const postX = side * 1.94;
+      box("Pinecrest lodge sign structural timber post",
+        { width: 0.24, height: 1.55, depth: 0.28 },
+        new BABYLON.Vector3(postX, 5.18, -4.54), mat.bark, root);
+      box("Pinecrest lodge sign post stone shoe",
+        { width: 0.36, height: 0.18, depth: 0.36 },
+        new BABYLON.Vector3(postX, 4.43, -4.54), mat.stoneDark, root);
+      box("Pinecrest lodge sign post cap",
+        { width: 0.36, height: 0.16, depth: 0.36 },
+        new BABYLON.Vector3(postX, 5.98, -4.54), mat.woodLight, root);
+      const knee = box("Pinecrest lodge sign portal knee brace",
+        { width: 0.58, height: 0.14, depth: 0.18 },
+        new BABYLON.Vector3(side * 1.68, 5.80, -4.57), mat.woodLight, root);
+      knee.rotation.z = -side * 0.48;
+      box("Pinecrest lodge sign iron post strap",
+        { width: 0.30, height: 0.12, depth: 0.045 },
+        new BABYLON.Vector3(postX, 5.10, -4.70), mat.black, root);
+      for (const boltY of [5.05, 5.15]) {
+        const bolt = BABYLON.MeshBuilder.CreateCylinder("Pinecrest lodge sign post brass bolt",
+          { height: 0.035, diameter: 0.065, tessellation: 10 }, scene);
+        bolt.parent = root;
+        bolt.rotation.x = Math.PI / 2;
+        bolt.position.set(postX, boltY, -4.73);
+        bolt.material = mat.gold;
+        bolt.isPickable = false;
+      }
+    }
     for (const side of [-1, 1]) {
       box("Pinecrest lodge sign mounting cleat",
         { width: 0.16, height: 0.96, depth: 0.24 },
@@ -4163,6 +4197,7 @@
     gateSignReady: Boolean(gateSignTexture && gateSignTexture.isReady()),
     gateSignBackReady: Boolean(gateSignBackTexture && gateSignBackTexture.isReady()),
     cabinSignReady: Boolean(cabinSignTexture && cabinSignTexture.isReady()),
+    cabinSignSupportPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge sign structural timber post").length : 0,
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
     pinecrestGableBeamCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gable diagonal king timber").length : 0,
