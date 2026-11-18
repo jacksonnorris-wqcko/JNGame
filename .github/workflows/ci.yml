@@ -56,6 +56,7 @@ jobs:
             if (!js.includes("board-paper-front") || !js.includes("board-paper-back")) throw new Error("Pinecrest noticeboard must show readable text on both faces");
             if (!js.includes("Pinecrest gate nameplate") || !js.includes("Pinecrest outpost access road")) throw new Error("Outpost gate sign or access road is missing");
             if (!js.includes("Pinecrest lodge sign face") || !js.includes("Outfitters fascia sign face") || !js.includes("Harvest station sign face")) throw new Error("One or more finished compound signs are missing");
+            if (!js.includes("let boardPaperFrontMesh = null;") || !js.includes("let boardPaperBackMesh = null;")) throw new Error("Mission board face mesh state is not declared");
             if (!js.includes("material.emissiveTexture = texture") || !js.includes("material.backFaceCulling = false") || !js.includes("material.zOffset = -4")) throw new Error("Readable sign material must be emissive, double-sided and depth-biased");
             if (!js.includes("const scaleX = size.width / 768") || !js.includes("ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0)")) throw new Error("Mission board text must fill the full dynamic texture");
             if (!js.includes("Outfitter stitched canvas") || !js.includes("window shutter vertical slat") || !js.includes("compound fence steel rail bracket")) throw new Error("Compound material and joinery finish is missing");
