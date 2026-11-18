@@ -2752,8 +2752,6 @@
     createCabin();
     buildPinecrestCompoundAccess();
     buildPinecrestCompoundLife();
-    createWildlife();    createCabin();
-    buildPinecrestCompoundAccess();
     createWildlife();
     mergeStaticScenery();
 
