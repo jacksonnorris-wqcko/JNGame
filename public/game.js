@@ -2312,7 +2312,7 @@
     const localX = x + 14;
     const localZ = z - 43;
     if (Math.abs(localX) <= 5.2 && localZ > -4.0 && localZ < 4.5) return 1.02;
-    if (Math.abs(localX) <= 4.1 && localZ >= -14.0 && localZ <= -9.2) return 0.26;
+    if (Math.abs(localX) <= 4.1 && localZ >= -15.0 && localZ <= -9.2) return 0.26;
     if (Math.abs(localX) <= 3.65 && localZ >= -6.65 && localZ <= -4.0) return 1.335;
     if (Math.abs(localX) <= 1.95 && localZ >= -9.22 && localZ < -6.65) {
       if (localZ < -8.5) return 0.4;
