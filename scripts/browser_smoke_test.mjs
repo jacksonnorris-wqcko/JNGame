@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.19&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.20&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
