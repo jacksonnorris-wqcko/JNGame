@@ -78,6 +78,7 @@ This pass addresses the remaining "primitive assembly" look by changing the mate
 - Smoothed cabin log cylinders from 10 to 24 radial segments, extended the side courses through the corners, and added separate end-grain faces. The expected cut-face count is 94.
 - Added UVs to the triangular gable faces so they use the PBR timber siding maps.
 - Replaced coarse ico-sphere tree crowns with smoother sphere geometry for broadleaf and pine forms; smoothed trunk profiles.
+- Rebuilt perimeter fence uprights as tapered timber sections with octagonal stone footings and rounded rails that follow the terrain; original spacing and collision layout are preserved.
 - Increased the compound shadow map to 1536 and registered the Pinecrest lodge and woodshed child meshes as shadow casters.
 - Added browser and CI checks for roof material readiness, log end-grain count, shadow-map size and registered compound shadow casters.
 - Bumped the browser asset version to 0.9.0.
