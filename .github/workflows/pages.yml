@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+      - name: Download and validate CC0 lodge and vegetation GLBs
+        run: bash scripts/download_licensed_3d_assets.sh
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload browser game
