@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Download and validate CC0 lodge and vegetation GLBs
+        run: bash scripts/download_licensed_3d_assets.sh
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -138,6 +140,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Download and validate CC0 lodge and vegetation GLBs
+        run: bash scripts/download_licensed_3d_assets.sh
       - uses: actions/setup-node@v4
         with:
           node-version: 22
