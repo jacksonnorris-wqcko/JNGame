@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.8.23`  
+**Current source build:** `0.8.24`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -63,6 +63,12 @@ The latest source files and test assertions were checked after the updates, incl
 The compound pass introduced duplicated cabin, access-path and wildlife creation calls inside createScene(). This caused the lodge and its visual assemblies to be built twice. The duplicate calls have been removed. Scene startup now builds one cabin, one compound access layout, one living-world dressing pass, one wildlife population, then merges static scenery.
 
 The Playwright smoke test now checks the single-instance support counts immediately after entering the world. The browser entry points load 0.8.23 assets.
+
+## 0.8.24 start-screen parser fix
+
+The title screen remained visible because a duplicate `const lanternLight` declaration made `public/game.js` fail at parse time. The browser therefore never registered the Start button click handler. One duplicate declaration was removed and the full game source passed a JavaScript parser check.
+
+The index and play entry points now load 0.8.24. The Playwright smoke test additionally asserts that the start screen becomes hidden after clicking Start, rather than only checking whether a scene object exists.
 
 ## Validation status
 
