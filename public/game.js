@@ -3696,6 +3696,11 @@
     }
   }
 
+  function isReadableSignFace(mesh) {
+    return Boolean(mesh && mesh.isVisible && mesh.isEnabled() && mesh.getTotalVertices() > 0 &&
+      mesh.material && mesh.material.backFaceCulling === false && mesh.material.emissiveTexture);
+  }
+
   window.WildrangeDiagnostics = () => ({
     engineReady: Boolean(engine && engine.getRenderingCanvas()),
     sceneReady: Boolean(scene && camera),
@@ -3753,6 +3758,16 @@
     cabinSignReady: Boolean(cabinSignTexture && cabinSignTexture.isReady()),
     outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),
     harvestSignReady: Boolean(harvestSignTexture && harvestSignTexture.isReady()),
+    cabinSignFaceVisible: isReadableSignFace(cabinSignFrontMesh),
+    gateSignFrontFaceVisible: isReadableSignFace(gateSignFrontMesh),
+    gateSignBackFaceVisible: isReadableSignFace(gateSignBackMesh),
+    missionBoardFrontFaceVisible: isReadableSignFace(boardPaperFrontMesh),
+    missionBoardBackFaceVisible: isReadableSignFace(boardPaperBackMesh),
+    outfitterSignFaceVisible: isReadableSignFace(outfitterSignFrontMesh),
+    harvestSignFaceVisible: isReadableSignFace(harvestSignFrontMesh),
+    missionBoardCanvasFullSize: Boolean(contractBoardTexture && contractBoardTexture.getSize().width === 1024 &&
+      contractBoardTexture.getSize().height === 768 && contractBoardBackTexture &&
+      contractBoardBackTexture.getSize().width === 1024 && contractBoardBackTexture.getSize().height === 768),
     signFaceMaterialsReady: Boolean(
       cabinSignMaterial && !cabinSignMaterial.backFaceCulling && cabinSignMaterial.emissiveTexture &&
       contractBoardMaterial && !contractBoardMaterial.backFaceCulling && contractBoardMaterial.emissiveTexture &&
@@ -3772,7 +3787,7 @@
     aiming,
     cabinDoorOpen,
     cabinDoorReady: Boolean(cabinDoorPivot),
-    contractBoardReady: Boolean(contractBoardTexture),
+    contractBoardReady: Boolean(contractBoardTexture && contractBoardBackTexture),
     scopeZoom: scopeMagnifications[scopeZoomIndex],
     scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")
   });
