@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.21&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.22&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -66,6 +66,26 @@ try {
   }
   if (diagnostics.cabinFrontWallBackingCount !== 2) {
     throw new Error("Pinecrest lodge front log courses must have two opaque wall backing panels: " + diagnostics.cabinFrontWallBackingCount);
+  }
+  if (diagnostics.pinecrestGableBeamCount !== 4 || diagnostics.pinecrestRainGutterCount !== 3 ||
+      diagnostics.pinecrestWindowFlowerBoxCount !== 2 || diagnostics.pinecrestWoodshedPostCount !== 4 ||
+      diagnostics.pinecrestWoodshedLogCount !== 12 || diagnostics.pinecrestFernFrondCount < 35) {
+    throw new Error("Pinecrest compound visual dressing is incomplete: " + JSON.stringify({
+      gableBeams: diagnostics.pinecrestGableBeamCount,
+      gutters: diagnostics.pinecrestRainGutterCount,
+      windowBoxes: diagnostics.pinecrestWindowFlowerBoxCount,
+      woodshedPosts: diagnostics.pinecrestWoodshedPostCount,
+      woodshedLogs: diagnostics.pinecrestWoodshedLogCount,
+      fernFronds: diagnostics.pinecrestFernFrondCount
+    }));
+  }
+  const yardPropCollision = await page.evaluate(() => ({
+    woodshedBlocked: !window.WildrangeQA.canStandAt(-5.55, 48.45),
+    waterTroughBlocked: !window.WildrangeQA.canStandAt(-2.95, 48.65),
+    servicePathClear: window.WildrangeQA.canStandAt(-4.5, 43.2)
+  }));
+  if (!yardPropCollision.woodshedBlocked || !yardPropCollision.waterTroughBlocked || !yardPropCollision.servicePathClear) {
+    throw new Error("Woodshed and trough collision or service path clearance failed: " + JSON.stringify(yardPropCollision));
   }
   const gatePostCollision = await page.evaluate(() => ({
     leftPostBlocked: !window.WildrangeQA.canStandAt(-16.48, 29),
