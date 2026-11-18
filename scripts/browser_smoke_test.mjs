@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.24&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.9.0&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -52,6 +52,19 @@ try {
     return diagnostics && (diagnostics.sceneReady || diagnostics.sceneInitError);
   }, { timeout: 45000 });
   const startupDiagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (startupDiagnostics.pinecrestRoofSurfaceCount !== 2 ||
+      !startupDiagnostics.pinecrestRoofShingleMaterialReady ||
+      startupDiagnostics.pinecrestLogEndgrainCount !== 94 ||
+      startupDiagnostics.compoundShadowCasterCount < 100 ||
+      startupDiagnostics.compoundShadowMapSize !== 1536) {
+    throw new Error("Pinecrest high-fidelity material and shadow systems are not ready: " + JSON.stringify({
+      roofSurfaces: startupDiagnostics.pinecrestRoofSurfaceCount,
+      roofMaterial: startupDiagnostics.pinecrestRoofShingleMaterialReady,
+      logEndgrain: startupDiagnostics.pinecrestLogEndgrainCount,
+      shadowCasters: startupDiagnostics.compoundShadowCasterCount,
+      shadowMapSize: startupDiagnostics.compoundShadowMapSize
+    }));
+  }
   if (startupDiagnostics.cabinSignSupportPostCount !== 2 ||
       startupDiagnostics.gateStructuralPostCount !== 2 ||
       startupDiagnostics.pinecrestWoodshedPostCount !== 4) {
