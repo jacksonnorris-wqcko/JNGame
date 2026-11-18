@@ -151,6 +151,7 @@ This is the first pass that replaces repeated primitive roof props with authored
 - Cabin log courses use 24 radial segments, cross over at the corners and expose cut end-grain rings on the visible ends.
 - Gable faces now carry UVs so the existing PBR timber siding maps render across the triangular surfaces.
 - Broadleaf and pine canopy forms use smoother sphere meshes instead of coarse low-subdivision icospheres.
+- Compound fence posts are now tapered timber sections on octagonal stone footings, with rounded timber rails following the terrain instead of flat rectangular box beams.
 - The cabin and woodshed meshes are registered as actual directional-light shadow casters; the shadow map is enlarged to 1536 pixels.
 - The browser test checks the authored roof material, two roof surfaces, 94 log end-grain faces and compound shadow casters.
 
