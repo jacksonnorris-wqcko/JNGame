@@ -543,7 +543,7 @@
   function isPinecrestCompoundClearance(x, z) {
     const localX = x + 14;
     const localZ = z - 43;
-    return Math.abs(localX) < 24 && localZ > -24 && localZ < 22;
+    return Math.abs(localX) < 31 && localZ > -29 && localZ < 29;
   }
 
   function makeTerrain() {
@@ -914,38 +914,90 @@
       box("porch footing", { width: 0.48, height: 0.42, depth: 0.48 }, new BABYLON.Vector3(x, 0.2, -6.25), mat.stoneDark, root);
       box("porch bearer", { width: 0.22, height: 0.24, depth: 2.1 }, new BABYLON.Vector3(x, 0.76, -5.45), mat.bark, root);
     }
-    // Enclose the ranger compound with an open front gate and clear entry approach.
-    const fencePost = (x, z, name) => box(name, { width: 0.22, height: 1.8, depth: 0.22 },
-      new BABYLON.Vector3(x, 0.98, z), mat.bark, root);
+    // Perimeter fencing follows the actual terrain instead of floating at one
+    // fixed elevation. Stone footings, capped posts and continuous rails make it
+    // read as a constructed ranger compound rather than loose prop pieces.
+    const localGroundY = (x, z) => heightAt(root.position.x + x, root.position.z + z) - root.position.y;
+    const fencePost = (x, z, name) => {
+      const groundY = localGroundY(x, z);
+      box("compound fence stone footing", { width: 0.44, height: 0.28, depth: 0.44 },
+        new BABYLON.Vector3(x, groundY + 0.14, z), mat.stoneDark, root);
+      box(name, { width: 0.24, height: 1.92, depth: 0.24 },
+        new BABYLON.Vector3(x, groundY + 0.96, z), mat.bark, root);
+      box("compound fence post cap", { width: 0.34, height: 0.12, depth: 0.34 },
+        new BABYLON.Vector3(x, groundY + 1.98, z), mat.woodLight, root);
+    };
+    const sideFenceRail = (x, z0, z1, height, material, name) => {
+      const y0 = localGroundY(x, z0), y1 = localGroundY(x, z1);
+      const rail = box(name, { width: 0.15, height: 0.18, depth: Math.hypot(z1 - z0, y1 - y0) },
+        new BABYLON.Vector3(x, (y0 + y1) / 2 + height, (z0 + z1) / 2), material, root);
+      rail.rotation.x = Math.atan2(y1 - y0, z1 - z0);
+      return rail;
+    };
+    const crossFenceRail = (x0, x1, z, height, material, name) => {
+      const y0 = localGroundY(x0, z), y1 = localGroundY(x1, z);
+      const rail = box(name, { width: Math.hypot(x1 - x0, y1 - y0), height: 0.18, depth: 0.15 },
+        new BABYLON.Vector3((x0 + x1) / 2, (y0 + y1) / 2 + height, z), material, root);
+      rail.rotation.z = Math.atan2(y1 - y0, x1 - x0);
+      return rail;
+    };
     for (const x of [-13, 13]) {
       for (let z = -12; z <= 9; z += 3) fencePost(x, z, "compound perimeter fence post");
-      for (let z = -10.5; z <= 7.5; z += 3) {
-        box("compound side fence lower rail", { width: 0.14, height: 0.18, depth: 3.0 }, new BABYLON.Vector3(x, 0.72, z), mat.wood, root);
-        box("compound side fence upper rail", { width: 0.14, height: 0.18, depth: 3.0 }, new BABYLON.Vector3(x, 1.34, z), mat.woodLight, root);
+      for (let z = -12; z < 9; z += 3) {
+        sideFenceRail(x, z, z + 3, 0.68, mat.wood, "compound side fence lower rail");
+        sideFenceRail(x, z, z + 3, 1.30, mat.woodLight, "compound side fence upper rail");
       }
     }
     for (let x = -13; x <= 13; x += 3.25) fencePost(x, 12, "compound north fence post");
-    for (let x = -11.375; x <= 11.375; x += 3.25) {
-      box("compound north fence lower rail", { width: 3.25, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(x, 0.72, 12), mat.wood, root);
-      box("compound north fence upper rail", { width: 3.25, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(x, 1.34, 12), mat.woodLight, root);
+    for (let x = -13; x < 13; x += 3.25) {
+      crossFenceRail(x, x + 3.25, 12, 0.68, mat.wood, "compound north fence lower rail");
+      crossFenceRail(x, x + 3.25, 12, 1.30, mat.woodLight, "compound north fence upper rail");
     }
     for (const x of [-13, -9.75, -6.5, 6.5, 9.75, 13]) fencePost(x, -14, "compound gate fence post");
     for (const side of [-1, 1]) {
-      const centerX = side * 9.75;
-      box("compound gate lower rail", { width: 6.5, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(centerX, 0.72, -14), mat.wood, root);
-      box("compound gate upper rail", { width: 6.5, height: 0.18, depth: 0.14 }, new BABYLON.Vector3(centerX, 1.34, -14), mat.woodLight, root);
+      const x0 = side < 0 ? -13 : 6.5;
+      const x1 = side < 0 ? -6.5 : 13;
+      crossFenceRail(x0, x1, -14, 0.68, mat.wood, "compound gate lower rail");
+      crossFenceRail(x0, x1, -14, 1.30, mat.woodLight, "compound gate upper rail");
     }
-    box("Pinecrest entry gate lintel", { width: 6.7, height: 0.24, depth: 0.26 }, new BABYLON.Vector3(0, 3.15, -14), mat.woodLight, root);
-    box("Pinecrest entry gate sign", { width: 4.1, height: 0.9, depth: 0.18 }, new BABYLON.Vector3(0, 2.55, -14), mat.sign, root);
+    const gateGround = localGroundY(0, -14);
+    box("Pinecrest entry gate lintel", { width: 6.7, height: 0.24, depth: 0.26 },
+      new BABYLON.Vector3(0, gateGround + 3.15, -14), mat.woodLight, root);
+    box("Pinecrest entry gate sign", { width: 4.1, height: 0.9, depth: 0.18 },
+      new BABYLON.Vector3(0, gateGround + 2.55, -14), mat.sign, root);
     for (const x of [-5.7, 5.7]) {
+      const groundY = localGroundY(x, -11.5);
       const lampPole = BABYLON.MeshBuilder.CreateCylinder("compound entrance lantern post", { height: 3.4, diameter: 0.16, tessellation: 10 }, scene);
-      lampPole.parent = root; lampPole.position.set(x, 1.8, -11.5); lampPole.material = mat.bark; lampPole.isPickable = false;
-      const lampBox = box("compound entrance lantern", { width: 0.35, height: 0.46, depth: 0.35 }, new BABYLON.Vector3(x, 3.45, -11.5), mat.gold, root);
-      const lampGlass = box("compound lantern glass", { width: 0.22, height: 0.31, depth: 0.22 }, new BABYLON.Vector3(x, 3.45, -11.5), mat.window, root);
+      lampPole.parent = root; lampPole.position.set(x, groundY + 1.7, -11.5); lampPole.material = mat.bark; lampPole.isPickable = false;
+      box("compound lantern backplate", { width: 0.40, height: 0.50, depth: 0.32 },
+        new BABYLON.Vector3(x, groundY + 3.38, -11.5), mat.black, root);
+      const lampGlass = box("compound lantern glass", { width: 0.22, height: 0.31, depth: 0.22 },
+        new BABYLON.Vector3(x, groundY + 3.38, -11.5), mat.window, root);
       lampGlass.material.emissiveColor = hex("#f2bd75");
-      const gateLight = new BABYLON.PointLight("compound gate warm light", new BABYLON.Vector3(-14 + x, 3.2, 43 - 11.5), scene);
+      const gateLight = new BABYLON.PointLight("compound gate warm light",
+        new BABYLON.Vector3(root.position.x + x, groundY + 3.2, root.position.z - 11.5), scene);
       gateLight.diffuse = hex("#f0bc79"); gateLight.intensity = 0.22; gateLight.range = 9;
     }
+    // A double-sided, legible outpost nameplate at the gate.
+    const gateSignFront = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign front", { width: 3.82, height: 0.68 }, scene);
+    gateSignFront.parent = root; gateSignFront.position.set(0, gateGround + 2.55, -14.105); gateSignFront.rotation.y = Math.PI; gateSignFront.isPickable = false;
+    const gateSignBack = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign back", { width: 3.82, height: 0.68 }, scene);
+    gateSignBack.parent = root; gateSignBack.position.set(0, gateGround + 2.55, -13.895); gateSignBack.isPickable = false;
+    const gateSignTexture = new BABYLON.DynamicTexture("Pinecrest gate nameplate", { width: 1024, height: 256 }, scene, true);
+    const gateCtx = gateSignTexture.getContext();
+    gateCtx.fillStyle = "#26352b"; gateCtx.fillRect(0, 0, 1024, 256);
+    gateCtx.strokeStyle = "#c8ad70"; gateCtx.lineWidth = 12; gateCtx.strokeRect(18, 18, 988, 220);
+    gateCtx.textAlign = "center"; gateCtx.fillStyle = "#f1e3bd";
+    gateCtx.font = "bold 76px Georgia"; gateCtx.fillText("PINECREST OUTPOST", 512, 112);
+    gateCtx.font = "28px Georgia"; gateCtx.fillStyle = "#c9c0a7"; gateCtx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 174);
+    gateSignTexture.update(true);
+    const gateSignFrontMaterial = new BABYLON.StandardMaterial("Pinecrest gate sign front material", scene);
+    gateSignFrontMaterial.diffuseTexture = gateSignTexture; gateSignFrontMaterial.diffuseTexture.uScale = -1; gateSignFrontMaterial.diffuseTexture.uOffset = 1;
+    gateSignFrontMaterial.emissiveColor = hex("#fff4df"); gateSignFrontMaterial.backFaceCulling = true;
+    gateSignFront.material = gateSignFrontMaterial;
+    const gateSignBackMaterial = new BABYLON.StandardMaterial("Pinecrest gate sign rear material", scene);
+    gateSignBackMaterial.diffuseTexture = gateSignTexture; gateSignBackMaterial.emissiveColor = hex("#fff4df"); gateSignBackMaterial.backFaceCulling = true;
+    gateSignBack.material = gateSignBackMaterial;
     for (const x of [-4.15, 4.15]) {
       box("porch support post", { width: 0.24, height: 3.0, depth: 0.24 }, new BABYLON.Vector3(x, 2.55, -6.25), mat.bark, root);
       box("porch post cap", { width: 0.4, height: 0.18, depth: 0.4 }, new BABYLON.Vector3(x, 4.08, -6.25), mat.woodLight, root);
@@ -1072,17 +1124,26 @@
 
     makeInteractable("LODGE DOOR", "Open or close the Pinecrest cabin door", -14, 38.7, "cabin", "door");
     makeInteractable("OUTFITTERS", "Open the supply counter", -4.5, 40.5, "shop", "ammo");
-    makeInteractable("CONTRACT BOARD", "View local hunting contracts", -5.1, 22.4, "contract", "board");
+    // Put the contract board just inside the gate, facing the approach path.
+    makeInteractable("CONTRACT BOARD", "View local hunting contracts", -21.8, 33.0, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
-    box("contract-board", { width: 2.0, height: 2.1, depth: 0.26 }, new BABYLON.Vector3(-5.1, 1.7, 22.4), mat.sign);
-    const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.5, diameter: 0.18, tessellation: 8 }, scene);
-    boardPost.position.set(-5.1, 0.95, 22.4); boardPost.material = mat.bark;
-    const boardPaper = BABYLON.MeshBuilder.CreatePlane("board-paper-front", { width: 1.48, height: 1.22 }, scene);
-    boardPaper.position.set(-5.1, 1.8, 22.22);
+    box("contract-board", { width: 2.15, height: 2.28, depth: 0.28 }, new BABYLON.Vector3(-21.8, 1.72, 33.0), mat.sign);
+    const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.7, diameter: 0.2, tessellation: 10 }, scene);
+    boardPost.position.set(-21.8, 1.1, 33.0); boardPost.material = mat.bark;
+    const boardCanopy = box("contract board rain cap", { width: 2.55, height: 0.16, depth: 0.66 },
+      new BABYLON.Vector3(-21.8, 3.0, 33.0), mat.roof, null);
+    boardCanopy.rotation.x = -0.08;
+    for (const x of [-22.65, -20.95]) {
+      const brace = box("contract board support brace", { width: 0.12, height: 0.82, depth: 0.12 },
+        new BABYLON.Vector3(x, 0.82, 32.92), mat.bark, null);
+      brace.rotation.z = x < -21.8 ? -0.22 : 0.22;
+    }
+    const boardPaper = BABYLON.MeshBuilder.CreatePlane("board-paper-front", { width: 1.76, height: 1.42 }, scene);
+    boardPaper.position.set(-21.8, 1.82, 32.845);
     boardPaper.rotation.y = Math.PI;
     boardPaper.isPickable = false;
-    const boardPaperBack = BABYLON.MeshBuilder.CreatePlane("board-paper-back", { width: 1.48, height: 1.22 }, scene);
-    boardPaperBack.position.set(-5.1, 1.8, 22.58);
+    const boardPaperBack = BABYLON.MeshBuilder.CreatePlane("board-paper-back", { width: 1.76, height: 1.42 }, scene);
+    boardPaperBack.position.set(-21.8, 1.82, 33.155);
     boardPaperBack.isPickable = false;
     contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice front", { width: 768, height: 576 }, scene, true);
     contractBoardBackTexture = new BABYLON.DynamicTexture("Pinecrest contract notice rear", { width: 768, height: 576 }, scene, true);
@@ -1106,7 +1167,9 @@
     }
     box("harvest bench lower stretcher", { width: 2.45, height: 0.12, depth: 0.12 }, new BABYLON.Vector3(-20.7, 0.48, 40.5), mat.wood);
     box("harvest bench side stretcher", { width: 0.12, height: 0.12, depth: 0.92 }, new BABYLON.Vector3(-22.08, 0.48, 40.5), mat.wood);
-    box("outpost entry paver", { width: 4.2, height: 0.16, depth: 4.4 }, new BABYLON.Vector3(-14, 0.18, 31.2), mat.stone);
+    const entryApron = BABYLON.MeshBuilder.CreateDisc("Pinecrest entry gravel apron", { radius: 3.15, tessellation: 32 }, scene);
+    entryApron.rotation.x = Math.PI / 2; entryApron.position.set(-14, 0.135, 30.5);
+    entryApron.scaling.set(1.28, 0.76, 1); entryApron.material = mat.shore; entryApron.isPickable = false;
     box("outfitter supply counter", { width: 2.8, height: 0.16, depth: 1.05 }, new BABYLON.Vector3(-4.5, 1.18, 40.5), mat.woodLight);
     for (const x of [-5.62, -3.38]) for (const z of [40.08, 40.92]) {
       box("outfitter counter leg", { width: 0.14, height: 1.12, depth: 0.14 }, new BABYLON.Vector3(x, 0.57, z), mat.bark);
@@ -1597,7 +1660,10 @@
   }
 
   function bearingName(degrees) {
-    return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(degrees / 45) % 8];
+    if (!Number.isFinite(degrees)) return "N";
+    const normalized = ((degrees % 360) + 360) % 360;
+    const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    return directions[Math.floor((normalized + 22.5) / 45) % 8] || "N";
   }
 
   function createSkyDome() {
@@ -1948,6 +2014,7 @@
     camera.angularSensibility = 2400;
     camera.speed = 0;
     camera.attachControl(canvas, true);
+    text("bearing-value", bearingName(camera.rotation.y * 180 / Math.PI));
     try { camera.inputs.removeByType("FreeCameraKeyboardMoveInput"); } catch (error) { /* no keyboard-driven camera translation */ }
     createWeapon();
     setupPostProcessing();
@@ -2171,7 +2238,7 @@
     const localX = x + 14;
     const localZ = z - 43;
     // Compound rails are solid boundaries, with a deliberately open front gate.
-    const onSideFence = Math.abs(Math.abs(localX) - 13) < 0.48 && localZ >= -12.2 && localZ <= 12.2;
+    const onSideFence = Math.abs(Math.abs(localX) - 13) < 0.48 && localZ >= -12.25 && localZ <= 9.25;
     const onNorthFence = Math.abs(localZ - 12) < 0.48 && Math.abs(localX) <= 13.2;
     // Only collide with the two visible south fence rails. The old test had no
     // X bounds, creating an invisible wall that stretched across the whole map.
