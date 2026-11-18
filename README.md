@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.8.23**. Game assets are stored under `public/assets/`.
+Current browser build: **0.8.24**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -138,6 +138,10 @@ The intent is to make Pinecrest read as an occupied ranger outpost with a cohere
 ## Startup regression fix — 0.8.23
 
 The 0.8.22 compound-pass wiring accidentally left the original cabin/access/wildlife initialisation calls after the new compound-pass insertion. The scene therefore constructed the lodge and wildlife twice. The 0.8.23 fix restores a single ordered initialisation pass: create the cabin, build access paths, dress the compound, create wildlife, then merge static scenery. The browser smoke test now validates single-instance cabin, gate and woodshed support counts immediately after starting a new game.
+
+## Startup parser fix — 0.8.24
+
+The 0.8.23 compound visual pass had accidentally duplicated the porch lantern's `const lanternLight` declaration in `public/game.js`. This caused a parse-time SyntaxError, preventing the game script and Start button handler from executing. The duplicate declaration has been removed. The source was compiled with the JavaScript parser before committing 0.8.24, and the browser smoke test now explicitly waits for the title screen to hide after the Start button is clicked.
 
 ## Cost
 
