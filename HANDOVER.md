@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.8.24`  
+**Current source build:** `0.9.0`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -69,6 +69,20 @@ The Playwright smoke test now checks the single-instance support counts immediat
 The title screen remained visible because a duplicate `const lanternLight` declaration made `public/game.js` fail at parse time. The browser therefore never registered the Start button click handler. One duplicate declaration was removed and the full game source passed a JavaScript parser check.
 
 The index and play entry points now load 0.8.24. The Playwright smoke test additionally asserts that the start screen becomes hidden after clicking Start, rather than only checking whether a scene object exists.
+
+## 0.9.0 authored surface and lighting pass
+
+This pass addresses the remaining "primitive assembly" look by changing the material and rendering foundations:
+
+- Replaced the 84 individual roof shingle boxes with two continuous roof shells using a custom generated cedar-shingle albedo texture and generated normal map.
+- Smoothed cabin log cylinders from 10 to 24 radial segments, extended the side courses through the corners, and added separate end-grain faces. The expected cut-face count is 94.
+- Added UVs to the triangular gable faces so they use the PBR timber siding maps.
+- Replaced coarse ico-sphere tree crowns with smoother sphere geometry for broadleaf and pine forms; smoothed trunk profiles.
+- Increased the compound shadow map to 1536 and registered the Pinecrest lodge and woodshed child meshes as shadow casters.
+- Added browser and CI checks for roof material readiness, log end-grain count, shadow-map size and registered compound shadow casters.
+- Bumped the browser asset version to 0.9.0.
+
+The 0.9.0 pass is intended as the beginning of the asset/material quality phase. It does not yet replace the cabin with an external detailed architecture GLB; any external GLB candidate needs to be downloaded, inspected, licensed and tested for fit before integration. A successful Actions run and visual browser review are still required before calling this release verified.
 
 ## Validation status
 
