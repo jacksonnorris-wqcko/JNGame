@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.8.21**. Game assets are stored under `public/assets/`.
+Current browser build: **0.8.22**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -120,6 +120,20 @@ The 0.8.21 visual pass closes the gaps between the Pinecrest lodge's front log c
 The Pinecrest Outpost nameboard now has two ground-bearing timber support posts, stone footings, post caps, iron straps, knee braces and a framed sign panel. The over-door Pinecrest Lodge plaque also has visible mounting cleats and a lower support. The porch posts now have matching timber knee braces.
 
 The lighting pass lifts ambient fill and exposure slightly to reveal more timber and compound detail without enabling the more expensive bloom effect. The browser smoke test now checks that both gate support posts and both front wall backing panels exist.
+
+## Pinecrest compound living-world pass — 0.8.22
+
+The 0.8.22 pass expands the outpost beyond basic building geometry:
+
+- The lodge gables now have exposed timber trusses, collar ties, king posts and louvered vents.
+- Metal gutters, forged brackets and downpipes finish the roof edges and give the cabin a believable rainwater system.
+- The front windows have timber flower boxes, iron brackets and layered foliage.
+- A new working firewood shelter adds stone footings, structural posts, slatted rear boards, a pitched roof, exposed rafters, individually stacked split logs with cut ends, a tool rack and warm lantern light.
+- A timber water trough with a visible water surface sits beside the shelter.
+- Low native fern groups and hand-set fieldstones soften the yard and edge the entrance pavers.
+- Additional tests check the new compound detail counts and confirm the woodshed and trough do not become walk-through props while the service path remains clear.
+
+The intent is to make Pinecrest read as an occupied ranger outpost with a coherent architectural style, not a collection of isolated props. The new meshes are created before the static-scene freeze and use existing local PBR materials.
 
 ## Cost
 
