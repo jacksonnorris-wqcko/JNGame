@@ -74,6 +74,8 @@
   let contractBoardTexture = null;
   let contractBoardBackTexture = null;
   let contractBoardMaterial = null;
+  let contractBoardMesh = null;
+  let gateSignTexture = null;
   let cabinFireFlame = null;
   let sceneInitError = "";
   // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
@@ -983,7 +985,7 @@
     gateSignFront.parent = root; gateSignFront.position.set(0, gateGround + 2.55, -14.105); gateSignFront.rotation.y = Math.PI; gateSignFront.isPickable = false;
     const gateSignBack = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign back", { width: 3.82, height: 0.68 }, scene);
     gateSignBack.parent = root; gateSignBack.position.set(0, gateGround + 2.55, -13.895); gateSignBack.isPickable = false;
-    const gateSignTexture = new BABYLON.DynamicTexture("Pinecrest gate nameplate", { width: 1024, height: 256 }, scene, true);
+    gateSignTexture = new BABYLON.DynamicTexture("Pinecrest gate nameplate", { width: 1024, height: 256 }, scene, true);
     const gateCtx = gateSignTexture.getContext();
     gateCtx.fillStyle = "#26352b"; gateCtx.fillRect(0, 0, 1024, 256);
     gateCtx.strokeStyle = "#c8ad70"; gateCtx.lineWidth = 12; gateCtx.strokeRect(18, 18, 988, 220);
@@ -1127,7 +1129,7 @@
     // Put the contract board just inside the gate, facing the approach path.
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -21.8, 33.0, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
-    box("contract-board", { width: 2.15, height: 2.28, depth: 0.28 }, new BABYLON.Vector3(-21.8, 1.72, 33.0), mat.sign);
+    contractBoardMesh = box("contract-board", { width: 2.15, height: 2.28, depth: 0.28 }, new BABYLON.Vector3(-21.8, 1.72, 33.0), mat.sign);
     const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.7, diameter: 0.2, tessellation: 10 }, scene);
     boardPost.position.set(-21.8, 1.1, 33.0); boardPost.material = mat.bark;
     const boardCanopy = box("contract board rain cap", { width: 2.55, height: 0.16, depth: 0.66 },
@@ -1179,6 +1181,91 @@
     box("outfitter back shelf", { width: 2.45, height: 0.12, depth: 0.42 }, new BABYLON.Vector3(-4.5, 2.0, 41.0), mat.wood);
     for (let crate = 0; crate < 3; crate++) {
       box("outfitter supply crate", { width: 0.52, height: 0.48, depth: 0.48 }, new BABYLON.Vector3(-5.25 + crate * 0.75, 1.52, 40.55), mat.wood);
+    }
+  }
+
+
+  function buildPinecrestCompoundAccess() {
+    // Join the outpost to the main forest trail with a gentle, graded approach.
+    makePath([
+      { x: -1.4, z: 31.8 },
+      { x: -4.8, z: 31.5 },
+      { x: -8.7, z: 30.4 },
+      { x: -11.5, z: 29.55 },
+      { x: -14.0, z: 29.0 }
+    ], 4.15, mat.dirtLight, "Pinecrest outpost access road");
+
+    // Short walking spurs connect the entrance to the noticeboard and outfitter.
+    makePath([
+      { x: -14.0, z: 29.0 },
+      { x: -17.2, z: 30.2 },
+      { x: -19.7, z: 32.0 },
+      { x: -21.8, z: 33.0 }
+    ], 1.85, mat.dirt, "Pinecrest noticeboard footpath");
+    makePath([
+      { x: -14.0, z: 29.0 },
+      { x: -10.0, z: 31.2 },
+      { x: -7.1, z: 35.0 },
+      { x: -4.5, z: 40.0 }
+    ], 2.1, mat.dirt, "Pinecrest outfitter footpath");
+
+    // The front yard has a worn stone walk over the gravel apron, aligned with
+    // the actual step treads. Each slab is individually bedded into the ground.
+    const pavers = [
+      { z: 30.35, width: 2.25, depth: 0.82 },
+      { z: 31.55, width: 2.0, depth: 0.78 },
+      { z: 32.72, width: 2.15, depth: 0.76 },
+      { z: 33.72, width: 2.0, depth: 0.72 }
+    ];
+    pavers.forEach((paver, index) => {
+      const stone = box("lodge approach stone slab " + (index + 1),
+        { width: paver.width, height: 0.12, depth: paver.depth },
+        new BABYLON.Vector3(-14 + (index % 2 ? 0.06 : -0.04), 0.19, paver.z),
+        index % 2 ? mat.stoneDark : mat.shore);
+      stone.rotation.y = (index % 2 ? -0.035 : 0.025);
+    });
+
+    // Low, matching timber planting beds soften the fence edges without
+    // putting tall vegetation back against the lodge walls.
+    const addPlanter = (x, z, label) => {
+      box(label + " stone plinth", { width: 3.55, height: 0.14, depth: 1.12 },
+        new BABYLON.Vector3(x, 0.18, z), mat.stoneDark);
+      box(label + " soil bed", { width: 3.22, height: 0.20, depth: 0.82 },
+        new BABYLON.Vector3(x, 0.34, z), mat.black);
+      for (const side of [-1, 1]) {
+        box(label + " timber long rim", { width: 3.62, height: 0.22, depth: 0.14 },
+          new BABYLON.Vector3(x, 0.48, z + side * 0.48), mat.wood);
+      }
+      for (const side of [-1, 1]) {
+        box(label + " timber end rim", { width: 0.14, height: 0.22, depth: 0.92 },
+          new BABYLON.Vector3(x + side * 1.74, 0.48, z), mat.woodLight);
+      }
+      for (let flower = 0; flower < 7; flower++) {
+        const fx = x - 1.28 + flower * 0.42;
+        const fz = z + Math.sin(flower * 1.8) * 0.18;
+        const stem = BABYLON.MeshBuilder.CreateCylinder(label + " flower stem", {
+          height: 0.38 + (flower % 3) * 0.045, diameter: 0.035, tessellation: 6
+        }, scene);
+        stem.position.set(fx, 0.68, fz); stem.material = mat.leaf2; stem.isPickable = false;
+        const bloom = BABYLON.MeshBuilder.CreateSphere(label + " flower bloom", { diameter: 0.17, segments: 8 }, scene);
+        bloom.position.set(fx, 0.91 + (flower % 3) * 0.045, fz);
+        bloom.material = flower % 2 ? mat.flowerCream : mat.flowerGold;
+        bloom.isPickable = false;
+      }
+    };
+    addPlanter(-23.3, 42.2, "West compound garden");
+    addPlanter(-4.7, 44.0, "East compound garden");
+
+    // A small dry-stone edge marks the main yard without building another wall.
+    for (let i = 0; i < 8; i++) {
+      const z = 34 + i * 1.55;
+      const x = -28.2 + Math.sin(i * 0.7) * 0.45;
+      const stone = BABYLON.MeshBuilder.CreateIcoSphere("west yard boundary fieldstone", {
+        radius: 0.38 + (i % 3) * 0.07, subdivisions: 1
+      }, scene);
+      stone.position.set(x, heightAt(x, z) + 0.22, z);
+      stone.scaling.set(1.2, 0.68, 0.92);
+      stone.material = mat.stoneDark; stone.isPickable = false;
     }
   }
 
@@ -2000,6 +2087,7 @@
     createGroundCover();
     scatterUndergrowth();
     createCabin();
+    buildPinecrestCompoundAccess();
     createWildlife();
     mergeStaticScenery();
 
@@ -3421,9 +3509,16 @@
     boardBackReady: Boolean(contractBoardBackTexture && contractBoardBackTexture.isReady()),
     boardFrontReady: Boolean(contractBoardTexture && contractBoardTexture.isReady()),
     sceneInitError,
+    bearingLabel: camera ? bearingName(camera.rotation.y * 180 / Math.PI) : "N",
     outpostTreeIntrusionCount: scene ? scene.transformNodes.filter((node) =>
       node.name === "forest-tree-root" && isPinecrestCompoundClearance(node.position.x, node.position.z)
     ).length : 0,
+    contractBoardPosition: contractBoardMesh ? {
+      x: Number(contractBoardMesh.position.x.toFixed(2)),
+      z: Number(contractBoardMesh.position.z.toFixed(2))
+    } : null,
+    gateSignReady: Boolean(gateSignTexture && gateSignTexture.isReady()),
+    outpostApproachReady: Boolean(scene && scene.getMeshByName("Pinecrest outpost access road")) ,
     jumpMaxHeight,
     fps: Math.round(smoothedFps),
     averageFrameMs: Number(averageFrameMs.toFixed(2)),
@@ -3456,7 +3551,8 @@
         return true;
       },
       canStandAt: (x, z) => canStandAt(Number(x), Number(z)),
-      surfaceAt: (x, z) => walkSurfaceAt(Number(x), Number(z))
+      surfaceAt: (x, z) => walkSurfaceAt(Number(x), Number(z)),
+      bearingFor: (degrees) => bearingName(Number(degrees))
     };
   }
 
