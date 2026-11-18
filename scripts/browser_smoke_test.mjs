@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.16&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.17&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -178,17 +178,22 @@ try {
   await page.waitForFunction(() => !window.WildrangeDiagnostics?.().aiming, { timeout: 3000 });
   const jumpsBefore = await page.evaluate(() => window.WildrangeDiagnostics().jumpCount);
   await page.keyboard.press("Space");
+  // On heavily throttled headless GPUs the entire airborne phase can occur
+  // between two browser samples. The recorded arc height is deterministic
+  // and confirms the impulse without requiring a single-frame capture.
   await page.waitForFunction((before) => {
     const state = window.WildrangeDiagnostics?.();
-    return state && state.jumpCount > before && !state.playerGrounded && state.playerHeight > 0.12;
+    return state && state.jumpCount > before && state.jumpMaxHeight > 0.12;
   }, jumpsBefore, { timeout: 12000 });
-  const airborne = await page.evaluate(() => window.WildrangeDiagnostics());
-  if (airborne.playerGrounded || airborne.playerHeight < 0.12) throw new Error("Jump impulse failed: " + JSON.stringify(airborne));
+  const jumpArc = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (jumpArc.jumpMaxHeight < 0.12 || jumpArc.jumpCount !== jumpsBefore + 1) {
+    throw new Error("Jump impulse failed: " + JSON.stringify(jumpArc));
+  }
   await page.waitForFunction(() => window.WildrangeDiagnostics?.().playerGrounded, { timeout: 15000 });
   const landed = await page.evaluate(() => window.WildrangeDiagnostics());
   if (landed.jumpCount !== jumpsBefore + 1) throw new Error("Jump was not counted exactly once");
   if (failures.length) throw new Error(failures.join("\\n") + "\\nConsole: " + consoleErrors.join("\\n"));
-  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, cabinCollision, compoundBoundary, openDoorwayWalkable, airborne, landed, failures, consoleErrors }, null, 2));
+  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, cabinCollision, compoundBoundary, openDoorwayWalkable, jumpArc, landed, failures, consoleErrors }, null, 2));
 
 } finally {
   await browser.close();
