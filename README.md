@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Visual asset build: **0.7.3**. Game assets are stored under `public/assets/`.
+Current browser build: **0.8.21**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -113,13 +113,21 @@ Deer now have an alert phase before fleeing, with stable escape directions and s
 
 The automated Chrome test now waits for a visible upward movement before checking jump state, then allows enough time for the player to land on slower software-rendered CI machines. It still verifies that the scope is visible, magnification changes from 4x to 6x, the 3D renderer and PBR assets load, and the gameplay/UI bindings are present.
 
+## Cabin and compound finish — 0.8.21
+
+The 0.8.21 visual pass closes the gaps between the Pinecrest lodge's front log courses with textured, opaque timber backing while preserving the doorway and front window panes. The logs are slightly thicker so the courses overlap rather than reading as open slats.
+
+The Pinecrest Outpost nameboard now has two ground-bearing timber support posts, stone footings, post caps, iron straps, knee braces and a framed sign panel. The over-door Pinecrest Lodge plaque also has visible mounting cleats and a lower support. The porch posts now have matching timber knee braces.
+
+The lighting pass lifts ambient fill and exposure slightly to reveal more timber and compound detail without enabling the more expensive bloom effect. The browser smoke test now checks that both gate support posts and both front wall backing panels exist.
+
 ## Cost
 
 The solo prototype can be developed and hosted as a public GitHub Pages project without a paid game server. Babylon.js is open source. Any future paid art/audio assets or optional hosted services would be a separate decision; nothing paid is required to test this solo alpha.
 
 ## Current limitations
 
-This is a playable prototype foundation, not a finished hunting simulator. It currently uses procedural low-poly models, a compact test region and simple wildlife behaviour. It does not yet contain detailed animal animations, ballistic drop/wind, weapon variants, deep ecology, missions beyond the first contract, cloud saves, accounts or multiplayer. Those will only be considered after the solo game loop is enjoyable and stable.
+This is a playable prototype foundation, not a finished hunting simulator. It currently uses procedural terrain and scenery, imported rigged wildlife and rifle models, a compact test region and relatively simple wildlife behaviour. It does not yet contain ballistic drop/wind, weapon variants, deep ecology, a broad mission campaign, cloud saves, accounts or multiplayer. Those will only be considered after the solo game loop is enjoyable and stable.
 
 ## Project structure
 
