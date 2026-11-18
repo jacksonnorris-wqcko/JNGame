@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.18&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.19&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -65,6 +65,26 @@ try {
   if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
   if (!diagnostics.gateSignReady || !diagnostics.outpostApproachReady) {
     throw new Error("Pinecrest entrance sign or access road did not initialise: " + JSON.stringify(diagnostics));
+  }
+  const requiredSignFaces = [
+    diagnostics.cabinSignReady && diagnostics.cabinSignFaceVisible,
+    diagnostics.gateSignBackReady && diagnostics.gateSignFrontFaceVisible && diagnostics.gateSignBackFaceVisible,
+    diagnostics.boardFrontReady && diagnostics.boardBackReady &&
+      diagnostics.missionBoardFrontFaceVisible && diagnostics.missionBoardBackFaceVisible &&
+      diagnostics.missionBoardCanvasFullSize,
+    diagnostics.outfitterSignReady && diagnostics.outfitterSignFaceVisible,
+    diagnostics.harvestSignReady && diagnostics.harvestSignFaceVisible,
+    diagnostics.signFaceMaterialsReady
+  ];
+  if (requiredSignFaces.some((ready) => !ready)) {
+    throw new Error("One or more Pinecrest signs are not visibly renderable: " + JSON.stringify({
+      cabin: [diagnostics.cabinSignReady, diagnostics.cabinSignFaceVisible],
+      gate: [diagnostics.gateSignReady, diagnostics.gateSignBackReady, diagnostics.gateSignFrontFaceVisible, diagnostics.gateSignBackFaceVisible],
+      board: [diagnostics.boardFrontReady, diagnostics.boardBackReady, diagnostics.missionBoardFrontFaceVisible, diagnostics.missionBoardBackFaceVisible, diagnostics.missionBoardCanvasFullSize],
+      outfitter: [diagnostics.outfitterSignReady, diagnostics.outfitterSignFaceVisible],
+      harvest: [diagnostics.harvestSignReady, diagnostics.harvestSignFaceVisible],
+      materials: diagnostics.signFaceMaterialsReady
+    }));
   }
   if (!diagnostics.contractBoardPosition || Math.abs(diagnostics.contractBoardPosition.x + 21.8) > 0.05 ||
       Math.abs(diagnostics.contractBoardPosition.z - 33.0) > 0.05) {
