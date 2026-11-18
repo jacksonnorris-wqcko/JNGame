@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.9.0`  
+**Current source build:** `0.10.0`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -84,6 +84,28 @@ This pass addresses the remaining "primitive assembly" look by changing the mate
 - Bumped the browser asset version to 0.9.0.
 
 The 0.9.0 pass is intended as the beginning of the asset/material quality phase. It does not yet replace the cabin with an external detailed architecture GLB; any external GLB candidate needs to be downloaded, inspected, licensed and tested for fit before integration. A successful Actions run and visual browser review are still required before calling this release verified.
+
+## 0.10.0 authored 3D environment model pass
+
+This is the first pass that integrates larger, authored GLB architecture and vegetation assets into the compound:
+
+- Pinecrest Lodge loads the CC0 Innerscene log-cabin model from `public/assets/buildings/pinecrest-lodge.glb`. The model contains interlocking round logs, crossed corners, log gables, a shingled apex roof, barge boards, two windows and a glazed door. The imported mesh is fit to the existing lodge footprint. Existing interior furniture, Wildrange's interactive hinged door, signage, porch and compound access systems remain in place.
+- Four hero trees are instantiated from two CC0 assets: two detailed-needle conifers and two individually modelled-leaf linden trees. Remaining distant forest geometry uses the existing procedural system.
+- The procedural cabin/forest remains as a fallback if any downloaded model is unavailable.
+- `scripts/download_licensed_3d_assets.sh` downloads the three binary GLBs from Innerscene and validates the glTF 2.0 header and file size.
+- Both CI jobs and the GitHub Pages workflow run the asset downloader before tests/deployment.
+- Playwright now waits for the imported lodge and four hero trees, checks that the new model assets are usable, and captures `artifacts/wildrange-0.10.0-compound.png` for visual verification.
+- The asset manifest and model provenance record the CC0 licenses and sources.
+
+## 0.10.0 files and integration points
+
+- `public/game.js`: `loadPinecrestLodgeModel()`, `loadPinecrestHeroVegetation()`, asset diagnostics and fallback handling.
+- `scripts/download_licensed_3d_assets.sh`: reproducible build-time asset downloads and GLB validation.
+- `public/assets/asset-manifest.json`: model provenance, license and expected paths.
+- `public/assets/models/ATTRIBUTION.md`: source/CC0 record.
+- `.github/workflows/ci.yml` and `.github/workflows/pages.yml`: download assets during validation and deployment.
+
+The 0.10.0 source has been parser-checked. The actual GLB downloads and browser screenshot must still be verified by the GitHub Actions run before declaring the deployed scene visually approved.
 
 ## Validation status
 
