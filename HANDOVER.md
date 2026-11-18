@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.8.22`  
+**Current source build:** `0.8.23`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -57,6 +57,12 @@ The compound pass is built in the buildPinecrestCompoundLife() helper and called
 ## Validation notes for 0.8.22
 
 The latest source files and test assertions were checked after the updates, including the two Pinecrest Lodge sign uprights and the gate sign posts. This confirms that the expected geometry, diagnostics, cache-buster versions and regression checks are present in main. A completed GitHub Actions run and a visual browser review have not yet been confirmed; treat the release as source-committed until those checks are available.
+
+## 0.8.23 startup regression fix
+
+The compound pass introduced duplicated cabin, access-path and wildlife creation calls inside createScene(). This caused the lodge and its visual assemblies to be built twice. The duplicate calls have been removed. Scene startup now builds one cabin, one compound access layout, one living-world dressing pass, one wildlife population, then merges static scenery.
+
+The Playwright smoke test now checks the single-instance support counts immediately after entering the world. The browser entry points load 0.8.23 assets.
 
 ## Validation status
 
