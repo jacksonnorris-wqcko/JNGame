@@ -61,6 +61,9 @@ try {
   }, { timeout: 45000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (diagnostics.cabinSignSupportPostCount !== 2) {
+    throw new Error("Pinecrest Lodge plaque must have two visible structural timber uprights: " + diagnostics.cabinSignSupportPostCount);
+  }
   if (diagnostics.gateStructuralPostCount !== 2) {
     throw new Error("Pinecrest gate sign must be carried by two grounded structural timber posts: " + diagnostics.gateStructuralPostCount);
   }
