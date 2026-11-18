@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import fs from "node:fs";
 
 const failures = [];
 const consoleErrors = [];
@@ -29,7 +30,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.9.0&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.10.0&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -89,8 +90,33 @@ try {
     const state = window.WildrangeDiagnostics?.();
     return state && state.importedAnimalCount >= 9 && state.weaponModelReady;
   }, { timeout: 45000 });
+  await page.waitForFunction(() => {
+    const state = window.WildrangeDiagnostics?.();
+    return state && !state.lodgeModelLoading && state.lodgeModelReady &&
+      state.heroConiferReady && state.heroBroadleafReady && state.heroTreeModelCount === 4;
+  }, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (!diagnostics.lodgeModelReady || diagnostics.lodgeModelMeshCount < 1) {
+    throw new Error("The authored Pinecrest log lodge GLB did not load: " + JSON.stringify({
+      ready: diagnostics.lodgeModelReady,
+      failed: diagnostics.lodgeModelFailed,
+      error: diagnostics.lodgeModelError,
+      meshes: diagnostics.lodgeModelMeshCount
+    }));
+  }
+  if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
+      diagnostics.heroTreeModelCount !== 4 || diagnostics.heroTreeMeshCount < 2) {
+    throw new Error("The high-detail hero tree assets did not load: " + JSON.stringify({
+      conifer: diagnostics.heroConiferReady,
+      broadleaf: diagnostics.heroBroadleafReady,
+      treeInstances: diagnostics.heroTreeModelCount,
+      treeMeshes: diagnostics.heroTreeMeshCount,
+      failures: diagnostics.heroVegetationFailures
+    }));
+  }
+  await fs.promises.mkdir("artifacts", { recursive: true });
+  await page.screenshot({ path: "artifacts/wildrange-0.10.0-compound.png" });
   if (diagnostics.cabinSignSupportPostCount !== 2) {
     throw new Error("Pinecrest Lodge plaque must have two visible structural timber uprights: " + diagnostics.cabinSignSupportPostCount);
   }
