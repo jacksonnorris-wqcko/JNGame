@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.23&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.24&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -43,6 +43,10 @@ try {
 
   await page.locator("#player-name").fill("RANGER QA");
   await page.locator("#start-button").click();
+  await page.waitForFunction(() =>
+    getComputedStyle(document.querySelector("#start-screen")).display === "none",
+    { timeout: 10000 }
+  );
   await page.waitForFunction(() => {
     const diagnostics = window.WildrangeDiagnostics?.();
     return diagnostics && (diagnostics.sceneReady || diagnostics.sceneInitError);
