@@ -77,6 +77,8 @@
   let contractBoardBackMaterial = null;
   let contractBoardFrontMesh = null;
   let contractBoardBackMesh = null;
+  let boardPaperFrontMesh = null;
+  let boardPaperBackMesh = null;
   let contractBoardMesh = null;
   let gateSignTexture = null;
   let gateSignBackTexture = null;
