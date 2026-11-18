@@ -1,11 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "license": "Mixed: CC0 1.0 Universal and CC BY 4.0; see per-asset records and models/ATTRIBUTION.md",
   "sources": {
     "ambientCG": "https://ambientcg.com/",
     "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest",
     "Polyfork": "https://polyfork.dev/licensing",
-    "3D Assets": "https://3dassets.dev/"
+    "3D Assets": "https://3dassets.dev/",
+    "Innerscene 3D Parts Library": "https://www.innerscene.com/tools/library/3d-parts/"
   },
   "assets": [
     {
@@ -220,6 +221,33 @@
       "mesh_count": 8,
       "material_count": 5,
       "skin_count": 0
+    },
+    {
+      "asset": "Log cabin 3 x 3 m, apex roof",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-lodge.glb",
+      "approximate_bytes": 4200000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac",
+      "integration": "Pinecrest Lodge exterior shell; original procedural interior, interactive door and porch retained"
+    },
+    {
+      "asset": "Conifer, detailed needles",
+      "status": "downloaded-at-build",
+      "path": "vegetation/conifer-detailed.glb",
+      "approximate_bytes": 7600000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef",
+      "integration": "Four high-detail hero trees in the outer compound view"
+    },
+    {
+      "asset": "Linden street tree, detailed leaves",
+      "status": "downloaded-at-build",
+      "path": "vegetation/linden-detailed.glb",
+      "approximate_bytes": 3700000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e",
+      "integration": "Four high-detail hero trees in the outer compound view"
     }
   ]
 }
