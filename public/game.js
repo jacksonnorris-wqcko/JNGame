@@ -946,6 +946,85 @@
       fascia.rotation.x = side * roofPitch;
     }
     box("roof ridge cap", { width: 12.95, height: 0.28, depth: 0.38 }, new BABYLON.Vector3(0, 7.5, 0), mat.roofLight, root);
+    // The gable ends receive a proper exposed timber truss rather than a flat triangle.
+    for (const faceZ of [-4.78, 4.78]) {
+      const frontFacing = faceZ < 0;
+      const leftGableBeam = box("Pinecrest gable diagonal king timber",
+        { width: 5.9, height: 0.24, depth: 0.22 },
+        new BABYLON.Vector3(-2.78, 6.62, faceZ), mat.wood, root);
+      leftGableBeam.rotation.z = 0.305;
+      const rightGableBeam = box("Pinecrest gable diagonal king timber",
+        { width: 5.9, height: 0.24, depth: 0.22 },
+        new BABYLON.Vector3(2.78, 6.62, faceZ), mat.wood, root);
+      rightGableBeam.rotation.z = -0.305;
+      box("Pinecrest gable collar tie",
+        { width: 7.35, height: 0.20, depth: 0.22 },
+        new BABYLON.Vector3(0, 6.12, faceZ), mat.woodLight, root);
+      box("Pinecrest gable king post",
+        { width: 0.20, height: 1.15, depth: 0.22 },
+        new BABYLON.Vector3(0, 6.72, faceZ), mat.wood, root);
+
+      const vent = BABYLON.MeshBuilder.CreateCylinder("Pinecrest gable timber vent",
+        { height: 0.10, diameter: 0.84, tessellation: 20 }, scene);
+      vent.parent = root;
+      vent.rotation.x = Math.PI / 2;
+      vent.position.set(0, 6.83, faceZ + (frontFacing ? -0.13 : 0.13));
+      vent.material = mat.black;
+      vent.isPickable = false;
+      const ventRim = BABYLON.MeshBuilder.CreateTorus("Pinecrest gable vent brass rim",
+        { diameter: 0.92, thickness: 0.055, tessellation: 20 }, scene);
+      ventRim.parent = root;
+      ventRim.rotation.x = Math.PI / 2;
+      ventRim.position.copyFrom(vent.position);
+      ventRim.material = mat.gold;
+      ventRim.isPickable = false;
+      for (let louver = 0; louver < 3; louver++) {
+        box("Pinecrest gable vent louver",
+          { width: 0.50, height: 0.055, depth: 0.06 },
+          new BABYLON.Vector3(0, 6.65 + louver * 0.17, faceZ + (frontFacing ? -0.20 : 0.20)),
+          mat.woodLight, root);
+      }
+    }
+
+    // Heavy-gauge eaves gutters and downpipes complete the roof edge and make the
+    // rainwater system feel like a real working backcountry lodge.
+    const gutterMaterial = mat.black;
+    for (const z of [-5.10, 5.10]) {
+      const segments = z < 0 ? [-4.20, 4.20] : [0];
+      for (const centreX of segments) {
+        const length = z < 0 ? 4.35 : 12.55;
+        const gutter = BABYLON.MeshBuilder.CreateCylinder("Pinecrest lodge metal rain gutter",
+          { height: length, diameter: 0.15, tessellation: 12 }, scene);
+        gutter.parent = root;
+        gutter.rotation.z = Math.PI / 2;
+        gutter.position.set(centreX, 5.12, z);
+        gutter.material = gutterMaterial;
+        gutter.isPickable = false;
+      }
+      for (let bracketX = -5.4; bracketX <= 5.41; bracketX += 1.8) {
+        if (z < 0 && Math.abs(bracketX) < 2.15) continue;
+        const bracket = box("Pinecrest gutter forged bracket",
+          { width: 0.08, height: 0.10, depth: 0.22 },
+          new BABYLON.Vector3(bracketX, 5.08, z), mat.gold, root);
+        bracket.isPickable = false;
+      }
+    }
+    for (const x of [-5.72, 5.72]) for (const z of [-5.08, 5.08]) {
+      const downpipe = BABYLON.MeshBuilder.CreateCylinder("Pinecrest lodge copper rain downpipe",
+        { height: 4.55, diameter: 0.13, tessellation: 12 }, scene);
+      downpipe.parent = root;
+      downpipe.position.set(x, 2.82, z);
+      downpipe.material = gutterMaterial;
+      downpipe.isPickable = false;
+      const shoe = BABYLON.MeshBuilder.CreateCylinder("Pinecrest downpipe outlet shoe",
+        { height: 0.42, diameter: 0.15, tessellation: 12 }, scene);
+      shoe.parent = root;
+      shoe.rotation.x = Math.PI / 2;
+      shoe.position.set(x, 0.72, z + (z < 0 ? -0.12 : 0.12));
+      shoe.material = mat.gold;
+      shoe.isPickable = false;
+    }
+
     for (let x = -5.1; x <= 5.1; x += 1.7) {
       for (const side of [-1, 1]) {
         const rafter = box("exposed roof rafter", { width: 0.22, height: 0.34, depth: 5.7 }, new BABYLON.Vector3(x, 6.25, side * 2.1), mat.wood, root);
@@ -1267,6 +1346,41 @@
       }
     }
 
+    // Hand-built flower boxes bring a lived-in touch to the two front windows.
+    for (const windowX of [-3.45, 3.45]) {
+      box("Pinecrest window flower box body",
+        { width: 1.78, height: 0.28, depth: 0.42 },
+        new BABYLON.Vector3(windowX, 2.86, -4.62), mat.wood, root);
+      box("Pinecrest window flower box front board",
+        { width: 1.70, height: 0.13, depth: 0.07 },
+        new BABYLON.Vector3(windowX, 2.86, -4.85), mat.woodLight, root);
+      for (const side of [-1, 1]) {
+        const bracket = box("Pinecrest window flower box iron bracket",
+          { width: 0.09, height: 0.44, depth: 0.10 },
+          new BABYLON.Vector3(windowX + side * 0.58, 2.63, -4.55), mat.black, root);
+        bracket.rotation.z = side * -0.18;
+      }
+      for (let plant = 0; plant < 7; plant++) {
+        const px = windowX - 0.72 + plant * 0.24;
+        const height = 0.25 + (plant % 3) * 0.055;
+        const leaf = BABYLON.MeshBuilder.CreateSphere("Pinecrest window box foliage",
+          { diameter: 0.32, segments: 8 }, scene);
+        leaf.parent = root;
+        leaf.position.set(px, 3.05 + height * 0.35, -4.64 + Math.sin(plant * 1.2) * 0.06);
+        leaf.scaling.set(0.62, 1.0 + height * 0.4, 0.48);
+        leaf.material = plant % 2 ? mat.leaf2 : mat.leaf3;
+        leaf.isPickable = false;
+        if (plant === 1 || plant === 4 || plant === 6) {
+          const bloom = BABYLON.MeshBuilder.CreateSphere("Pinecrest window box flower",
+            { diameter: 0.13, segments: 8 }, scene);
+          bloom.parent = root;
+          bloom.position.set(px, 3.27 + height * 0.5, -4.68);
+          bloom.material = plant === 4 ? mat.flowerCream : mat.flowerGold;
+          bloom.isPickable = false;
+        }
+      }
+    }
+
     for (let course = 0; course < 7; course++) {
       for (let stoneIndex = 0; stoneIndex < 3; stoneIndex++) {
         const stone = box("chimney stone", { width: 0.45 + rand(0, 0.12), height: 0.42, depth: 0.48 }, new BABYLON.Vector3(3.65 + (stoneIndex - 1) * 0.34, 6.2 + course * 0.44, 1.35), mat.stoneDark, root);
@@ -1280,7 +1394,23 @@
     lantern.parent = root; lantern.position.set(1.7, 3.65, -4.62); lantern.material = mat.gold; lantern.isPickable = false;
     const lanternGlass = box("lantern warm glass", { width: 0.18, height: 0.28, depth: 0.16 }, new BABYLON.Vector3(1.7, 3.65, -4.76), mat.window, root);
     lanternGlass.material.emissiveColor = hex("#e6a04c");
+    const secondPorchLantern = BABYLON.MeshBuilder.CreateBox("Pinecrest porch companion lantern",
+      { width: 0.28, height: 0.42, depth: 0.24 }, scene);
+    secondPorchLantern.parent = root;
+    secondPorchLantern.position.set(-1.7, 3.65, -4.62);
+    secondPorchLantern.material = mat.gold;
+    secondPorchLantern.isPickable = false;
+    const secondLanternGlass = box("Pinecrest porch companion lantern glass",
+      { width: 0.18, height: 0.28, depth: 0.16 },
+      new BABYLON.Vector3(-1.7, 3.65, -4.76), mat.window, root);
+    secondLanternGlass.material.emissiveColor = hex("#e6a04c");
+    const secondPorchLight = new BABYLON.PointLight("Pinecrest porch companion warm light",
+      new BABYLON.Vector3(-15.7, 3.6, 38.1), scene);
+    secondPorchLight.diffuse = hex("#f1bd78");
+    secondPorchLight.intensity = 0.20;
+    secondPorchLight.range = 9;
     const lanternLight = new BABYLON.PointLight("warm porch lantern light", new BABYLON.Vector3(-12.3, 3.6, 38.1), scene);
+    lanternLight.diffuse = hex("#f1bd78"); lanternLight.intensity = 0.24; lanternLight.range = 10;    const lanternLight = new BABYLON.PointLight("warm porch lantern light", new BABYLON.Vector3(-12.3, 3.6, 38.1), scene);
     lanternLight.diffuse = hex("#f1bd78"); lanternLight.intensity = 0.24; lanternLight.range = 10;
     // Small trailhead details make the spawn feel like a working ranger outpost.
     const flagPole = BABYLON.MeshBuilder.CreateCylinder("outpost flag pole", { height: 7.2, diameter: 0.12, tessellation: 10 }, scene);
@@ -1582,6 +1712,189 @@
       stone.scaling.set(1.2, 0.68, 0.92);
       stone.material = mat.stoneDark; stone.isPickable = false;
     }
+  }
+
+  function buildPinecrestCompoundLife() {
+    // A small working woodshed gives the right side of the yard a useful silhouette
+    // and visually balances the cabin, outfitter and harvest station.
+    const shedGround = heightAt(-5.55, 48.45);
+    const shed = new BABYLON.TransformNode("Pinecrest firewood shelter", scene);
+    shed.position.set(-5.55, shedGround, 48.45);
+    const shedBox = (name, size, x, y, z, material) =>
+      box(name, size, new BABYLON.Vector3(x, y, z), material, shed);
+    shedBox("Pinecrest firewood shelter stone pad",
+      { width: 4.15, height: 0.18, depth: 3.05 }, 0, 0.10, 0, mat.stoneDark);
+
+    for (const x of [-1.62, 1.62]) for (const z of [-1.12, 1.12]) {
+      shedBox("Pinecrest firewood shelter structural post",
+        { width: 0.22, height: 2.35, depth: 0.22 }, x, 1.26, z, mat.bark);
+      shedBox("Pinecrest firewood shelter stone post foot",
+        { width: 0.36, height: 0.18, depth: 0.36 }, x, 0.27, z, mat.stone);
+      shedBox("Pinecrest firewood shelter post cap",
+        { width: 0.32, height: 0.12, depth: 0.32 }, x, 2.47, z, mat.woodLight);
+    }
+    shedBox("Pinecrest woodshed rear header",
+      { width: 3.55, height: 0.18, depth: 0.20 }, 0, 2.34, 1.10, mat.woodLight);
+    shedBox("Pinecrest woodshed front header",
+      { width: 3.55, height: 0.18, depth: 0.20 }, 0, 2.12, -1.10, mat.woodLight);
+
+    for (let board = 0; board < 8; board++) {
+      shedBox("Pinecrest woodshed rear vertical board",
+        { width: 0.38, height: 1.82, depth: 0.10 },
+        -1.35 + board * 0.385, 1.20, 1.08, board % 3 ? mat.wood : mat.woodLight);
+    }
+    for (const side of [-1, 1]) {
+      const brace = shedBox("Pinecrest woodshed diagonal side brace",
+        { width: 1.05, height: 0.13, depth: 0.12 },
+        side * 1.46, 1.72, 0.04, mat.woodLight);
+      brace.rotation.y = side * 0.24;
+      brace.rotation.z = -side * 0.58;
+    }
+    const leanToRoof = shedBox("Pinecrest woodshed pitched roof",
+      { width: 4.25, height: 0.20, depth: 3.12 }, 0, 2.53, 0, mat.roof);
+    leanToRoof.rotation.x = -0.16;
+    shedBox("Pinecrest woodshed front roof fascia",
+      { width: 4.30, height: 0.20, depth: 0.18 }, 0, 2.24, -1.47, mat.woodLight);
+    shedBox("Pinecrest woodshed rear roof fascia",
+      { width: 4.30, height: 0.20, depth: 0.18 }, 0, 2.72, 1.47, mat.woodLight);
+    for (let rafter = 0; rafter < 5; rafter++) {
+      const rafterBeam = shedBox("Pinecrest woodshed roof rafter",
+        { width: 0.13, height: 0.17, depth: 2.95 },
+        -1.72 + rafter * 0.86, 2.45, 0, mat.wood);
+      rafterBeam.rotation.x = -0.16;
+    }
+    for (let seam = 0; seam < 7; seam++) {
+      shedBox("Pinecrest woodshed roof standing seam",
+        { width: 0.055, height: 0.035, depth: 2.86 },
+        -1.9 + seam * 0.63, 2.66, 0, mat.woodLight);
+    }
+
+    // Split logs are individually stacked, with visible pale cut ends and dark bark.
+    for (let row = 0; row < 3; row++) {
+      for (let column = 0; column < 4; column++) {
+        const x = -1.12 + column * 0.74 + (row % 2) * 0.10;
+        const y = 0.50 + row * 0.25;
+        const z = -0.12 + (column % 2) * 0.17;
+        const log = BABYLON.MeshBuilder.CreateCylinder("Pinecrest woodshed split firewood",
+          { height: 0.62, diameter: 0.19, tessellation: 10 }, scene);
+        log.parent = shed;
+        log.rotation.z = Math.PI / 2;
+        log.position.set(x, y, z);
+        log.material = mat.bark;
+        log.isPickable = false;
+        for (const end of [-1, 1]) {
+          const cut = BABYLON.MeshBuilder.CreateCylinder("Pinecrest firewood pale end grain",
+            { height: 0.025, diameter: 0.17, tessellation: 10 }, scene);
+          cut.parent = shed;
+          cut.rotation.z = Math.PI / 2;
+          cut.position.set(x + end * 0.32, y, z);
+          cut.material = mat.woodLight;
+          cut.isPickable = false;
+        }
+      }
+    }
+
+    // A small rack of field tools is fixed to the shed's open side.
+    for (let tool = 0; tool < 3; tool++) {
+      const handle = shedBox("Pinecrest woodshed tool handle",
+        { width: 0.09, height: 1.18, depth: 0.09 },
+        -1.31 + tool * 0.34, 1.25, -1.25, mat.woodLight);
+      handle.rotation.z = (tool - 1) * 0.07;
+      const head = shedBox("Pinecrest woodshed tool steel head",
+        { width: 0.42, height: 0.17, depth: 0.11 },
+        -1.31 + tool * 0.34, 1.84, -1.25, mat.black);
+      head.rotation.z = (tool - 1) * 0.07;
+    }
+
+    // A timber watering trough with a real water surface and iron straps.
+    const troughX = 2.60;
+    const troughZ = 0.20;
+    shedBox("Pinecrest yard water trough body",
+      { width: 1.55, height: 0.54, depth: 0.70 }, troughX, 0.55, troughZ, mat.wood);
+    shedBox("Pinecrest yard water trough dark interior",
+      { width: 1.37, height: 0.045, depth: 0.53 }, troughX, 0.83, troughZ, mat.black);
+    const waterSurface = BABYLON.MeshBuilder.CreateGround("Pinecrest yard trough water",
+      { width: 1.31, height: 0.47, subdivisions: 1 }, scene);
+    waterSurface.parent = shed;
+    waterSurface.position.set(troughX, 0.86, troughZ);
+    waterSurface.material = mat.water;
+    waterSurface.isPickable = false;
+    for (const x of [troughX - 0.52, troughX + 0.52]) {
+      shedBox("Pinecrest trough iron binding",
+        { width: 0.075, height: 0.58, depth: 0.74 }, x, 0.56, troughZ, mat.black);
+      shedBox("Pinecrest trough stone foot",
+        { width: 0.24, height: 0.20, depth: 0.82 }, x, 0.21, troughZ, mat.stoneDark);
+    }
+    obstacles.push({ x: -5.55, z: 48.45, radius: 1.60 });
+    obstacles.push({ x: -2.95, z: 48.65, radius: 0.72 });
+
+    // Warm pools of light at the shelter and main yard add a sense of occupancy.
+    const shedLamp = shedBox("Pinecrest woodshed lantern backplate",
+      { width: 0.34, height: 0.46, depth: 0.12 }, 0, 2.00, -1.18, mat.black);
+    const shedLampGlass = shedBox("Pinecrest woodshed lantern glass",
+      { width: 0.20, height: 0.30, depth: 0.08 }, 0, 2.00, -1.27, mat.window);
+    shedLampGlass.material.emissiveColor = hex("#e9a958");
+    shedLamp.isPickable = false;
+    const shedLight = new BABYLON.PointLight("Pinecrest woodshed warm light",
+      new BABYLON.Vector3(-5.55, shedGround + 2.02, 47.15), scene);
+    shedLight.diffuse = hex("#f0bd7b");
+    shedLight.intensity = 0.18;
+    shedLight.range = 7;
+
+    // Low native fern groups and flowering edges soften the hard fence lines.
+    const addFern = (x, z, scale, label) => {
+      const groundY = heightAt(x, z);
+      for (let frond = 0; frond < 7; frond++) {
+        const angle = frond / 7 * Math.PI * 2;
+        const leaf = BABYLON.MeshBuilder.CreateSphere(label + " fern frond",
+          { diameter: 0.52, segments: 8 }, scene);
+        leaf.position.set(
+          x + Math.cos(angle) * 0.22 * scale,
+          groundY + 0.28 * scale,
+          z + Math.sin(angle) * 0.22 * scale
+        );
+        leaf.scaling.set(0.24 * scale, 0.84 * scale, 0.16 * scale);
+        leaf.rotation.z = Math.cos(angle) * -0.30;
+        leaf.rotation.x = Math.sin(angle) * 0.30;
+        leaf.rotation.y = angle;
+        leaf.material = frond % 3 === 0 ? mat.leaf3 : mat.leaf2;
+        leaf.isPickable = false;
+      }
+      const centre = BABYLON.MeshBuilder.CreateSphere(label + " fern crown",
+        { diameter: 0.30 * scale, segments: 8 }, scene);
+      centre.position.set(x, groundY + 0.16 * scale, z);
+      centre.scaling.y = 0.62;
+      centre.material = mat.leaf1;
+      centre.isPickable = false;
+    };
+    addFern(-25.0, 37.2, 1.00, "Pinecrest west entrance");
+    addFern(-24.8, 49.6, 0.92, "Pinecrest west fence");
+    addFern(-2.15, 36.3, 0.92, "Pinecrest east entrance");
+    addFern(-2.40, 52.0, 1.02, "Pinecrest east fence");
+    addFern(-8.2, 51.4, 0.86, "Pinecrest northern garden");
+
+    // Hand-set fieldstones edge the main entry pavers so the path sits in the yard
+    // rather than appearing as a ribbon laid on top of the grass.
+    for (let index = 0; index < 7; index++) {
+      const z = 29.9 + index * 0.72;
+      for (const side of [-1, 1]) {
+        const x = -14 + side * (1.45 + (index % 2) * 0.10);
+        const stone = BABYLON.MeshBuilder.CreateIcoSphere("Pinecrest walkway edge fieldstone",
+          { radius: 0.24 + (index % 3) * 0.045, subdivisions: 1 }, scene);
+        stone.position.set(x, heightAt(x, z) + 0.14, z);
+        stone.scaling.set(1.18, 0.70, 0.92);
+        stone.material = index % 2 ? mat.stoneDark : mat.shore;
+        stone.isPickable = false;
+      }
+    }
+
+    // A small, worn service path connects the woodshed to the outfitter side of the lodge.
+    makePath([
+      { x: -5.7, z: 47.0 },
+      { x: -5.3, z: 45.8 },
+      { x: -4.9, z: 44.4 },
+      { x: -4.5, z: 42.9 }
+    ], 1.35, mat.dirt, "Pinecrest woodshed service path");
   }
 
   function makeInteractable(name, description, x, z, action, target) {
@@ -2402,6 +2715,9 @@
     createGroundCover();
     scatterUndergrowth();
     createCabin();
+    buildPinecrestCompoundAccess();
+    buildPinecrestCompoundLife();
+    createWildlife();    createCabin();
     buildPinecrestCompoundAccess();
     createWildlife();
     mergeStaticScenery();
@@ -3848,6 +4164,13 @@
     cabinSignReady: Boolean(cabinSignTexture && cabinSignTexture.isReady()),
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
+    pinecrestGableBeamCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gable diagonal king timber").length : 0,
+    pinecrestRainGutterCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge metal rain gutter").length : 0,
+    pinecrestWindowFlowerBoxCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest window flower box body").length : 0,
+    pinecrestWoodshedPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest firewood shelter structural post").length : 0,
+    pinecrestWoodshedLogCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest woodshed split firewood").length : 0,
+    pinecrestFernFrondCount: scene ? scene.meshes.filter((mesh) => /Pinecrest .* fern frond/.test(mesh.name)).length : 0,
+    outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),    cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
     outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),
     harvestSignReady: Boolean(harvestSignTexture && harvestSignTexture.isReady()),
     cabinSignFaceVisible: isReadableSignFace(cabinSignFrontMesh),
