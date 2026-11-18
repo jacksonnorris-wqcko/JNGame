@@ -1890,11 +1890,12 @@
 
     // A small, worn service path connects the woodshed to the outfitter side of the lodge.
     makePath([
-      { x: -5.7, z: 47.0 },
-      { x: -5.3, z: 45.8 },
-      { x: -4.9, z: 44.4 },
-      { x: -4.5, z: 42.9 }
-    ], 1.35, mat.dirt, "Pinecrest woodshed service path");
+      { x: -5.7, z: 46.3 },
+      { x: -7.0, z: 45.6 },
+      { x: -7.2, z: 43.5 },
+      { x: -5.8, z: 42.4 },
+      { x: -4.5, z: 40.8 }
+    ], 1.20, mat.dirt, "Pinecrest woodshed service path");
   }
 
   function makeInteractable(name, description, x, z, action, target) {
