@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.8.22**. Game assets are stored under `public/assets/`.
+Current browser build: **0.8.23**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -134,6 +134,10 @@ The 0.8.22 pass expands the outpost beyond basic building geometry:
 - Additional tests check the new compound detail counts and confirm the woodshed and trough do not become walk-through props while the service path remains clear.
 
 The intent is to make Pinecrest read as an occupied ranger outpost with a coherent architectural style, not a collection of isolated props. The new meshes are created before the static-scene freeze and use existing local PBR materials.
+
+## Startup regression fix — 0.8.23
+
+The 0.8.22 compound-pass wiring accidentally left the original cabin/access/wildlife initialisation calls after the new compound-pass insertion. The scene therefore constructed the lodge and wildlife twice. The 0.8.23 fix restores a single ordered initialisation pass: create the cabin, build access paths, dress the compound, create wildlife, then merge static scenery. The browser smoke test now validates single-instance cabin, gate and woodshed support counts immediately after starting a new game.
 
 ## Cost
 
