@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.8.24**. Game assets are stored under `public/assets/`.
+Current browser build: **0.9.0**. Game assets are stored under `public/assets/`.
 
 
 | Action | Control |
@@ -142,6 +142,19 @@ The 0.8.22 compound-pass wiring accidentally left the original cabin/access/wild
 ## Startup parser fix — 0.8.24
 
 The 0.8.23 compound visual pass had accidentally duplicated the porch lantern's `const lanternLight` declaration in `public/game.js`. This caused a parse-time SyntaxError, preventing the game script and Start button handler from executing. The duplicate declaration has been removed. The source was compiled with the JavaScript parser before committing 0.8.24, and the browser smoke test now explicitly waits for the title screen to hide after the Start button is clicked.
+
+## Cabin and compound rendering foundation — 0.9.0
+
+This is the first pass that replaces repeated primitive roof props with authored surface materials:
+
+- The cabin roof is now two continuous roof shells using a hand-generated cedar-shingle albedo texture and tangent-space normal map. The former repeated box-shingle loop is removed.
+- Cabin log courses use 24 radial segments, cross over at the corners and expose cut end-grain rings on the visible ends.
+- Gable faces now carry UVs so the existing PBR timber siding maps render across the triangular surfaces.
+- Broadleaf and pine canopy forms use smoother sphere meshes instead of coarse low-subdivision icospheres.
+- The cabin and woodshed meshes are registered as actual directional-light shadow casters; the shadow map is enlarged to 1536 pixels.
+- The browser test checks the authored roof material, two roof surfaces, 94 log end-grain faces and compound shadow casters.
+
+This pass deliberately removes primitive roof clutter rather than adding another set of props. It is a material, silhouette and lighting foundation; imported high-detail architecture and vegetation assets remain a separate art-production step.
 
 ## Cost
 
