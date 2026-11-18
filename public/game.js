@@ -508,6 +508,191 @@
     return texture;
   }
 
+  function createWeatheredRoofMaterial() {
+    const size = 1024;
+    const albedo = new BABYLON.DynamicTexture("Pinecrest weathered cedar shingle albedo", { width: size, height: size }, scene, true);
+    const ctx = albedo.getContext();
+    let seed = 41027;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    ctx.fillStyle = "#29231b";
+    ctx.fillRect(0, 0, size, size);
+
+    const tileW = 132;
+    const tileH = 116;
+    for (let row = -1; row < 10; row++) {
+      const y = row * 104;
+      const offset = row % 2 ? -66 : 0;
+      for (let column = -1; column < 10; column++) {
+        const x = column * tileW + offset;
+        const width = tileW + randRoof(random, -5, 5);
+        const height = tileH + randRoof(random, -4, 5);
+        const tone = Math.floor(48 + random() * 30);
+        const red = tone + 15 + Math.floor(random() * 12);
+        const green = tone + 5 + Math.floor(random() * 8);
+        const blue = tone - 5 + Math.floor(random() * 7);
+        const fill = ctx.createLinearGradient(x, y, x + width * 0.08, y + height);
+        fill.addColorStop(0, "rgb(" + (red + 14) + "," + (green + 12) + "," + (blue + 9) + ")");
+        fill.addColorStop(0.16, "rgb(" + red + "," + green + "," + blue + ")");
+        fill.addColorStop(0.72, "rgb(" + (red - 7) + "," + (green - 5) + "," + (blue - 4) + ")");
+        fill.addColorStop(1, "rgb(" + (red - 17) + "," + (green - 13) + "," + (blue - 10) + ")");
+        ctx.beginPath();
+        ctx.moveTo(x + 3, y);
+        ctx.lineTo(x + width - 3, y);
+        ctx.lineTo(x + width - 2, y + height - 17);
+        ctx.quadraticCurveTo(x + width * 0.5, y + height + 3, x + 2, y + height - 17);
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(13,12,9,.78)";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(210,176,125,.30)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + 5, y + 3);
+        ctx.lineTo(x + width - 5, y + 3);
+        ctx.stroke();
+
+        // Fine grain follows the shingle length; small knots break the repeated pattern.
+        for (let grain = 0; grain < 13; grain++) {
+          const gx = x + 8 + random() * (width - 16);
+          const gy = y + 8 + random() * (height - 20);
+          const length = 10 + random() * 50;
+          ctx.strokeStyle = random() > 0.5 ? "rgba(18,14,10,.20)" : "rgba(225,190,137,.12)";
+          ctx.lineWidth = 0.7 + random() * 1.2;
+          ctx.beginPath();
+          ctx.moveTo(gx, gy);
+          ctx.bezierCurveTo(gx + 2, gy + length * 0.28, gx - 2, gy + length * 0.65, gx + 1, gy + length);
+          ctx.stroke();
+        }
+        if (random() > 0.72) {
+          const kx = x + 16 + random() * (width - 32);
+          const ky = y + 22 + random() * (height - 42);
+          ctx.strokeStyle = "rgba(20,15,10,.30)";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(kx, ky, 4 + random() * 5, 7 + random() * 12, random(), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+    albedo.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    albedo.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    albedo.anisotropicFilteringLevel = 16;
+    albedo.update(false);
+
+    // Build a height field from staggered shingle plates, then convert its
+    // gradients into a normal map. This gives the broad roof plane real relief.
+    const heightCanvas = document.createElement("canvas");
+    heightCanvas.width = size;
+    heightCanvas.height = size;
+    const heightCtx = heightCanvas.getContext("2d");
+    heightCtx.fillStyle = "rgb(35,35,35)";
+    heightCtx.fillRect(0, 0, size, size);
+    for (let row = -1; row < 10; row++) {
+      const y = row * 104;
+      const offset = row % 2 ? -66 : 0;
+      for (let column = -1; column < 10; column++) {
+        const x = column * tileW + offset;
+        const g = heightCtx.createLinearGradient(x, y, x, y + tileH);
+        g.addColorStop(0, "rgb(170,170,170)");
+        g.addColorStop(0.82, "rgb(145,145,145)");
+        g.addColorStop(0.94, "rgb(105,105,105)");
+        g.addColorStop(1, "rgb(58,58,58)");
+        heightCtx.fillStyle = g;
+        heightCtx.fillRect(x + 2, y + 2, tileW - 4, tileH - 3);
+        heightCtx.fillStyle = "rgb(72,72,72)";
+        heightCtx.fillRect(x + 2, y + tileH - 5, tileW - 4, 4);
+      }
+    }
+    const heightData = heightCtx.getImageData(0, 0, size, size);
+    const normalCanvas = document.createElement("canvas");
+    normalCanvas.width = size;
+    normalCanvas.height = size;
+    const normalCtx = normalCanvas.getContext("2d");
+    const normalData = normalCtx.createImageData(size, size);
+    const source = heightData.data;
+    const target = normalData.data;
+    for (let y = 1; y < size - 1; y++) {
+      for (let x = 1; x < size - 1; x++) {
+        const index = (y * size + x) * 4;
+        const left = source[index - 4], right = source[index + 4];
+        const up = source[index - size * 4], down = source[index + size * 4];
+        let nx = (left - right) * 0.035;
+        let ny = (up - down) * 0.035;
+        const length = Math.sqrt(nx * nx + ny * ny + 1);
+        nx /= length; ny /= length;
+        target[index] = Math.round((nx * 0.5 + 0.5) * 255);
+        target[index + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+        target[index + 2] = Math.round((1 / length * 0.5 + 0.5) * 255);
+        target[index + 3] = 255;
+      }
+    }
+    normalCtx.putImageData(normalData, 0, 0);
+    const normal = new BABYLON.DynamicTexture("Pinecrest cedar shingle normal map", normalCanvas, scene, false);
+    normal.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    normal.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    normal.anisotropicFilteringLevel = 16;
+    normal.update(false);
+
+    const material = new BABYLON.PBRMaterial("Pinecrest hand-laid cedar shingle roof", scene);
+    material.albedoTexture = albedo;
+    material.bumpTexture = normal;
+    material.albedoColor = BABYLON.Color3.White();
+    material.metallic = 0;
+    material.roughness = 0.91;
+    material.environmentIntensity = 0.42;
+    material.directIntensity = 1.0;
+    material.backFaceCulling = true;
+    return material;
+  }
+
+  function randRoof(random, min, max) {
+    return min + random() * (max - min);
+  }
+
+  function createLogEndgrainMaterial() {
+    const texture = new BABYLON.DynamicTexture("Pinecrest exposed log end grain", { width: 256, height: 256 }, scene, true);
+    const ctx = texture.getContext();
+    ctx.fillStyle = "#775336";
+    ctx.fillRect(0, 0, 256, 256);
+    const cx = 128, cy = 128;
+    for (let ring = 0; ring < 25; ring++) {
+      const radius = 7 + ring * 4.6 + Math.sin(ring * 1.7) * 2.2;
+      ctx.beginPath();
+      ctx.ellipse(cx + Math.sin(ring * 0.63) * 2, cy + Math.cos(ring * 0.42) * 2, radius, radius * (0.94 + Math.sin(ring) * 0.035), ring * 0.06, 0, Math.PI * 2);
+      ctx.strokeStyle = ring % 3 === 0 ? "rgba(39,25,16,.72)" : "rgba(211,173,121,.46)";
+      ctx.lineWidth = ring % 4 === 0 ? 2.1 : 1.1;
+      ctx.stroke();
+    }
+    for (let crack = 0; crack < 8; crack++) {
+      const angle = crack / 8 * Math.PI * 2 + 0.16;
+      ctx.strokeStyle = "rgba(37,24,15,.58)";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * 30, cy + Math.sin(angle) * 30);
+      ctx.lineTo(cx + Math.cos(angle + 0.02) * (87 + (crack % 3) * 7), cy + Math.sin(angle + 0.02) * (87 + (crack % 3) * 7));
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.ellipse(122, 132, 13, 9, -0.3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(43,27,17,.35)";
+    ctx.fill();
+    texture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    texture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    texture.anisotropicFilteringLevel = 8;
+    texture.update(false);
+    const material = new BABYLON.PBRMaterial("Pinecrest cut timber end-grain", scene);
+    material.albedoTexture = texture;
+    material.metallic = 0;
+    material.roughness = 0.96;
+    material.environmentIntensity = 0.28;
+    return material;
+  }
+
   function createMaterials() {
     mat.grass = makePbrSurface("Pinecrest meadow grass", "grass", 34, "#dce8cf");
     mat.grassLight = mat.grass;
@@ -533,6 +718,8 @@
     mat.woodLight = makePbrSurface("Pinecrest exterior siding", "wood_siding", 3.2, "#e1d4ba");
     mat.roof = makePbrSurface("Weathered roof shingles", "wood_planks", 5, "#8f8067");
     mat.roofLight = makePbrSurface("Roof edge timber", "wood_planks", 2.5, "#bba27d");
+    mat.roofShingle = createWeatheredRoofMaterial();
+    mat.logEndgrain = createLogEndgrainMaterial();
     mat.rifleWood = makePbrSurface("Rifle walnut furniture", "wood_planks", 1.8, "#a37a50");
     mat.metal = new BABYLON.PBRMaterial("Blued rifle steel", scene);
     mat.metal.albedoColor = hex("#303a39");
@@ -663,7 +850,7 @@
     root.rotation.y = rand(0, Math.PI * 2);
     const height = (broadleaf ? 6.8 : 8.4) * scale;
     const trunk = BABYLON.MeshBuilder.CreateCylinder("photographic-bark-trunk", {
-      height, diameterTop: 0.18 * scale, diameterBottom: 0.56 * scale, tessellation: 12
+      height, diameterTop: 0.18 * scale, diameterBottom: 0.56 * scale, tessellation: 24
     }, scene);
     trunk.parent = root;
     trunk.position.y = height * 0.48;
@@ -680,8 +867,8 @@
         [0.78, 5.15, -0.1, 1.18]
       ];
       clusters.forEach((entry, index) => {
-        const crown = BABYLON.MeshBuilder.CreateIcoSphere("photographic broadleaf crown", {
-          radius: entry[3] * scale, subdivisions: 2
+        const crown = BABYLON.MeshBuilder.CreateSphere("photographic broadleaf crown", {
+          diameter: entry[3] * scale * 2, segments: 20
         }, scene);
         crown.parent = root;
         crown.position.set(entry[0] * scale, entry[1] * scale, entry[2] * scale);
@@ -698,8 +885,8 @@
         { y: 6.22, r: 1.30, h: 1.55 }, { y: 7.02, r: 0.92, h: 1.35 }
       ];
       whorls.forEach((whorl, index) => {
-        const crown = BABYLON.MeshBuilder.CreateIcoSphere("pine needle bough cluster", {
-          radius: whorl.r * scale, subdivisions: 2
+        const crown = BABYLON.MeshBuilder.CreateSphere("pine needle bough cluster", {
+          diameter: whorl.r * scale * 2, segments: 18
         }, scene);
         crown.parent = root;
         crown.position.set(rand(-0.15, 0.15) * scale, whorl.y * scale, rand(-0.15, 0.15) * scale);
@@ -812,22 +999,52 @@
       const frontSegments = y < 4.05 ? [[-3.45, 4.8], [3.45, 4.8]] : [[0, 11.7]];
       for (const [frontX, frontLength] of frontSegments) {
         const front = BABYLON.MeshBuilder.CreateCylinder("front log course", {
-          height: frontLength, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 10
+          height: frontLength, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 24
         }, scene);
         front.parent = root; front.rotation.z = Math.PI / 2; front.position.set(frontX, y, -4.08);
         front.material = mat.bark; front.isPickable = false; front.receiveShadows = true;
+        for (const end of [-1, 1]) {
+          const cutFace = BABYLON.MeshBuilder.CreateCylinder("Pinecrest front log cut end",
+            { height: 0.026, diameterTop: 0.39, diameterBottom: 0.39, tessellation: 24 }, scene);
+          cutFace.parent = root;
+          cutFace.rotation.z = Math.PI / 2;
+          cutFace.position.set(frontX + end * (frontLength / 2 + 0.012), y, -4.08);
+          cutFace.material = mat.logEndgrain;
+          cutFace.isPickable = false;
+          cutFace.receiveShadows = true;
+        }
       }
       const rear = BABYLON.MeshBuilder.CreateCylinder("rear log course", {
-        height: 11.7, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 10
+        height: 11.7, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 24
       }, scene);
       rear.parent = root; rear.rotation.z = Math.PI / 2; rear.position.set(0, y, 4.08);
       rear.material = mat.bark; rear.isPickable = false; rear.receiveShadows = true;
+      for (const end of [-1, 1]) {
+        const cutFace = BABYLON.MeshBuilder.CreateCylinder("Pinecrest rear log cut end",
+          { height: 0.026, diameterTop: 0.39, diameterBottom: 0.39, tessellation: 24 }, scene);
+        cutFace.parent = root;
+        cutFace.rotation.z = Math.PI / 2;
+        cutFace.position.set(end * 5.87, y, 4.08);
+        cutFace.material = mat.logEndgrain;
+        cutFace.isPickable = false;
+        cutFace.receiveShadows = true;
+      }
       for (const side of [-1, 1]) {
         const wall = BABYLON.MeshBuilder.CreateCylinder("side log course", {
-          height: 8.6, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 10
+          height: 9.55, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 24
         }, scene);
         wall.parent = root; wall.rotation.x = Math.PI / 2; wall.position.set(side * 5.55, y, 0);
         wall.material = mat.bark; wall.isPickable = false; wall.receiveShadows = true;
+        for (const end of [-1, 1]) {
+          const cutFace = BABYLON.MeshBuilder.CreateCylinder("Pinecrest side log cut end",
+            { height: 0.026, diameterTop: 0.39, diameterBottom: 0.39, tessellation: 24 }, scene);
+          cutFace.parent = root;
+          cutFace.rotation.x = Math.PI / 2;
+          cutFace.position.set(side * 5.55, y, end * 4.79);
+          cutFace.material = mat.logEndgrain;
+          cutFace.isPickable = false;
+          cutFace.receiveShadows = true;
+        }
       }
     }
 
@@ -919,6 +1136,7 @@
       const direction = z < 0 ? -1 : 1;
       vertexData.positions = [-5.55, 5.75, z, 5.55, 5.75, z, 0, 7.5, z];
       vertexData.indices = direction < 0 ? [0, 1, 2] : [1, 0, 2];
+      vertexData.uvs = [0, 0, 1, 0, 0.5, 1];
       const normals = [];
       BABYLON.VertexData.ComputeNormals(vertexData.positions, vertexData.indices, normals);
       vertexData.normals = normals;
@@ -931,17 +1149,10 @@
 
     const roofPitch = 0.43;
     for (const side of [-1, 1]) {
-      const roofPanel = box("lodge pitched roof", { width: 12.9, height: 0.24, depth: 5.75 }, new BABYLON.Vector3(0, 6.38, side * 2.26), mat.roof, root);
+      const roofPanel = box("Pinecrest continuous cedar shingle roof surface",
+        { width: 12.9, height: 0.24, depth: 5.75 },
+        new BABYLON.Vector3(0, 6.38, side * 2.26), mat.roofShingle, root);
       roofPanel.rotation.x = side * roofPitch;
-      for (let row = 0; row < 6; row++) {
-        const z = side * (0.55 + row * 0.78);
-        const y = 7.22 - row * 0.31;
-        for (let column = 0; column < 7; column++) {
-          const x = -5.45 + column * 1.82 + (row % 2 ? 0.48 : 0);
-          const shingle = box("individual roof shingle", { width: 1.74, height: 0.075, depth: 0.94 }, new BABYLON.Vector3(x, y, z), row % 2 ? mat.roof : mat.roofLight, root);
-          shingle.rotation.x = side * roofPitch;
-        }
-      }
       const fascia = box("roof fascia", { width: 12.9, height: 0.36, depth: 0.28 }, new BABYLON.Vector3(0, 5.1, side * 4.95), mat.wood, root);
       fascia.rotation.x = side * roofPitch;
     }
@@ -1990,12 +2201,13 @@
     lights.hemi = hemi;
     lights.sun = sun;
     try {
-      const shadows = new BABYLON.ShadowGenerator(512, sun);
+      const shadows = new BABYLON.ShadowGenerator(1536, sun);
       shadows.useBlurExponentialShadowMap = true;
-      shadows.blurKernel = 12;
-      shadows.bias = 0.00045;
-      shadows.normalBias = 0.025;
-      shadows.darkness = 0.26;
+      shadows.blurKernel = 18;
+      shadows.bias = 0.00018;
+      shadows.normalBias = 0.018;
+      shadows.darkness = 0.38;
+      shadows.forceBackFacesOnly = true;
       lights.shadows = shadows;
     } catch (error) {
       console.warn("Shadow map unavailable; continuing without shadows.", error);
@@ -2705,6 +2917,31 @@
     mergedScenerySourceMeshCount = mergedSourceMeshes;
   }
 
+  function registerCompoundShadowCasters() {
+    const shadowGenerator = lights.shadows;
+    if (!shadowGenerator) return 0;
+    const rootNames = ["Pinecrest timber lodge", "Pinecrest firewood shelter"];
+    let registered = 0;
+    for (const rootName of rootNames) {
+      const root = scene.getTransformNodeByName(rootName);
+      if (!root) continue;
+      for (const mesh of root.getChildMeshes(false)) {
+        if (!mesh || mesh.isDisposed() || !mesh.isVisible || !mesh.getTotalVertices()) continue;
+        // The luminous window panes and transparent display faces should not
+        // cast a solid silhouette into the cabin's own shadow map.
+        if (/glass|sign face|nameplate|paper/i.test(mesh.name)) continue;
+        try {
+          shadowGenerator.addShadowCaster(mesh, false);
+          registered++;
+        } catch (error) {
+          // Unsupported geometry is left out of the shadow pass without blocking startup.
+        }
+      }
+    }
+    lights.compoundShadowCasterCount = registered;
+    return registered;
+  }
+
   function freezeStaticWorld() {
     const dynamicRoots = new Set(animals.map((animal) => animal.root));
     if (cabinDoorPivot) dynamicRoots.add(cabinDoorPivot);
@@ -2769,6 +3006,7 @@
     try { camera.inputs.removeByType("FreeCameraKeyboardMoveInput"); } catch (error) { /* no keyboard-driven camera translation */ }
     createWeapon();
     setupPostProcessing();
+    registerCompoundShadowCasters();
     freezeStaticWorld();
     simulationClock = performance.now();
     simulationAccumulator = 0;
@@ -4198,6 +4436,10 @@
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
     pinecrestGableBeamCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gable diagonal king timber").length : 0,
+    pinecrestRoofSurfaceCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest continuous cedar shingle roof surface").length : 0,
+    pinecrestRoofShingleMaterialReady: Boolean(mat.roofShingle && mat.roofShingle.albedoTexture && mat.roofShingle.bumpTexture),
+    pinecrestLogEndgrainCount: scene ? scene.meshes.filter((mesh) => /Pinecrest .* log cut end/.test(mesh.name)).length : 0,
+    compoundShadowCasterCount: Number(lights.compoundShadowCasterCount) || 0,
     pinecrestRainGutterCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge metal rain gutter").length : 0,
     pinecrestWindowFlowerBoxCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest window flower box body").length : 0,
     pinecrestWoodshedPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest firewood shelter structural post").length : 0,
