@@ -976,6 +976,13 @@
         new BABYLON.Vector3(x, groundY + 0.96, z), mat.bark, root);
       box("compound fence post cap", { width: 0.34, height: 0.12, depth: 0.34 },
         new BABYLON.Vector3(x, groundY + 1.98, z), mat.woodLight, root);
+      // Dark steel connector bands hide rail joints and make the fence read as assembled hardware.
+      for (const level of [0.68, 1.30]) {
+        box("compound fence steel rail bracket", { width: 0.32, height: 0.14, depth: 0.32 },
+          new BABYLON.Vector3(x, groundY + level, z), mat.black, root);
+        const bolt = BABYLON.MeshBuilder.CreateSphere("compound fence brass bolt", { diameter: 0.075, segments: 8 }, scene);
+        bolt.parent = root; bolt.position.set(x, groundY + level, z - 0.175); bolt.material = mat.gold; bolt.isPickable = false;
+      }
     };
     const sideFenceRail = (x, z0, z1, height, material, name) => {
       const y0 = localGroundY(x, z0), y1 = localGroundY(x, z1);
@@ -1146,7 +1153,27 @@
       box("window transom", { width: 1.12, height: 0.08, depth: 0.08 }, new BABYLON.Vector3(x, 3.95, -4.43), mat.wood, root);
       box("window sill", { width: 1.8, height: 0.18, depth: 0.42 }, new BABYLON.Vector3(x, 3.12, -4.42), mat.wood, root);
       for (const side of [-1, 1]) {
-        box("window shutter", { width: 0.42, height: 1.35, depth: 0.13 }, new BABYLON.Vector3(x + side * 1.05, 3.95, -4.27), mat.roofLight, root);
+        const shutterX = x + side * 1.05;
+        box("window shutter backing", { width: 0.42, height: 1.35, depth: 0.13 },
+          new BABYLON.Vector3(shutterX, 3.95, -4.27), mat.woodLight, root);
+        for (let plank = 0; plank < 3; plank++) {
+          box("window shutter vertical slat", { width: 0.105, height: 1.27, depth: 0.055 },
+            new BABYLON.Vector3(shutterX - 0.14 + plank * 0.14, 3.95, -4.355), mat.wood, root);
+        }
+        for (const dy of [-0.49, 0.49]) {
+          box("window shutter cross brace", { width: 0.36, height: 0.095, depth: 0.065 },
+            new BABYLON.Vector3(shutterX, 3.95 + dy, -4.39), mat.woodLight, root);
+          const strap = box("window shutter iron hinge strap", { width: 0.25, height: 0.07, depth: 0.04 },
+            new BABYLON.Vector3(shutterX + side * 0.1, 3.95 + dy, -4.425), mat.black, root);
+          strap.rotation.z = side * 0.08;
+        }
+        for (const dy of [-0.48, 0.48]) {
+          const hingePin = BABYLON.MeshBuilder.CreateCylinder("window shutter brass hinge pin",
+            { height: 0.055, diameter: 0.075, tessellation: 10 }, scene);
+          hingePin.parent = root; hingePin.rotation.x = Math.PI / 2;
+          hingePin.position.set(shutterX + side * 0.23, 3.95 + dy, -4.43);
+          hingePin.material = mat.gold; hingePin.isPickable = false;
+        }
       }
     }
 
@@ -1363,6 +1390,20 @@
         box("outfitter crate face slat", { width: 0.13, height: 0.39, depth: 0.035 },
           new BABYLON.Vector3(x - 0.17 + slat * 0.17, 1.52, 40.29), mat.woodLight);
       }
+      const labelPlate = box("outfitter crate brass inventory plate", { width: 0.28, height: 0.12, depth: 0.035 },
+        new BABYLON.Vector3(x, 1.53, 40.255), mat.gold);
+      labelPlate.isPickable = false;
+    }
+    // Small, restrained trade goods break up the counter's empty surface.
+    const fieldSatchel = BABYLON.MeshBuilder.CreateSphere("outfitter field satchel", { diameter: 0.42, segments: 12 }, scene);
+    fieldSatchel.scaling.set(1.25, 0.72, 0.82); fieldSatchel.position.set(-3.9, 1.53, 40.35);
+    fieldSatchel.material = makeMaterial("Waxed canvas field satchel", "#6a6548", 0.96); fieldSatchel.isPickable = false;
+    box("outfitter satchel leather flap", { width: 0.42, height: 0.10, depth: 0.34 }, new BABYLON.Vector3(-3.9, 1.65, 40.23), mat.roofLight);
+    for (let tin = 0; tin < 2; tin++) {
+      const ammoTin = BABYLON.MeshBuilder.CreateCylinder("outfitter ammunition tin", { height: 0.32, diameter: 0.18, tessellation: 12 }, scene);
+      ammoTin.position.set(-3.5 + tin * 0.22, 1.43, 40.8); ammoTin.material = mat.metal; ammoTin.isPickable = false;
+      const tinLid = BABYLON.MeshBuilder.CreateCylinder("outfitter ammunition tin lid", { height: 0.045, diameter: 0.19, tessellation: 12 }, scene);
+      tinLid.position.set(-3.5 + tin * 0.22, 1.62, 40.8); tinLid.material = mat.black; tinLid.isPickable = false;
     }
   }
 
