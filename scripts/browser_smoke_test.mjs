@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.20&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.21&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -61,6 +61,12 @@ try {
   }, { timeout: 45000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (diagnostics.gateStructuralPostCount !== 2) {
+    throw new Error("Pinecrest gate sign must be carried by two grounded structural timber posts: " + diagnostics.gateStructuralPostCount);
+  }
+  if (diagnostics.cabinFrontWallBackingCount !== 2) {
+    throw new Error("Pinecrest lodge front log courses must have two opaque wall backing panels: " + diagnostics.cabinFrontWallBackingCount);
+  }
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
   if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
   if (!diagnostics.gateSignReady || !diagnostics.outpostApproachReady) {
