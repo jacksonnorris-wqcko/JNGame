@@ -67,6 +67,14 @@ try {
   if (diagnostics.cabinFrontWallBackingCount !== 2) {
     throw new Error("Pinecrest lodge front log courses must have two opaque wall backing panels: " + diagnostics.cabinFrontWallBackingCount);
   }
+  const gatePostCollision = await page.evaluate(() => ({
+    leftPostBlocked: !window.WildrangeQA.canStandAt(-16.48, 29),
+    rightPostBlocked: !window.WildrangeQA.canStandAt(-11.52, 29),
+    centrePassageClear: window.WildrangeQA.canStandAt(-14, 29)
+  }));
+  if (!gatePostCollision.leftPostBlocked || !gatePostCollision.rightPostBlocked || !gatePostCollision.centrePassageClear) {
+    throw new Error("Gate sign posts must block foot traffic without closing the central entrance: " + JSON.stringify(gatePostCollision));
+  }
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
   if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
   if (!diagnostics.gateSignReady || !diagnostics.outpostApproachReady) {
