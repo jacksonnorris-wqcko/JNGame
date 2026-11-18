@@ -90,6 +90,9 @@
   let cabinSignTexture = null;
   let cabinSignMaterial = null;
   let cabinSignFrontMesh = null;
+  let harvestSignTexture = null;
+  let harvestSignMaterial = null;
+  let harvestSignFrontMesh = null;
   let cabinFireFlame = null;
   let sceneInitError = "";
   // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
@@ -1083,7 +1086,7 @@
     cabinSignFrontMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest lodge sign face",
       { width: 3.28, height: 0.62, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
     cabinSignFrontMesh.parent = root;
-    cabinSignFrontMesh.position.set(0, 5.02, -4.515);
+    cabinSignFrontMesh.position.set(0, 5.02, -4.56);
     cabinSignFrontMesh.rotation.y = Math.PI;
     cabinSignFrontMesh.isPickable = false;
     cabinSignTexture = new BABYLON.DynamicTexture("Pinecrest Lodge nameplate", { width: 1024, height: 256 }, scene, true);
@@ -1100,7 +1103,7 @@
     cabinSignFrontMesh.material = cabinSignMaterial;
     for (const x of [-1.62, 1.62]) for (const y of [4.77, 5.27]) {
       const fastener = BABYLON.MeshBuilder.CreateCylinder("lodge sign brass fixing", { height: 0.035, diameter: 0.09, tessellation: 12 }, scene);
-      fastener.parent = root; fastener.rotation.x = Math.PI / 2; fastener.position.set(x, y, -4.56);
+      fastener.parent = root; fastener.rotation.x = Math.PI / 2; fastener.position.set(x, y, -4.605);
       fastener.material = mat.gold; fastener.isPickable = false;
     }
 
@@ -1267,6 +1270,39 @@
     }
     box("harvest bench lower stretcher", { width: 2.45, height: 0.12, depth: 0.12 }, new BABYLON.Vector3(-20.7, harvestGround + 0.48, 40.5), mat.wood);
     box("harvest bench side stretcher", { width: 0.12, height: 0.12, depth: 0.92 }, new BABYLON.Vector3(-22.08, harvestGround + 0.48, 40.5), mat.wood);
+
+    // A working station has a labelled front, a weighing scale and proper trade fittings.
+    box("harvest station fascia backing", { width: 2.95, height: 0.54, depth: 0.12 },
+      new BABYLON.Vector3(-20.7, harvestGround + 1.0, 39.69), mat.black);
+    harvestSignFrontMesh = BABYLON.MeshBuilder.CreatePlane("Harvest station sign face",
+      { width: 2.72, height: 0.36, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    harvestSignFrontMesh.position.set(-20.7, harvestGround + 1.0, 39.615);
+    harvestSignFrontMesh.rotation.y = Math.PI;
+    harvestSignFrontMesh.isPickable = false;
+    harvestSignTexture = new BABYLON.DynamicTexture("Harvest station plaque lettering", { width: 1024, height: 256 }, scene, true);
+    const harvestSignCtx = harvestSignTexture.getContext();
+    harvestSignCtx.fillStyle = "#26362d"; harvestSignCtx.fillRect(0, 0, 1024, 256);
+    harvestSignCtx.strokeStyle = "#c4a46a"; harvestSignCtx.lineWidth = 12; harvestSignCtx.strokeRect(18, 18, 988, 220);
+    harvestSignCtx.textAlign = "center"; harvestSignCtx.fillStyle = "#f0e2c2";
+    harvestSignCtx.font = "bold 76px Georgia"; harvestSignCtx.fillText("HARVEST STATION", 512, 112);
+    harvestSignCtx.font = "28px Georgia"; harvestSignCtx.fillStyle = "#d2c29e";
+    harvestSignCtx.fillText("HIDES  ·  MEAT  ·  FIELD PAYMENT", 512, 177);
+    harvestSignTexture.update(true);
+    harvestSignMaterial = makeReadableSignMaterial("Harvest station sign material", harvestSignTexture, true);
+    harvestSignFrontMesh.material = harvestSignMaterial;
+    const scaleBase = box("harvest weighing scale base", { width: 0.62, height: 0.11, depth: 0.52 },
+      new BABYLON.Vector3(-19.85, harvestGround + 1.485, 40.32), mat.black);
+    const scalePost = BABYLON.MeshBuilder.CreateCylinder("harvest scale stem", { height: 0.38, diameter: 0.08, tessellation: 12 }, scene);
+    scalePost.position.set(-19.85, harvestGround + 1.72, 40.32); scalePost.material = mat.gold; scalePost.isPickable = false;
+    const scaleDial = BABYLON.MeshBuilder.CreateCylinder("harvest scale dial", { height: 0.075, diameter: 0.46, tessellation: 24 }, scene);
+    scaleDial.rotation.x = Math.PI / 2; scaleDial.position.set(-19.85, harvestGround + 1.88, 40.08);
+    scaleDial.material = mat.window; scaleDial.isPickable = false;
+    const scaleRim = BABYLON.MeshBuilder.CreateTorus("harvest scale brass rim", { diameter: 0.48, thickness: 0.035, tessellation: 24 }, scene);
+    scaleRim.rotation.x = Math.PI / 2; scaleRim.position.copyFrom(scaleDial.position); scaleRim.material = mat.gold; scaleRim.isPickable = false;
+    const scaleNeedle = box("harvest scale needle", { width: 0.025, height: 0.17, depth: 0.025 },
+      new BABYLON.Vector3(-19.85, harvestGround + 1.89, 40.055), mat.black);
+    scaleNeedle.rotation.z = -0.28;
+
     const entryApron = BABYLON.MeshBuilder.CreateCylinder("Pinecrest entry gravel apron",
       { height: 0.16, diameter: 6.3, tessellation: 40 }, scene);
     entryApron.position.set(-14, 0.18, 30.5);
@@ -3672,6 +3708,17 @@
       z: Number(contractBoardMesh.position.z.toFixed(2))
     } : null,
     gateSignReady: Boolean(gateSignTexture && gateSignTexture.isReady()),
+    gateSignBackReady: Boolean(gateSignBackTexture && gateSignBackTexture.isReady()),
+    cabinSignReady: Boolean(cabinSignTexture && cabinSignTexture.isReady()),
+    outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),
+    harvestSignReady: Boolean(harvestSignTexture && harvestSignTexture.isReady()),
+    signFaceMaterialsReady: Boolean(
+      cabinSignMaterial && !cabinSignMaterial.backFaceCulling && cabinSignMaterial.emissiveTexture &&
+      contractBoardMaterial && !contractBoardMaterial.backFaceCulling && contractBoardMaterial.emissiveTexture &&
+      gateSignFrontMaterial && !gateSignFrontMaterial.backFaceCulling && gateSignFrontMaterial.emissiveTexture &&
+      outfitterSignMaterial && !outfitterSignMaterial.backFaceCulling && outfitterSignMaterial.emissiveTexture &&
+      harvestSignMaterial && !harvestSignMaterial.backFaceCulling && harvestSignMaterial.emissiveTexture
+    ),
     outpostApproachReady: Boolean(scene && scene.getMeshByName("Pinecrest outpost access road")) ,
     jumpMaxHeight,
     fps: Math.round(smoothedFps),
