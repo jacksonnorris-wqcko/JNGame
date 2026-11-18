@@ -162,3 +162,11 @@ jobs:
           exit 1
       - name: Open Wildrange in headless Chrome
         run: node scripts/browser_smoke_test.mjs
+      - name: Upload compound visual verification screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wildrange-0.10.0-compound-visual
+          path: artifacts/wildrange-0.10.0-compound.png
+          if-no-files-found: warn
+          retention-days: 14
