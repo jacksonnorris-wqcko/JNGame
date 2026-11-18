@@ -56,6 +56,9 @@ jobs:
             if (!js.includes("board-paper-front") || !js.includes("board-paper-back")) throw new Error("Pinecrest noticeboard must show readable text on both faces");
             if (!js.includes("Pinecrest gate structural timber support post") || !js.includes("Pinecrest gate stone post footing")) throw new Error("Pinecrest outpost sign must have grounded structural posts and footings");
             if (!js.includes("Pinecrest lodge front wall opaque backing") || !js.includes("Pinecrest lodge opaque timber wall backing")) throw new Error("Pinecrest lodge front log courses must be backed by opaque timber panels");
+            for (const compoundFeature of ["buildPinecrestCompoundLife", "Pinecrest gable diagonal king timber", "Pinecrest lodge metal rain gutter", "Pinecrest window flower box body", "Pinecrest firewood shelter structural post", "Pinecrest yard water trough body", "Pinecrest walkway edge fieldstone"]) {
+              if (!js.includes(compoundFeature)) throw new Error("Pinecrest compound visual dressing is missing: " + compoundFeature);
+            }
             if (!js.includes("Pinecrest gate nameplate") || !js.includes("Pinecrest outpost access road")) throw new Error("Outpost gate sign or access road is missing");
             if (!js.includes("Pinecrest lodge sign face") || !js.includes("Outfitters fascia sign face") || !js.includes("Harvest station sign face")) throw new Error("One or more finished compound signs are missing");
             if (!js.includes("let boardPaperFrontMesh = null;") || !js.includes("let boardPaperBackMesh = null;")) throw new Error("Mission board face mesh state is not declared");
