@@ -79,6 +79,10 @@
   let contractBoardBackMesh = null;
   let contractBoardMesh = null;
   let gateSignTexture = null;
+  let gateSignBackTexture = null;
+  let outfitterSignTexture = null;
+  let outfitterSignMaterial = null;
+  let outfitterSignFrontMesh = null;
   let gateSignFrontMaterial = null;
   let gateSignBackMaterial = null;
   let gateSignFrontMesh = null;
@@ -1033,18 +1037,23 @@
     gateSignBackMesh.parent = root;
     gateSignBackMesh.position.set(0, gateGround + 2.55, -13.835);
     gateSignBackMesh.isPickable = false;
-    gateSignTexture = new BABYLON.DynamicTexture("Pinecrest gate nameplate", { width: 1024, height: 256 }, scene, true);
-    const gateCtx = gateSignTexture.getContext();
-    gateCtx.fillStyle = "#20342a"; gateCtx.fillRect(0, 0, 1024, 256);
-    gateCtx.strokeStyle = "#c8ad70"; gateCtx.lineWidth = 12; gateCtx.strokeRect(18, 18, 988, 220);
-    gateCtx.strokeStyle = "#7d704f"; gateCtx.lineWidth = 3; gateCtx.strokeRect(34, 34, 956, 188);
-    gateCtx.textAlign = "center"; gateCtx.fillStyle = "#f1e3bd";
-    gateCtx.font = "bold 78px Georgia"; gateCtx.fillText("PINECREST OUTPOST", 512, 112);
-    gateCtx.font = "29px Georgia"; gateCtx.fillStyle = "#c9c0a7";
-    gateCtx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 177);
-    gateSignTexture.update(true);
-    gateSignFrontMaterial = makeReadableSignMaterial("Pinecrest gate sign front material", gateSignTexture, true);
-    gateSignBackMaterial = makeReadableSignMaterial("Pinecrest gate sign rear material", gateSignTexture, false);
+    const drawGateSign = (texture, mirror) => {
+      const ctx = texture.getContext();
+      ctx.clearRect(0, 0, 1024, 256);
+      ctx.fillStyle = "#20342a"; ctx.fillRect(0, 0, 1024, 256);
+      ctx.strokeStyle = "#c8ad70"; ctx.lineWidth = 12; ctx.strokeRect(18, 18, 988, 220);
+      ctx.strokeStyle = "#7d704f"; ctx.lineWidth = 3; ctx.strokeRect(34, 34, 956, 188);
+      ctx.textAlign = "center"; ctx.fillStyle = "#f1e3bd";
+      ctx.font = "bold 78px Georgia"; ctx.fillText("PINECREST OUTPOST", 512, 112);
+      ctx.font = "29px Georgia"; ctx.fillStyle = "#c9c0a7";
+      ctx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 177);
+      texture.update(true);
+      return makeReadableSignMaterial(mirror ? "Pinecrest gate sign front material" : "Pinecrest gate sign rear material", texture, mirror);
+    };
+    gateSignTexture = new BABYLON.DynamicTexture("Pinecrest gate nameplate front", { width: 1024, height: 256 }, scene, true);
+    gateSignBackTexture = new BABYLON.DynamicTexture("Pinecrest gate nameplate rear", { width: 1024, height: 256 }, scene, true);
+    gateSignFrontMaterial = drawGateSign(gateSignTexture, true);
+    gateSignBackMaterial = drawGateSign(gateSignBackTexture, false);
     gateSignFrontMesh.material = gateSignFrontMaterial;
     gateSignBackMesh.material = gateSignBackMaterial;
     for (const x of [-1.92, 1.92]) for (const y of [gateGround + 2.27, gateGround + 2.83]) {
@@ -1266,11 +1275,58 @@
     for (const x of [-5.62, -3.38]) for (const z of [40.08, 40.92]) {
       box("outfitter counter leg", { width: 0.14, height: 1.12, depth: 0.14 }, new BABYLON.Vector3(x, 0.57, z), mat.bark);
     }
-    box("outfitter awning", { width: 3.65, height: 0.18, depth: 2.0 }, new BABYLON.Vector3(-4.5, 3.05, 40.5), mat.roof);
-    for (const x of [-6.12, -2.88]) box("outfitter awning post", { width: 0.16, height: 2.9, depth: 0.16 }, new BABYLON.Vector3(x, 1.55, 39.7), mat.bark);
+    const outfitterAwning = box("outfitter canvas awning", { width: 3.65, height: 0.18, depth: 2.0 },
+      new BABYLON.Vector3(-4.5, 3.05, 40.5), mat.roof);
+    const outfitterCanvasTexture = new BABYLON.DynamicTexture("Outfitter canvas weave", { width: 512, height: 512 }, scene, true);
+    const clothCtx = outfitterCanvasTexture.getContext();
+    clothCtx.fillStyle = "#31483a"; clothCtx.fillRect(0, 0, 512, 512);
+    for (let stripe = 0; stripe < 8; stripe++) {
+      clothCtx.fillStyle = stripe % 2 ? "#d9c89f" : "#31483a";
+      clothCtx.fillRect(stripe * 64, 0, 32, 512);
+    }
+    clothCtx.strokeStyle = "rgba(244,232,199,.42)"; clothCtx.lineWidth = 2;
+    for (let seam = 0; seam < 512; seam += 32) {
+      clothCtx.beginPath(); clothCtx.moveTo(0, seam); clothCtx.lineTo(512, seam); clothCtx.stroke();
+    }
+    outfitterCanvasTexture.update(true);
+    const outfitterCanvasMaterial = new BABYLON.PBRMaterial("Outfitter stitched canvas", scene);
+    outfitterCanvasMaterial.albedoTexture = outfitterCanvasTexture;
+    outfitterCanvasMaterial.albedoColor = BABYLON.Color3.White();
+    outfitterCanvasMaterial.metallic = 0;
+    outfitterCanvasMaterial.roughness = 0.96;
+    outfitterAwning.material = outfitterCanvasMaterial;
+    for (const x of [-6.12, -2.88]) {
+      box("outfitter awning post", { width: 0.16, height: 2.9, depth: 0.16 }, new BABYLON.Vector3(x, 1.55, 39.7), mat.bark);
+      box("outfitter awning steel bracket", { width: 0.09, height: 0.48, depth: 0.09 }, new BABYLON.Vector3(x, 2.72, 39.78), mat.black);
+    }
     box("outfitter back shelf", { width: 2.45, height: 0.12, depth: 0.42 }, new BABYLON.Vector3(-4.5, 2.0, 41.0), mat.wood);
+    // A proper fascia sign on the front edge of the stall.
+    box("Outfitters fascia backing", { width: 3.48, height: 0.56, depth: 0.14 },
+      new BABYLON.Vector3(-4.5, 2.63, 39.42), mat.wood);
+    outfitterSignFrontMesh = BABYLON.MeshBuilder.CreatePlane("Outfitters fascia sign face",
+      { width: 3.18, height: 0.36, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    outfitterSignFrontMesh.position.set(-4.5, 2.63, 39.325);
+    outfitterSignFrontMesh.rotation.y = Math.PI;
+    outfitterSignFrontMesh.isPickable = false;
+    outfitterSignTexture = new BABYLON.DynamicTexture("Outfitters fascia lettering", { width: 1024, height: 192 }, scene, true);
+    const outfitterCtx = outfitterSignTexture.getContext();
+    outfitterCtx.fillStyle = "#20342a"; outfitterCtx.fillRect(0, 0, 1024, 192);
+    outfitterCtx.strokeStyle = "#c5a66c"; outfitterCtx.lineWidth = 10; outfitterCtx.strokeRect(15, 15, 994, 162);
+    outfitterCtx.textAlign = "center"; outfitterCtx.fillStyle = "#f2e5c7";
+    outfitterCtx.font = "bold 86px Georgia"; outfitterCtx.fillText("OUTFITTERS", 512, 121);
+    outfitterSignTexture.update(true);
+    outfitterSignMaterial = makeReadableSignMaterial("Outfitter fascia sign material", outfitterSignTexture, true);
+    outfitterSignFrontMesh.material = outfitterSignMaterial;
     for (let crate = 0; crate < 3; crate++) {
-      box("outfitter supply crate", { width: 0.52, height: 0.48, depth: 0.48 }, new BABYLON.Vector3(-5.25 + crate * 0.75, 1.52, 40.55), mat.wood);
+      const x = -5.25 + crate * 0.75;
+      box("outfitter supply crate", { width: 0.52, height: 0.48, depth: 0.48 }, new BABYLON.Vector3(x, 1.52, 40.55), mat.wood);
+      for (const z of [40.295, 40.805]) {
+        box("outfitter crate iron band", { width: 0.56, height: 0.055, depth: 0.045 }, new BABYLON.Vector3(x, 1.52, z), mat.black);
+      }
+      for (let slat = 0; slat < 3; slat++) {
+        box("outfitter crate face slat", { width: 0.13, height: 0.39, depth: 0.035 },
+          new BABYLON.Vector3(x - 0.17 + slat * 0.17, 1.52, 40.29), mat.woodLight);
+      }
     }
   }
 
@@ -2794,7 +2850,12 @@
     if (!contractBoardTexture || !contractBoardBackTexture) return;
     for (const texture of [contractBoardTexture, contractBoardBackTexture]) {
       const ctx = texture.getContext();
-      ctx.clearRect(0, 0, 768, 576);
+      const size = texture.getSize();
+      const scaleX = size.width / 768;
+      const scaleY = size.height / 576;
+      ctx.clearRect(0, 0, size.width, size.height);
+      ctx.save();
+      ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
       ctx.fillStyle = "#e7d4a8"; ctx.fillRect(0, 0, 768, 576);
       ctx.fillStyle = "#382d1e"; ctx.fillRect(18, 18, 732, 540);
       ctx.fillStyle = "#f0e2bd"; ctx.fillRect(32, 32, 704, 512);
@@ -2811,7 +2872,8 @@
         state.contractAccepted ? "IN PROGRESS  " + state.contractProgress + " / 3" : "AVAILABLE - ACCEPT AT BOARD";
       ctx.font = "bold 30px Georgia"; ctx.fillText(status, 92, 450);
       ctx.font = "bold 28px Georgia"; ctx.fillText("REWARD  $250  +  180 XP", 92, 500);
-      texture.update(false);
+      ctx.restore();
+      texture.update(true);
     }
   }
 
