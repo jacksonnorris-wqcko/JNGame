@@ -29,7 +29,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.22&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.8.23&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -48,6 +48,15 @@ try {
     return diagnostics && (diagnostics.sceneReady || diagnostics.sceneInitError);
   }, { timeout: 45000 });
   const startupDiagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (startupDiagnostics.cabinSignSupportPostCount !== 2 ||
+      startupDiagnostics.gateStructuralPostCount !== 2 ||
+      startupDiagnostics.pinecrestWoodshedPostCount !== 4) {
+    throw new Error("Scene initialisation duplicated or omitted compound assemblies: " + JSON.stringify({
+      cabinSignPosts: startupDiagnostics.cabinSignSupportPostCount,
+      gatePosts: startupDiagnostics.gateStructuralPostCount,
+      woodshedPosts: startupDiagnostics.pinecrestWoodshedPostCount
+    }));
+  }
   if (!startupDiagnostics.sceneReady) {
     throw new Error("3D scene failed during startup: " + (startupDiagnostics.sceneInitError || "unknown error"));
   }
