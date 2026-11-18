@@ -1129,23 +1129,24 @@
     // Put the contract board just inside the gate, facing the approach path.
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -21.8, 33.0, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
-    contractBoardMesh = box("contract-board", { width: 2.15, height: 2.28, depth: 0.28 }, new BABYLON.Vector3(-21.8, 1.72, 33.0), mat.sign);
+    contractBoardMesh = box("contract-board", { width: 2.15, height: 2.28, depth: 0.28 }, new BABYLON.Vector3(-21.8, boardGround + 1.72, 33.0), mat.sign);
+    const boardGround = heightAt(-21.8, 33.0);
     const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.7, diameter: 0.2, tessellation: 10 }, scene);
-    boardPost.position.set(-21.8, 1.1, 33.0); boardPost.material = mat.bark;
+    boardPost.position.set(-21.8, boardGround + 1.35, 33.0); boardPost.material = mat.bark;
     const boardCanopy = box("contract board rain cap", { width: 2.55, height: 0.16, depth: 0.66 },
-      new BABYLON.Vector3(-21.8, 3.0, 33.0), mat.roof, null);
+      new BABYLON.Vector3(-21.8, boardGround + 3.0, 33.0), mat.roof, null);
     boardCanopy.rotation.x = -0.08;
     for (const x of [-22.65, -20.95]) {
       const brace = box("contract board support brace", { width: 0.12, height: 0.82, depth: 0.12 },
-        new BABYLON.Vector3(x, 0.82, 32.92), mat.bark, null);
+        new BABYLON.Vector3(x, boardGround + 0.82, 32.92), mat.bark, null);
       brace.rotation.z = x < -21.8 ? -0.22 : 0.22;
     }
     const boardPaper = BABYLON.MeshBuilder.CreatePlane("board-paper-front", { width: 1.76, height: 1.42 }, scene);
-    boardPaper.position.set(-21.8, 1.82, 32.845);
+    boardPaper.position.set(-21.8, boardGround + 1.82, 32.845);
     boardPaper.rotation.y = Math.PI;
     boardPaper.isPickable = false;
     const boardPaperBack = BABYLON.MeshBuilder.CreatePlane("board-paper-back", { width: 1.76, height: 1.42 }, scene);
-    boardPaperBack.position.set(-21.8, 1.82, 33.155);
+    boardPaperBack.position.set(-21.8, boardGround + 1.82, 33.155);
     boardPaperBack.isPickable = false;
     contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice front", { width: 768, height: 576 }, scene, true);
     contractBoardBackTexture = new BABYLON.DynamicTexture("Pinecrest contract notice rear", { width: 768, height: 576 }, scene, true);
@@ -1162,16 +1163,18 @@
     boardBackMaterial.emissiveColor = hex("#fff4d6"); boardBackMaterial.backFaceCulling = true;
     boardPaperBack.material = boardBackMaterial;
     updateContractBoard();
-    // Compact four-legged hide/meat workbench instead of the old solid timber block.
-    box("harvest table top", { width: 3.35, height: 0.18, depth: 1.45 }, new BABYLON.Vector3(-20.7, 1.34, 40.5), mat.woodLight);
+    // Compact four-legged hide/meat workbench, set onto the local ground level.
+    const harvestGround = heightAt(-20.7, 40.5);
+    box("harvest table top", { width: 3.35, height: 0.18, depth: 1.45 }, new BABYLON.Vector3(-20.7, harvestGround + 1.34, 40.5), mat.woodLight);
     for (const x of [-22.08, -19.32]) for (const z of [39.92, 41.08]) {
-      box("harvest bench leg", { width: 0.16, height: 1.15, depth: 0.16 }, new BABYLON.Vector3(x, 0.675, z), mat.bark);
+      box("harvest bench leg", { width: 0.16, height: 1.15, depth: 0.16 }, new BABYLON.Vector3(x, harvestGround + 0.675, z), mat.bark);
     }
-    box("harvest bench lower stretcher", { width: 2.45, height: 0.12, depth: 0.12 }, new BABYLON.Vector3(-20.7, 0.48, 40.5), mat.wood);
-    box("harvest bench side stretcher", { width: 0.12, height: 0.12, depth: 0.92 }, new BABYLON.Vector3(-22.08, 0.48, 40.5), mat.wood);
-    const entryApron = BABYLON.MeshBuilder.CreateDisc("Pinecrest entry gravel apron", { radius: 3.15, tessellation: 32 }, scene);
-    entryApron.rotation.x = Math.PI / 2; entryApron.position.set(-14, 0.135, 30.5);
-    entryApron.scaling.set(1.28, 0.76, 1); entryApron.material = mat.shore; entryApron.isPickable = false;
+    box("harvest bench lower stretcher", { width: 2.45, height: 0.12, depth: 0.12 }, new BABYLON.Vector3(-20.7, harvestGround + 0.48, 40.5), mat.wood);
+    box("harvest bench side stretcher", { width: 0.12, height: 0.12, depth: 0.92 }, new BABYLON.Vector3(-22.08, harvestGround + 0.48, 40.5), mat.wood);
+    const entryApron = BABYLON.MeshBuilder.CreateCylinder("Pinecrest entry gravel apron",
+      { height: 0.16, diameter: 6.3, tessellation: 40 }, scene);
+    entryApron.position.set(-14, 0.18, 30.5);
+    entryApron.scaling.set(1.28, 1, 0.76); entryApron.material = mat.shore; entryApron.isPickable = false;
     box("outfitter supply counter", { width: 2.8, height: 0.16, depth: 1.05 }, new BABYLON.Vector3(-4.5, 1.18, 40.5), mat.woodLight);
     for (const x of [-5.62, -3.38]) for (const z of [40.08, 40.92]) {
       box("outfitter counter leg", { width: 0.14, height: 1.12, depth: 0.14 }, new BABYLON.Vector3(x, 0.57, z), mat.bark);
@@ -1228,27 +1231,29 @@
     // Low, matching timber planting beds soften the fence edges without
     // putting tall vegetation back against the lodge walls.
     const addPlanter = (x, z, label) => {
+      const bedY = heightAt(x, z);
       box(label + " stone plinth", { width: 3.55, height: 0.14, depth: 1.12 },
-        new BABYLON.Vector3(x, 0.18, z), mat.stoneDark);
+        new BABYLON.Vector3(x, bedY + 0.07, z), mat.stoneDark);
       box(label + " soil bed", { width: 3.22, height: 0.20, depth: 0.82 },
-        new BABYLON.Vector3(x, 0.34, z), mat.black);
+        new BABYLON.Vector3(x, bedY + 0.31, z), mat.black);
       for (const side of [-1, 1]) {
         box(label + " timber long rim", { width: 3.62, height: 0.22, depth: 0.14 },
-          new BABYLON.Vector3(x, 0.48, z + side * 0.48), mat.wood);
+          new BABYLON.Vector3(x, bedY + 0.48, z + side * 0.48), mat.wood);
       }
       for (const side of [-1, 1]) {
         box(label + " timber end rim", { width: 0.14, height: 0.22, depth: 0.92 },
-          new BABYLON.Vector3(x + side * 1.74, 0.48, z), mat.woodLight);
+          new BABYLON.Vector3(x + side * 1.74, bedY + 0.48, z), mat.woodLight);
       }
       for (let flower = 0; flower < 7; flower++) {
         const fx = x - 1.28 + flower * 0.42;
         const fz = z + Math.sin(flower * 1.8) * 0.18;
+        const stemHeight = 0.38 + (flower % 3) * 0.045;
         const stem = BABYLON.MeshBuilder.CreateCylinder(label + " flower stem", {
-          height: 0.38 + (flower % 3) * 0.045, diameter: 0.035, tessellation: 6
+          height: stemHeight, diameter: 0.035, tessellation: 6
         }, scene);
-        stem.position.set(fx, 0.68, fz); stem.material = mat.leaf2; stem.isPickable = false;
+        stem.position.set(fx, bedY + 0.49 + stemHeight / 2, fz); stem.material = mat.leaf2; stem.isPickable = false;
         const bloom = BABYLON.MeshBuilder.CreateSphere(label + " flower bloom", { diameter: 0.17, segments: 8 }, scene);
-        bloom.position.set(fx, 0.91 + (flower % 3) * 0.045, fz);
+        bloom.position.set(fx, bedY + 0.49 + stemHeight + 0.035, fz);
         bloom.material = flower % 2 ? mat.flowerCream : mat.flowerGold;
         bloom.isPickable = false;
       }
