@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.8.21`  
+**Current source build:** `0.8.22`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -36,6 +36,26 @@ The 0.8.21 pass responds to the Pinecrest Outpost screenshot:
 - Added diagnostics and Playwright checks for the two gate posts, two cabin backing panels and the clear gate passage.
 - Bumped browser cache references to 0.8.21.
 - Enabled GitHub Pages deployment on pushes to `main`, retaining manual dispatch as an option.
+
+## 0.8.22 compound living-world pass
+
+The 0.8.22 pass builds on the cabin and sign structural fixes:
+
+- Exposed gable trusses, collar ties, king posts and louvered gable vents on both ends of the lodge.
+- Roof gutters with support brackets, four downpipes and outlet shoes.
+- Two detailed front window flower boxes with iron brackets and layered planting.
+- A dedicated firewood shelter on the east side of the yard with four structural posts, stone footings, rear slats, lean-to roof, rafters, stacked split logs and cut end grain.
+- A side-mounted tool rack, lantern and warm point light at the shelter.
+- A timber water trough with water surface and iron bindings.
+- Five low fern clusters and stone edging along the approach pavers.
+- A short service path between the woodshed and outfitter.
+- New diagnostics and CI/Playwright assertions for the set dressing and collision clearance.
+
+The compound pass is built in the buildPinecrestCompoundLife() helper and called after the established compound access paths but before wildlife creation and static-scene batching.
+
+## Validation notes for 0.8.22
+
+The latest source files and test assertions were checked after the updates. This confirms that the expected geometry, diagnostics, cache-buster versions and regression checks are present in main. A completed GitHub Actions run and a visual browser review have not yet been confirmed; treat the release as source-committed until those checks are available.
 
 ## Validation status
 
