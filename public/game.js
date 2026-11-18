@@ -74,8 +74,18 @@
   let contractBoardTexture = null;
   let contractBoardBackTexture = null;
   let contractBoardMaterial = null;
+  let contractBoardBackMaterial = null;
+  let contractBoardFrontMesh = null;
+  let contractBoardBackMesh = null;
   let contractBoardMesh = null;
   let gateSignTexture = null;
+  let gateSignFrontMaterial = null;
+  let gateSignBackMaterial = null;
+  let gateSignFrontMesh = null;
+  let gateSignBackMesh = null;
+  let cabinSignTexture = null;
+  let cabinSignMaterial = null;
+  let cabinSignFrontMesh = null;
   let cabinFireFlame = null;
   let sceneInitError = "";
   // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
@@ -228,6 +238,37 @@
     material.diffuseColor = hex(color);
     material.specularColor = new BABYLON.Color3(0.08, 0.08, 0.07);
     material.roughness = roughness === undefined ? 0.9 : roughness;
+    return material;
+  }
+
+  // Sign faces use their canvas texture as both diffuse and emissive input.
+  // This keeps lettering legible in shadow and removes one-sided/depth-fight
+  // failure modes from the old paper planes.
+  function makeReadableSignMaterial(name, texture, mirrorU) {
+    texture.hasAlpha = false;
+    texture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    texture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+    texture.anisotropicFilteringLevel = 8;
+    const material = new BABYLON.StandardMaterial(name, scene);
+    material.diffuseTexture = texture;
+    material.emissiveTexture = texture;
+    material.emissiveColor = BABYLON.Color3.White();
+    material.diffuseColor = BABYLON.Color3.White();
+    material.specularColor = BABYLON.Color3.Black();
+    material.disableLighting = true;
+    material.backFaceCulling = false;
+    material.useAlphaFromDiffuseTexture = false;
+    material.zOffset = -4;
+    material.zOffsetUnits = -4;
+    if (mirrorU) {
+      texture.uScale = -1;
+      texture.uOffset = 1;
+    } else {
+      texture.uScale = 1;
+      texture.uOffset = 0;
+    }
+    texture.vScale = 1;
+    texture.vOffset = 0;
     return material;
   }
 
@@ -980,26 +1021,37 @@
         new BABYLON.Vector3(root.position.x + x, groundY + 3.2, root.position.z - 11.5), scene);
       gateLight.diffuse = hex("#f0bc79"); gateLight.intensity = 0.22; gateLight.range = 9;
     }
-    // A double-sided, legible outpost nameplate at the gate.
-    const gateSignFront = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign front", { width: 3.82, height: 0.68 }, scene);
-    gateSignFront.parent = root; gateSignFront.position.set(0, gateGround + 2.55, -14.105); gateSignFront.rotation.y = Math.PI; gateSignFront.isPickable = false;
-    const gateSignBack = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign back", { width: 3.82, height: 0.68 }, scene);
-    gateSignBack.parent = root; gateSignBack.position.set(0, gateGround + 2.55, -13.895); gateSignBack.isPickable = false;
+    // Gate nameplate faces are deliberately offset in front of the wood plaque.
+    gateSignFrontMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign front",
+      { width: 3.82, height: 0.68, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    gateSignFrontMesh.parent = root;
+    gateSignFrontMesh.position.set(0, gateGround + 2.55, -14.165);
+    gateSignFrontMesh.rotation.y = Math.PI;
+    gateSignFrontMesh.isPickable = false;
+    gateSignBackMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign back",
+      { width: 3.82, height: 0.68, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    gateSignBackMesh.parent = root;
+    gateSignBackMesh.position.set(0, gateGround + 2.55, -13.835);
+    gateSignBackMesh.isPickable = false;
     gateSignTexture = new BABYLON.DynamicTexture("Pinecrest gate nameplate", { width: 1024, height: 256 }, scene, true);
     const gateCtx = gateSignTexture.getContext();
-    gateCtx.fillStyle = "#26352b"; gateCtx.fillRect(0, 0, 1024, 256);
+    gateCtx.fillStyle = "#20342a"; gateCtx.fillRect(0, 0, 1024, 256);
     gateCtx.strokeStyle = "#c8ad70"; gateCtx.lineWidth = 12; gateCtx.strokeRect(18, 18, 988, 220);
+    gateCtx.strokeStyle = "#7d704f"; gateCtx.lineWidth = 3; gateCtx.strokeRect(34, 34, 956, 188);
     gateCtx.textAlign = "center"; gateCtx.fillStyle = "#f1e3bd";
-    gateCtx.font = "bold 76px Georgia"; gateCtx.fillText("PINECREST OUTPOST", 512, 112);
-    gateCtx.font = "28px Georgia"; gateCtx.fillStyle = "#c9c0a7"; gateCtx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 174);
+    gateCtx.font = "bold 78px Georgia"; gateCtx.fillText("PINECREST OUTPOST", 512, 112);
+    gateCtx.font = "29px Georgia"; gateCtx.fillStyle = "#c9c0a7";
+    gateCtx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 177);
     gateSignTexture.update(true);
-    const gateSignFrontMaterial = new BABYLON.StandardMaterial("Pinecrest gate sign front material", scene);
-    gateSignFrontMaterial.diffuseTexture = gateSignTexture; gateSignFrontMaterial.diffuseTexture.uScale = -1; gateSignFrontMaterial.diffuseTexture.uOffset = 1;
-    gateSignFrontMaterial.emissiveColor = hex("#fff4df"); gateSignFrontMaterial.backFaceCulling = true;
-    gateSignFront.material = gateSignFrontMaterial;
-    const gateSignBackMaterial = new BABYLON.StandardMaterial("Pinecrest gate sign rear material", scene);
-    gateSignBackMaterial.diffuseTexture = gateSignTexture; gateSignBackMaterial.emissiveColor = hex("#fff4df"); gateSignBackMaterial.backFaceCulling = true;
-    gateSignBack.material = gateSignBackMaterial;
+    gateSignFrontMaterial = makeReadableSignMaterial("Pinecrest gate sign front material", gateSignTexture, true);
+    gateSignBackMaterial = makeReadableSignMaterial("Pinecrest gate sign rear material", gateSignTexture, false);
+    gateSignFrontMesh.material = gateSignFrontMaterial;
+    gateSignBackMesh.material = gateSignBackMaterial;
+    for (const x of [-1.92, 1.92]) for (const y of [gateGround + 2.27, gateGround + 2.83]) {
+      const fixing = BABYLON.MeshBuilder.CreateCylinder("gate sign brass fixing", { height: 0.035, diameter: 0.095, tessellation: 12 }, scene);
+      fixing.parent = root; fixing.rotation.x = Math.PI / 2; fixing.position.set(x, y, -14.19);
+      fixing.material = mat.gold; fixing.isPickable = false;
+    }
     for (const x of [-4.15, 4.15]) {
       box("porch support post", { width: 0.24, height: 3.0, depth: 0.24 }, new BABYLON.Vector3(x, 2.55, -6.25), mat.bark, root);
       box("porch post cap", { width: 0.4, height: 0.18, depth: 0.4 }, new BABYLON.Vector3(x, 4.08, -6.25), mat.woodLight, root);
@@ -1015,6 +1067,34 @@
     box("lodge door recess", { width: 2.0, height: 3.35, depth: 0.16 }, new BABYLON.Vector3(0, 2.68, -4.13), mat.black, root);
     for (const x of [-1.02, 1.02]) box("door jamb", { width: 0.22, height: 3.55, depth: 0.3 }, new BABYLON.Vector3(x, 2.72, -4.22), mat.woodLight, root);
     box("door lintel", { width: 2.25, height: 0.22, depth: 0.3 }, new BABYLON.Vector3(0, 4.48, -4.22), mat.woodLight, root);
+
+    // Permanent lodge identity plaque above the entrance.
+    box("Pinecrest lodge sign backing", { width: 3.55, height: 0.84, depth: 0.16 },
+      new BABYLON.Vector3(0, 5.02, -4.42), mat.roof, root);
+    cabinSignFrontMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest lodge sign face",
+      { width: 3.28, height: 0.62, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    cabinSignFrontMesh.parent = root;
+    cabinSignFrontMesh.position.set(0, 5.02, -4.515);
+    cabinSignFrontMesh.rotation.y = Math.PI;
+    cabinSignFrontMesh.isPickable = false;
+    cabinSignTexture = new BABYLON.DynamicTexture("Pinecrest Lodge nameplate", { width: 1024, height: 256 }, scene, true);
+    const cabinSignCtx = cabinSignTexture.getContext();
+    cabinSignCtx.fillStyle = "#20342a"; cabinSignCtx.fillRect(0, 0, 1024, 256);
+    cabinSignCtx.strokeStyle = "#c5a66c"; cabinSignCtx.lineWidth = 12; cabinSignCtx.strokeRect(18, 18, 988, 220);
+    cabinSignCtx.strokeStyle = "#7f714f"; cabinSignCtx.lineWidth = 3; cabinSignCtx.strokeRect(34, 34, 956, 188);
+    cabinSignCtx.textAlign = "center"; cabinSignCtx.fillStyle = "#f4e7c7";
+    cabinSignCtx.font = "bold 88px Georgia"; cabinSignCtx.fillText("PINECREST LODGE", 512, 119);
+    cabinSignCtx.font = "30px Georgia"; cabinSignCtx.fillStyle = "#d4c49c";
+    cabinSignCtx.fillText("RANGER CABIN  ·  PINECREST VALLEY", 512, 178);
+    cabinSignTexture.update(true);
+    cabinSignMaterial = makeReadableSignMaterial("Pinecrest lodge sign material", cabinSignTexture, true);
+    cabinSignFrontMesh.material = cabinSignMaterial;
+    for (const x of [-1.62, 1.62]) for (const y of [4.77, 5.27]) {
+      const fastener = BABYLON.MeshBuilder.CreateCylinder("lodge sign brass fixing", { height: 0.035, diameter: 0.09, tessellation: 12 }, scene);
+      fastener.parent = root; fastener.rotation.x = Math.PI / 2; fastener.position.set(x, y, -4.56);
+      fastener.material = mat.gold; fastener.isPickable = false;
+    }
+
     cabinDoorPivot = new BABYLON.TransformNode("Lodge door hinge", scene);
     cabinDoorPivot.parent = root;
     cabinDoorPivot.rotationQuaternion = null;
@@ -1141,27 +1221,34 @@
         new BABYLON.Vector3(x, boardGround + 0.82, 32.92), mat.bark, null);
       brace.rotation.z = x < -21.8 ? -0.22 : 0.22;
     }
-    const boardPaper = BABYLON.MeshBuilder.CreatePlane("board-paper-front", { width: 1.76, height: 1.42 }, scene);
-    boardPaper.position.set(-21.8, boardGround + 1.82, 32.845);
-    boardPaper.rotation.y = Math.PI;
-    boardPaper.isPickable = false;
-    const boardPaperBack = BABYLON.MeshBuilder.CreatePlane("board-paper-back", { width: 1.76, height: 1.42 }, scene);
-    boardPaperBack.position.set(-21.8, boardGround + 1.82, 33.155);
-    boardPaperBack.isPickable = false;
-    contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice front", { width: 768, height: 576 }, scene, true);
-    contractBoardBackTexture = new BABYLON.DynamicTexture("Pinecrest contract notice rear", { width: 768, height: 576 }, scene, true);
-    contractBoardMaterial = new BABYLON.StandardMaterial("contract notice front ink", scene);
-    contractBoardMaterial.diffuseTexture = contractBoardTexture;
-    contractBoardMaterial.diffuseTexture.uScale = -1; contractBoardMaterial.diffuseTexture.uOffset = 1;
-    contractBoardMaterial.diffuseTexture.vScale = 1; contractBoardMaterial.diffuseTexture.vOffset = 0;
-    contractBoardMaterial.emissiveColor = hex("#fff4d6"); contractBoardMaterial.backFaceCulling = true;
-    boardPaper.material = contractBoardMaterial;
-    const boardBackMaterial = new BABYLON.StandardMaterial("contract notice rear ink", scene);
-    boardBackMaterial.diffuseTexture = contractBoardBackTexture;
-    boardBackMaterial.diffuseTexture.uScale = 1; boardBackMaterial.diffuseTexture.uOffset = 0;
-    boardBackMaterial.diffuseTexture.vScale = 1; boardBackMaterial.diffuseTexture.vOffset = 0;
-    boardBackMaterial.emissiveColor = hex("#fff4d6"); boardBackMaterial.backFaceCulling = true;
-    boardPaperBack.material = boardBackMaterial;
+    boardPaperFrontMesh = BABYLON.MeshBuilder.CreatePlane("board-paper-front",
+      { width: 1.82, height: 1.48, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    boardPaperFrontMesh.position.set(-21.8, boardGround + 1.82, 32.795);
+    boardPaperFrontMesh.rotation.y = Math.PI;
+    boardPaperFrontMesh.isPickable = false;
+    boardPaperBackMesh = BABYLON.MeshBuilder.CreatePlane("board-paper-back",
+      { width: 1.82, height: 1.48, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+    boardPaperBackMesh.position.set(-21.8, boardGround + 1.82, 33.205);
+    boardPaperBackMesh.isPickable = false;
+    contractBoardTexture = new BABYLON.DynamicTexture("Pinecrest contract notice front", { width: 1024, height: 768 }, scene, true);
+    contractBoardBackTexture = new BABYLON.DynamicTexture("Pinecrest contract notice rear", { width: 1024, height: 768 }, scene, true);
+    contractBoardMaterial = makeReadableSignMaterial("contract notice front ink", contractBoardTexture, true);
+    contractBoardBackMaterial = makeReadableSignMaterial("contract notice rear ink", contractBoardBackTexture, false);
+    boardPaperFrontMesh.material = contractBoardMaterial;
+    boardPaperBackMesh.material = contractBoardBackMaterial;
+    // Timber surround and brass fixings finish the noticeboard face.
+    for (const x of [-0.99, 0.99]) {
+      box("noticeboard vertical timber trim", { width: 0.12, height: 1.7, depth: 0.09 },
+        new BABYLON.Vector3(-21.8 + x, boardGround + 1.82, 32.755), mat.woodLight);
+    }
+    for (const y of [boardGround + 1.01, boardGround + 2.63]) {
+      box("noticeboard horizontal timber trim", { width: 2.08, height: 0.12, depth: 0.09 },
+        new BABYLON.Vector3(-21.8, y, 32.755), mat.woodLight);
+    }
+    for (const x of [-0.92, 0.92]) for (const y of [boardGround + 1.12, boardGround + 2.52]) {
+      const nail = BABYLON.MeshBuilder.CreateCylinder("noticeboard brass nail", { height: 0.025, diameter: 0.075, tessellation: 10 }, scene);
+      nail.position.set(-21.8 + x, y, 32.70); nail.rotation.x = Math.PI / 2; nail.material = mat.gold; nail.isPickable = false;
+    }
     updateContractBoard();
     // Compact four-legged hide/meat workbench, set onto the local ground level.
     const harvestGround = heightAt(-20.7, 40.5);
