@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.9.0**. Game assets are stored under `public/assets/`.
+Current browser build: **0.10.0**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -156,6 +156,20 @@ This is the first pass that replaces repeated primitive roof props with authored
 - The browser test checks the authored roof material, two roof surfaces, 94 log end-grain faces and compound shadow casters.
 
 This pass deliberately removes primitive roof clutter rather than adding another set of props. It is a material, silhouette and lighting foundation; imported high-detail architecture and vegetation assets remain a separate art-production step.
+
+## Authored 3D environment assets — 0.10.0
+
+This pass adds complete GLB assets instead of relying only on the scene's procedural building and foliage geometry:
+
+- Pinecrest Lodge loads an authored, textured log-cabin GLB with interlocking 70 mm logs, crossed corner overhangs, gable construction, a shingled roof, windows and glazed door. The existing Wildrange interior, interactable door, porch and gameplay systems are retained.
+- Two high-detail conifer models use a detailed individual-needle mesh.
+- Two high-detail broadleaf models use individually modelled leaves.
+- The remaining distant forest continues to use the lighter procedural tree system to protect performance.
+- When a model fails to download or import, the existing procedural cabin/forest remains as a fallback.
+
+The three source models are CC0 1.0 Universal from Innerscene. They are downloaded into the Pages/CI build by `scripts/download_licensed_3d_assets.sh`, validated as glTF 2.0 binary files, and then included in the Pages artifact. This avoids placing the binary model files in source control while keeping the game itself self-contained after deployment.
+
+The Playwright browser test now waits for the lodge and all four hero tree instances, and uploads a screenshot of the compound for visual verification.
 
 ## Cost
 
