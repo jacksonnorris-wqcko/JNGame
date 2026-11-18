@@ -812,23 +812,39 @@
       const frontSegments = y < 4.05 ? [[-3.45, 4.8], [3.45, 4.8]] : [[0, 11.7]];
       for (const [frontX, frontLength] of frontSegments) {
         const front = BABYLON.MeshBuilder.CreateCylinder("front log course", {
-          height: frontLength, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
+          height: frontLength, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 10
         }, scene);
         front.parent = root; front.rotation.z = Math.PI / 2; front.position.set(frontX, y, -4.08);
         front.material = mat.bark; front.isPickable = false; front.receiveShadows = true;
       }
       const rear = BABYLON.MeshBuilder.CreateCylinder("rear log course", {
-        height: 11.7, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
+        height: 11.7, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 10
       }, scene);
       rear.parent = root; rear.rotation.z = Math.PI / 2; rear.position.set(0, y, 4.08);
       rear.material = mat.bark; rear.isPickable = false; rear.receiveShadows = true;
       for (const side of [-1, 1]) {
         const wall = BABYLON.MeshBuilder.CreateCylinder("side log course", {
-          height: 8.6, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 10
+          height: 8.6, diameterTop: 0.40, diameterBottom: 0.48, tessellation: 10
         }, scene);
         wall.parent = root; wall.rotation.x = Math.PI / 2; wall.position.set(side * 5.55, y, 0);
         wall.material = mat.bark; wall.isPickable = false; wall.receiveShadows = true;
       }
+    }
+
+    // Weather-sealed backing closes the gaps between the horizontal log courses.
+    // The two panels stop at the door opening; the glowing window panes remain in front.
+    const lodgeFrontInfill = makePbrSurface(
+      "Pinecrest lodge opaque timber wall backing", "wood_siding", 2.4, "#a98257", false
+    );
+    for (const side of [-1, 1]) {
+      const infill = box(
+        "Pinecrest lodge front wall opaque backing",
+        { width: 4.78, height: 2.88, depth: 0.14 },
+        new BABYLON.Vector3(side * 3.45, 2.68, -3.76),
+        lodgeFrontInfill, root
+      );
+      infill.isPickable = false;
+      infill.receiveShadows = true;
     }
 
     // A lived-in ranger cabin: bunk, writing desk, stove, shelves and warm interior light.
@@ -1024,6 +1040,50 @@
       new BABYLON.Vector3(0, gateGround + 3.15, -14), mat.woodLight, root);
     box("Pinecrest entry gate sign", { width: 4.1, height: 0.9, depth: 0.18 },
       new BABYLON.Vector3(0, gateGround + 2.55, -14), mat.sign, root);
+
+    // Two ground-bearing posts support the sign lintel and carry the sign's load.
+    // Stone plinths, post caps, iron straps and knee braces make the structure read as built.
+    for (const side of [-1, 1]) {
+      const postX = side * 2.48;
+      const postGround = localGroundY(postX, -14);
+      box("Pinecrest gate stone post footing",
+        { width: 0.52, height: 0.26, depth: 0.52 },
+        new BABYLON.Vector3(postX, postGround + 0.13, -14), mat.stoneDark, root);
+      box("Pinecrest gate structural timber support post",
+        { width: 0.34, height: 3.08, depth: 0.34 },
+        new BABYLON.Vector3(postX, postGround + 1.67, -14), mat.bark, root);
+      box("Pinecrest gate post head cap",
+        { width: 0.48, height: 0.16, depth: 0.48 },
+        new BABYLON.Vector3(postX, postGround + 3.18, -14), mat.woodLight, root);
+      const kneeBrace = box("Pinecrest gate timber knee brace",
+        { width: 0.92, height: 0.16, depth: 0.18 },
+        new BABYLON.Vector3(side * 2.05, postGround + 2.86, -14), mat.woodLight, root);
+      kneeBrace.rotation.z = -side * 0.56;
+      box("Pinecrest gate iron post strap",
+        { width: 0.44, height: 0.12, depth: 0.045 },
+        new BABYLON.Vector3(postX, postGround + 2.98, -14.195), mat.black, root);
+      for (const boltY of [postGround + 2.91, postGround + 3.05]) {
+        const bolt = BABYLON.MeshBuilder.CreateCylinder("Pinecrest gate brass strap bolt",
+          { height: 0.035, diameter: 0.075, tessellation: 10 }, scene);
+        bolt.parent = root;
+        bolt.rotation.x = Math.PI / 2;
+        bolt.position.set(postX, boltY, -14.23);
+        bolt.material = mat.gold;
+        bolt.isPickable = false;
+      }
+    }
+    // A timber edge frame and corner fixings finish the sign board itself.
+    for (const y of [gateGround + 2.12, gateGround + 2.98]) {
+      box("Pinecrest gate sign frame rail",
+        { width: 4.24, height: 0.10, depth: 0.12 },
+        new BABYLON.Vector3(0, y, -14.205), mat.woodLight, root);
+    }
+    for (const x of [-2.07, 2.07]) {
+      box("Pinecrest gate sign frame stile",
+        { width: 0.10, height: 0.92, depth: 0.12 },
+        new BABYLON.Vector3(x, gateGround + 2.55, -14.205), mat.woodLight, root);
+    }
+
     for (const x of [-5.7, 5.7]) {
       const groundY = localGroundY(x, -11.5);
       const lampPole = BABYLON.MeshBuilder.CreateCylinder("compound entrance lantern post", { height: 3.4, diameter: 0.16, tessellation: 10 }, scene);
@@ -1073,9 +1133,23 @@
       fixing.parent = root; fixing.rotation.x = Math.PI / 2; fixing.position.set(x, y, -14.19);
       fixing.material = mat.gold; fixing.isPickable = false;
     }
-    for (const x of [-4.15, 4.15]) {
+    for (const side of [-1, 1]) {
+      const x = side * 4.15;
       box("porch support post", { width: 0.24, height: 3.0, depth: 0.24 }, new BABYLON.Vector3(x, 2.55, -6.25), mat.bark, root);
       box("porch post cap", { width: 0.4, height: 0.18, depth: 0.4 }, new BABYLON.Vector3(x, 4.08, -6.25), mat.woodLight, root);
+      const porchBrace = box("Pinecrest porch timber knee brace",
+        { width: 0.92, height: 0.16, depth: 0.18 },
+        new BABYLON.Vector3(side * 3.78, 3.62, -6.25), mat.woodLight, root);
+      porchBrace.rotation.z = -side * 0.58;
+      for (const boltY of [3.42, 3.82]) {
+        const bolt = BABYLON.MeshBuilder.CreateCylinder("Pinecrest porch brass brace bolt",
+          { height: 0.035, diameter: 0.07, tessellation: 10 }, scene);
+        bolt.parent = root;
+        bolt.rotation.x = Math.PI / 2;
+        bolt.position.set(x - side * 0.06, boltY, -6.39);
+        bolt.material = mat.gold;
+        bolt.isPickable = false;
+      }
     }
     box("porch canopy", { width: 9.1, height: 0.2, depth: 2.75 }, new BABYLON.Vector3(0, 4.05, -5.65), mat.roof, root);
     for (const x of [-4.0, 4.0]) {
@@ -1110,6 +1184,18 @@
     cabinSignTexture.update(true);
     cabinSignMaterial = makeReadableSignMaterial("Pinecrest lodge sign material", cabinSignTexture, true);
     cabinSignFrontMesh.material = cabinSignMaterial;
+    for (const side of [-1, 1]) {
+      box("Pinecrest lodge sign mounting cleat",
+        { width: 0.16, height: 0.96, depth: 0.24 },
+        new BABYLON.Vector3(side * 1.78, 5.02, -4.39), mat.woodLight, root);
+      box("Pinecrest lodge sign lower support",
+        { width: 3.72, height: 0.12, depth: 0.28 },
+        new BABYLON.Vector3(0, 4.57, -4.43), mat.wood, root);
+      const bracket = box("Pinecrest lodge sign iron bracket",
+        { width: 0.54, height: 0.10, depth: 0.10 },
+        new BABYLON.Vector3(side * 1.42, 4.73, -4.51), mat.black, root);
+      bracket.rotation.z = side * 0.30;
+    }
     for (const x of [-1.62, 1.62]) for (const y of [4.77, 5.27]) {
       const fastener = BABYLON.MeshBuilder.CreateCylinder("lodge sign brass fixing", { height: 0.035, diameter: 0.09, tessellation: 12 }, scene);
       fastener.parent = root; fastener.rotation.x = Math.PI / 2; fastener.position.set(x, y, -4.605);
@@ -1544,12 +1630,12 @@
 
   function setupLighting() {
     const hemi = new BABYLON.HemisphericLight("sky-fill", new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.intensity = 0.56;
+    hemi.intensity = 0.62;
     hemi.groundColor = hex("#465541");
     hemi.diffuse = hex("#e5e8d6");
     const sun = new BABYLON.DirectionalLight("morning-sun", new BABYLON.Vector3(-0.38, -1, 0.24), scene);
     sun.position = new BABYLON.Vector3(65, 105, -70);
-    sun.intensity = 0.96;
+    sun.intensity = 1.0;
     sun.diffuse = hex("#ffe1b2");
     sun.specular = hex("#fff0d3");
     lights.hemi = hemi;
@@ -2118,8 +2204,8 @@
       pipeline.bloomWeight = 0.045;
       pipeline.bloomKernel = 48;
       pipeline.imageProcessingEnabled = true;
-      pipeline.imageProcessing.exposure = 0.88;
-      pipeline.imageProcessing.contrast = 1.08;
+      pipeline.imageProcessing.exposure = 0.94;
+      pipeline.imageProcessing.contrast = 1.10;
       pipeline.imageProcessing.toneMappingEnabled = true;
       pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
       lights.pipeline = pipeline;
@@ -3758,6 +3844,8 @@
     gateSignReady: Boolean(gateSignTexture && gateSignTexture.isReady()),
     gateSignBackReady: Boolean(gateSignBackTexture && gateSignBackTexture.isReady()),
     cabinSignReady: Boolean(cabinSignTexture && cabinSignTexture.isReady()),
+    gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
+    cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
     outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),
     harvestSignReady: Boolean(harvestSignTexture && harvestSignTexture.isReady()),
     cabinSignFaceVisible: isReadableSignFace(cabinSignFrontMesh),
