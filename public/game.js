@@ -1129,8 +1129,8 @@
     // Put the contract board just inside the gate, facing the approach path.
     makeInteractable("CONTRACT BOARD", "View local hunting contracts", -21.8, 33.0, "contract", "board");
     makeInteractable("HARVEST STATION", "Sell hides and meat", -20.7, 40.5, "sell", "table");
-    contractBoardMesh = box("contract-board", { width: 2.15, height: 2.28, depth: 0.28 }, new BABYLON.Vector3(-21.8, boardGround + 1.72, 33.0), mat.sign);
     const boardGround = heightAt(-21.8, 33.0);
+    contractBoardMesh = box("contract-board", { width: 2.15, height: 2.28, depth: 0.28 }, new BABYLON.Vector3(-21.8, boardGround + 1.72, 33.0), mat.sign);
     const boardPost = BABYLON.MeshBuilder.CreateCylinder("board-post", { height: 2.7, diameter: 0.2, tessellation: 10 }, scene);
     boardPost.position.set(-21.8, boardGround + 1.35, 33.0); boardPost.material = mat.bark;
     const boardCanopy = box("contract board rain cap", { width: 2.55, height: 0.16, depth: 0.66 },
