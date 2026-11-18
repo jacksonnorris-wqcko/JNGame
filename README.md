@@ -125,7 +125,7 @@ The lighting pass lifts ambient fill and exposure slightly to reveal more timber
 
 The 0.8.22 pass expands the outpost beyond basic building geometry:
 
-- The lodge gables now have exposed timber trusses, collar ties, king posts and louvered vents.
+- The lodge gables now have exposed timber trusses, collar ties, king posts and louvered vents. The Pinecrest Lodge plaque now sits inside a timber portal with two uprights, a structural header, knee braces, stone shoes and iron straps.
 - Metal gutters, forged brackets and downpipes finish the roof edges and give the cabin a believable rainwater system.
 - The front windows have timber flower boxes, iron brackets and layered foliage.
 - A new working firewood shelter adds stone footings, structural posts, slatted rear boards, a pitched roof, exposed rafters, individually stacked split logs with cut ends, a tool rack and warm lantern light.
