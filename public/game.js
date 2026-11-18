@@ -1278,32 +1278,67 @@
     const localGroundY = (x, z) => heightAt(root.position.x + x, root.position.z + z) - root.position.y;
     const fencePost = (x, z, name) => {
       const groundY = localGroundY(x, z);
-      box("compound fence stone footing", { width: 0.44, height: 0.28, depth: 0.44 },
-        new BABYLON.Vector3(x, groundY + 0.14, z), mat.stoneDark, root);
-      box(name, { width: 0.24, height: 1.92, depth: 0.24 },
-        new BABYLON.Vector3(x, groundY + 0.96, z), mat.bark, root);
-      box("compound fence post cap", { width: 0.34, height: 0.12, depth: 0.34 },
-        new BABYLON.Vector3(x, groundY + 1.98, z), mat.woodLight, root);
+      const footing = BABYLON.MeshBuilder.CreateCylinder("compound fence stone footing",
+        { height: 0.28, diameterTop: 0.44, diameterBottom: 0.52, tessellation: 8 }, scene);
+      footing.parent = root;
+      footing.position.set(x, groundY + 0.14, z);
+      footing.rotation.y = Math.PI / 8;
+      footing.material = mat.stoneDark;
+      footing.isPickable = false;
+      const post = BABYLON.MeshBuilder.CreateCylinder(name,
+        { height: 1.92, diameterTop: 0.235, diameterBottom: 0.34, tessellation: 10 }, scene);
+      post.parent = root;
+      post.position.set(x, groundY + 0.96, z);
+      post.rotation.y = rand(-0.025, 0.025);
+      post.material = mat.bark;
+      post.isPickable = false;
+      post.receiveShadows = true;
+      const cap = BABYLON.MeshBuilder.CreateCylinder("compound fence post cap",
+        { height: 0.12, diameterTop: 0.28, diameterBottom: 0.36, tessellation: 10 }, scene);
+      cap.parent = root;
+      cap.position.set(x, groundY + 1.98, z);
+      cap.material = mat.woodLight;
+      cap.isPickable = false;
       // Dark steel connector bands hide rail joints and make the fence read as assembled hardware.
       for (const level of [0.68, 1.30]) {
-        box("compound fence steel rail bracket", { width: 0.32, height: 0.14, depth: 0.32 },
-          new BABYLON.Vector3(x, groundY + level, z), mat.black, root);
-        const bolt = BABYLON.MeshBuilder.CreateSphere("compound fence brass bolt", { diameter: 0.075, segments: 8 }, scene);
-        bolt.parent = root; bolt.position.set(x, groundY + level, z - 0.175); bolt.material = mat.gold; bolt.isPickable = false;
+        const bracket = BABYLON.MeshBuilder.CreateCylinder("compound fence steel rail bracket",
+          { height: 0.14, diameterTop: 0.37, diameterBottom: 0.37, tessellation: 10 }, scene);
+        bracket.parent = root;
+        bracket.position.set(x, groundY + level, z);
+        bracket.material = mat.black;
+        bracket.isPickable = false;
+        const bolt = BABYLON.MeshBuilder.CreateSphere("compound fence brass bolt", { diameter: 0.075, segments: 10 }, scene);
+        bolt.parent = root;
+        bolt.position.set(x, groundY + level, z - 0.205);
+        bolt.material = mat.gold;
+        bolt.isPickable = false;
       }
     };
     const sideFenceRail = (x, z0, z1, height, material, name) => {
       const y0 = localGroundY(x, z0), y1 = localGroundY(x, z1);
-      const rail = box(name, { width: 0.15, height: 0.18, depth: Math.hypot(z1 - z0, y1 - y0) },
-        new BABYLON.Vector3(x, (y0 + y1) / 2 + height, (z0 + z1) / 2), material, root);
-      rail.rotation.x = Math.atan2(y1 - y0, z1 - z0);
+      const length = Math.hypot(z1 - z0, y1 - y0);
+      const rail = BABYLON.MeshBuilder.CreateCylinder(name,
+        { height: length, diameterTop: 0.16, diameterBottom: 0.21, tessellation: 12 }, scene);
+      rail.parent = root;
+      rail.position.set(x, (y0 + y1) / 2 + height, (z0 + z1) / 2);
+      rail.rotation.x = Math.atan2(z1 - z0, y1 - y0);
+      rail.material = material;
+      rail.isPickable = false;
+      rail.receiveShadows = true;
       return rail;
     };
     const crossFenceRail = (x0, x1, z, height, material, name) => {
       const y0 = localGroundY(x0, z), y1 = localGroundY(x1, z);
-      const rail = box(name, { width: Math.hypot(x1 - x0, y1 - y0), height: 0.18, depth: 0.15 },
-        new BABYLON.Vector3((x0 + x1) / 2, (y0 + y1) / 2 + height, z), material, root);
-      rail.rotation.z = Math.atan2(y1 - y0, x1 - x0);
+      const dx = x1 - x0, dy = y1 - y0;
+      const length = Math.hypot(dx, dy);
+      const rail = BABYLON.MeshBuilder.CreateCylinder(name,
+        { height: length, diameterTop: 0.16, diameterBottom: 0.21, tessellation: 12 }, scene);
+      rail.parent = root;
+      rail.position.set((x0 + x1) / 2, (y0 + y1) / 2 + height, z);
+      rail.rotation.z = Math.atan2(-dx, dy);
+      rail.material = material;
+      rail.isPickable = false;
+      rail.receiveShadows = true;
       return rail;
     };
     for (const x of [-13, 13]) {
@@ -4441,6 +4476,8 @@
     pinecrestLogEndgrainCount: scene ? scene.meshes.filter((mesh) => /Pinecrest .* log cut end/.test(mesh.name)).length : 0,
     compoundShadowCasterCount: Number(lights.compoundShadowCasterCount) || 0,
     compoundShadowMapSize: lights.shadows && lights.shadows.getShadowMap() ? lights.shadows.getShadowMap().getSize().width : 0,
+    compoundFencePostCount: scene ? scene.meshes.filter((mesh) => /compound (perimeter|north|gate) fence post/.test(mesh.name)).length : 0,
+    compoundFenceRailCount: scene ? scene.meshes.filter((mesh) => /compound (side|north|gate) fence (lower|upper) rail/.test(mesh.name)).length : 0,
     pinecrestRainGutterCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge metal rain gutter").length : 0,
     pinecrestWindowFlowerBoxCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest window flower box body").length : 0,
     pinecrestWoodshedPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest firewood shelter structural post").length : 0,
