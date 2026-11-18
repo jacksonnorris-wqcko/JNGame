@@ -1071,6 +1071,8 @@
         bolt.material = mat.gold;
         bolt.isPickable = false;
       }
+      // Keep the gate passage open while preventing the player walking through either post.
+      obstacles.push({ x: root.position.x + postX, z: root.position.z - 14, radius: 0.30 });
     }
     // A timber edge frame and corner fixings finish the sign board itself.
     for (const y of [gateGround + 2.12, gateGround + 2.98]) {
