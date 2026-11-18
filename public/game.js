@@ -96,6 +96,12 @@
   let harvestSignMaterial = null;
   let harvestSignFrontMesh = null;
   let cabinFireFlame = null;
+  let lodgeModelReady = false, lodgeModelLoading = false, lodgeModelFailed = false;
+  let lodgeModelMeshCount = 0, lodgeModelError = "";
+  let lodgeModelContainer = null, lodgeModelRoot = null;
+  let heroConiferReady = false, heroBroadleafReady = false;
+  let heroTreeModelCount = 0, heroTreeMeshCount = 0;
+  let heroVegetationFailures = [];
   let sceneInitError = "";
   // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
   const playerForward = new BABYLON.Vector3(0, 0, 1);
@@ -1907,6 +1913,197 @@
   }
 
 
+  function getImportedHierarchyBounds(rootNodes) {
+    const meshes = [];
+    for (const root of rootNodes || []) {
+      if (root instanceof BABYLON.AbstractMesh) meshes.push(root);
+      meshes.push(...root.getChildMeshes(false));
+    }
+    let min = new BABYLON.Vector3(Infinity, Infinity, Infinity);
+    let max = new BABYLON.Vector3(-Infinity, -Infinity, -Infinity);
+    let count = 0;
+    for (const mesh of meshes) {
+      if (!mesh || mesh.isDisposed() || mesh.getTotalVertices() < 1) continue;
+      mesh.computeWorldMatrix(true);
+      const bounds = mesh.getBoundingInfo().boundingBox;
+      min = BABYLON.Vector3.Minimize(min, bounds.minimumWorld);
+      max = BABYLON.Vector3.Maximize(max, bounds.maximumWorld);
+      count++;
+    }
+    return count ? { min, max, meshes, count } : null;
+  }
+
+  function hideLegacyCabinExterior(root) {
+    const legacyShell = /^(lodge stone foundation|lodge timber floor|front log course|rear log course|side log course|Pinecrest (front|rear|side) log cut end|lodge corner timber|lodge front cross beam|lodge rear cross beam|lodge timber gable|lodge pitched roof|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest gable (diagonal king timber|collar tie|king post|timber vent|vent brass rim|vent louver)|Pinecrest lodge front wall opaque backing|window recess|window glazed pane|window upright|window sill|window cross rail|window transom|window shutter backing|window shutter vertical slat|window shutter cross brace|window shutter iron hinge strap|window shutter brass hinge pin|Pinecrest window flower box body|Pinecrest window flower box front board|Pinecrest window flower box iron bracket|Pinecrest window box foliage|Pinecrest window box flower)$/i;
+    let hidden = 0;
+    for (const mesh of root.getChildMeshes(false)) {
+      if (!mesh || mesh.isDisposed()) continue;
+      if (legacyShell.test(mesh.name)) {
+        mesh.setEnabled(false);
+        hidden++;
+      }
+    }
+    return hidden;
+  }
+
+  function loadPinecrestLodgeModel(lodgeRoot) {
+    lodgeModelLoading = true;
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/buildings/", "pinecrest-lodge.glb", scene)
+      .then((container) => {
+        lodgeModelContainer = container;
+        const entries = container.instantiateModelsToScene(
+          (name) => "PINECREST_AUTHORED_LODGE__" + name,
+          true
+        );
+        const importedRoot = new BABYLON.TransformNode("Pinecrest authored log lodge", scene);
+        entries.rootNodes.forEach((node) => { node.parent = importedRoot; });
+        importedRoot.rotationQuaternion = null;
+        // The source asset faces +Z; the Pinecrest approach and interactive door face -Z.
+        importedRoot.rotation.y = Math.PI;
+        importedRoot.computeWorldMatrix(true);
+        const bounds = getImportedHierarchyBounds(entries.rootNodes);
+        if (!bounds) throw new Error("The lodge GLB contained no renderable mesh geometry");
+        const size = bounds.max.subtract(bounds.min);
+        if (size.x <= 0 || size.y <= 0 || size.z <= 0) throw new Error("The lodge GLB has invalid dimensions");
+
+        // Match the existing lodge footprint and wall height while retaining the
+        // asset's own interlocking logs, gable joinery, roof, barge boards and glazing.
+        const sx = 11.25 / size.x;
+        const sy = 7.45 / size.y;
+        const sz = 8.85 / size.z;
+        importedRoot.scaling.set(sx, sy, sz);
+        const centre = bounds.min.add(bounds.max).scale(0.5);
+        importedRoot.position.set(
+          lodgeRoot.position.x - centre.x * sx,
+          lodgeRoot.position.y - bounds.min.y * sy,
+          lodgeRoot.position.z - centre.z * sz
+        );
+        importedRoot.computeWorldMatrix(true);
+
+        // Keep the authored asset's own door frame but use Wildrange's existing
+        // interactive hinged door, which is already wired to the lodge interaction.
+        const importedNodes = entries.rootNodes.flatMap((node) => [node, ...node.getDescendants(false)]);
+        for (const node of importedNodes) {
+          const nodeName = String(node.name || "").toLowerCase();
+          if (/^(door|door_leaf|doorleaf|door_panel|doorpanel)(\.\d+)?$/.test(nodeName)) {
+            node.setEnabled(false);
+          }
+        }
+
+        const hiddenLegacyMeshCount = hideLegacyCabinExterior(lodgeRoot);
+        let meshCount = 0;
+        for (const mesh of getImportedHierarchyBounds(entries.rootNodes).meshes) {
+          mesh.isPickable = false;
+          mesh.receiveShadows = true;
+          mesh.metadata = { ...(mesh.metadata || {}), pinecrestAuthoredLodge: true };
+          if (lights.shadows && !/glass|window/i.test(mesh.name)) {
+            try { lights.shadows.addShadowCaster(mesh, false); } catch (error) { /* optional shadow detail */ }
+          }
+          meshCount++;
+        }
+        lodgeModelRoot = importedRoot;
+        lodgeModelMeshCount = meshCount;
+        lodgeModelReady = meshCount > 0;
+        lodgeModelFailed = !lodgeModelReady;
+        lodgeModelLoading = false;
+        if (!lodgeModelReady) throw new Error("The imported lodge produced no renderable meshes");
+        console.info("Pinecrest authored log lodge loaded", {
+          meshCount,
+          hiddenLegacyMeshCount,
+          dimensions: { x: size.x, y: size.y, z: size.z }
+        });
+      })
+      .catch((error) => {
+        lodgeModelLoading = false;
+        lodgeModelFailed = true;
+        lodgeModelError = error && error.message ? error.message : String(error);
+        modelLoadFailures.push("lodge: " + lodgeModelError);
+        console.error("Pinecrest authored lodge unavailable; retaining procedural lodge fallback:", error);
+      });
+  }
+
+  function instantiateHeroTree(container, label, x, z, targetHeight, instanceIndex) {
+    const entries = container.instantiateModelsToScene(
+      (name) => "PINECREST_HERO_" + label.toUpperCase() + "_" + instanceIndex + "__" + name,
+      false
+    );
+    const wrapper = new BABYLON.TransformNode("Pinecrest high-detail " + label + " tree " + instanceIndex, scene);
+    entries.rootNodes.forEach((node) => { node.parent = wrapper; });
+    wrapper.rotationQuaternion = null;
+    wrapper.rotation.y = rand(0, Math.PI * 2);
+    wrapper.computeWorldMatrix(true);
+    const bounds = getImportedHierarchyBounds(entries.rootNodes);
+    if (!bounds) throw new Error(label + " tree asset contained no renderable geometry");
+    const size = bounds.max.subtract(bounds.min);
+    const scale = targetHeight / size.y;
+    const centre = bounds.min.add(bounds.max).scale(0.5);
+    const ground = heightAt(x, z);
+    wrapper.scaling.setAll(scale);
+    wrapper.position.set(
+      x - centre.x * scale,
+      ground - bounds.min.y * scale,
+      z - centre.z * scale
+    );
+    wrapper.computeWorldMatrix(true);
+
+    // Replace any low-detail procedural tree occupying this hero-tree footprint.
+    for (const node of scene.transformNodes) {
+      if (node === wrapper || node.name !== "forest-tree-root" || !node.isEnabled()) continue;
+      if (Math.hypot(node.position.x - x, node.position.z - z) < 6.2) node.setEnabled(false);
+    }
+
+    for (const mesh of getImportedHierarchyBounds(entries.rootNodes).meshes) {
+      mesh.isPickable = false;
+      mesh.receiveShadows = true;
+      mesh.metadata = { ...(mesh.metadata || {}), pinecrestHeroVegetation: label };
+      if (lights.shadows && !mesh.material?.needAlphaBlending?.()) {
+        try { lights.shadows.addShadowCaster(mesh, false); } catch (error) { /* leaf geometry may skip shadowing */ }
+      }
+      heroTreeMeshCount++;
+    }
+    obstacles.push({ x, z, radius: label === "conifer" ? 3.5 : 3.0 });
+    heroTreeModelCount++;
+  }
+
+  function loadPinecrestHeroVegetation() {
+    const coniferPlacements = [
+      { x: -47, z: 43, height: 15.0 },
+      { x: 19, z: 61, height: 14.0 }
+    ];
+    const broadleafPlacements = [
+      { x: -46, z: 63, height: 9.0 },
+      { x: 20, z: 43, height: 9.5 }
+    ];
+
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "conifer-detailed.glb", scene)
+      .then((container) => {
+        coniferPlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "conifer", point.x, point.z, point.height, index + 1)
+        );
+        heroConiferReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("conifer: " + message);
+        modelLoadFailures.push("conifer: " + message);
+        console.error("Pinecrest detailed conifers unavailable; retaining procedural forest:", error);
+      });
+
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "linden-detailed.glb", scene)
+      .then((container) => {
+        broadleafPlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "broadleaf", point.x, point.z, point.height, index + 1)
+        );
+        heroBroadleafReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("broadleaf: " + message);
+        modelLoadFailures.push("broadleaf: " + message);
+        console.error("Pinecrest detailed broadleaf trees unavailable; retaining procedural forest:", error);
+      });
+  }
+
   function buildPinecrestCompoundAccess() {
     // Join the outpost to the main forest trail with a gentle, graded approach.
     makePath([
@@ -3021,9 +3218,12 @@
     createGroundCover();
     scatterUndergrowth();
     createCabin();
+    const pinecrestLodgeRoot = scene.getTransformNodeByName("Pinecrest timber lodge");
+    if (pinecrestLodgeRoot) loadPinecrestLodgeModel(pinecrestLodgeRoot);
     buildPinecrestCompoundAccess();
     buildPinecrestCompoundLife();
     createWildlife();
+    loadPinecrestHeroVegetation();
     mergeStaticScenery();
 
     const spawnX = Number.isFinite(state.x) ? state.x : 0;
@@ -4468,6 +4668,16 @@
     gateSignBackReady: Boolean(gateSignBackTexture && gateSignBackTexture.isReady()),
     cabinSignReady: Boolean(cabinSignTexture && cabinSignTexture.isReady()),
     cabinSignSupportPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge sign structural timber post").length : 0,
+    lodgeModelReady,
+    lodgeModelLoading,
+    lodgeModelFailed,
+    lodgeModelMeshCount,
+    lodgeModelError,
+    heroConiferReady,
+    heroBroadleafReady,
+    heroTreeModelCount,
+    heroTreeMeshCount,
+    heroVegetationFailures: heroVegetationFailures.slice(),
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
     pinecrestGableBeamCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gable diagonal king timber").length : 0,
