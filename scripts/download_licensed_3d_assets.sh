@@ -25,6 +25,11 @@ fetch_asset \
   "Log cabin 3 x 3 m, apex roof (CC0)"
 
 fetch_asset \
+  "https://grab3d.com/dl/mountain-hut/mountain-hut.glb" \
+  "$BUILDINGS/pinecrest-mountain-hut.glb" \
+  "Mountain Hut architectural lodge model (CC0)"
+
+fetch_asset \
   "https://www.innerscene.com/api/library/conifer-detailed-needles-ca8e7cef/download" \
   "$VEGETATION/conifer-detailed.glb" \
   "Conifer, detailed needles (CC0)"
@@ -34,13 +39,14 @@ fetch_asset \
   "$VEGETATION/linden-detailed.glb" \
   "Linden street tree, detailed leaves (CC0)"
 
-python3 - "$BUILDINGS/pinecrest-lodge.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" <<'PY'
+python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" <<'PY'
 import os
 import struct
 import sys
 
 minimum_bytes = {
     "pinecrest-lodge.glb": 1_000_000,
+    "pinecrest-mountain-hut.glb": 2_000_000,
     "conifer-detailed.glb": 1_000_000,
     "linden-detailed.glb": 1_000_000,
 }
