@@ -8,7 +8,8 @@ The following 3D meshes are bundled and modified in Wildrange.
 - Marksman Rifle and Bipod by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2), CC0 1.0 Universal.
 - Forest Boar, Jointed by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a), CC0 1.0 Universal.
 - White-Tailed Deer high-detail static source by Grab3D (https://grab3d.com/models/animals/deer/), CC0 1.0 Universal. Imported for future retopology and rigging; not used as a live game model.
-\n## Build-time CC0 architecture and vegetation assets
+
+## Build-time CC0 architecture and vegetation assets
 
 The following models are downloaded by scripts/download_licensed_3d_assets.sh for the browser/Pages build.
 
