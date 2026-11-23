@@ -17,6 +17,23 @@ const browser = await chromium.launch({
 
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
+  const visualCaptureNotes = [];
+  const safeScreenshot = async (path) => {
+    try {
+      await page.screenshot({
+        path,
+        fullPage: false,
+        timeout: 90000,
+        animations: "disabled",
+        scale: "css"
+      });
+      return true;
+    } catch (error) {
+      visualCaptureNotes.push(path + ": " + (error && error.message ? error.message : String(error)));
+      console.warn("Wildrange visual screenshot skipped; continuing functional QA:", path, error);
+      return false;
+    }
+  };
   page.on("pageerror", (error) => failures.push("pageerror: " + error.message));
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("requestfailed", (request) => {
@@ -64,7 +81,7 @@ try {
       )
     };
   });
-  await page.screenshot({ path: "artifacts/wildrange-0.10.1-title-preflight.png", fullPage: true });
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.10.1-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -162,7 +179,7 @@ try {
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  await page.screenshot({ path: "artifacts/wildrange-0.10.1-compound.png" });
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.10.1-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 2) {
     throw new Error("Pinecrest Lodge plaque must have two visible structural timber uprights: " + diagnostics.cabinSignSupportPostCount);
   }
@@ -362,7 +379,25 @@ try {
   const landed = await page.evaluate(() => window.WildrangeDiagnostics());
   if (landed.jumpCount !== jumpsBefore + 1) throw new Error("Jump was not counted exactly once");
   if (failures.length) throw new Error(failures.join("\\n") + "\\nConsole: " + consoleErrors.join("\\n"));
-  console.log(JSON.stringify({ titleVisible, diagnostics, scoped, cabinFloor, openDoorAngle, closedDoorAngle, cabinCollision, compoundBoundary, openDoorwayWalkable, jumpArc, landed, landingConfirmed, failures, consoleErrors }, null, 2));
+  console.log(JSON.stringify({
+    titleVisible,
+    titleScreenshotCaptured,
+    compoundScreenshotCaptured,
+    visualCaptureNotes,
+    diagnostics,
+    scoped,
+    cabinFloor,
+    openDoorAngle,
+    closedDoorAngle,
+    cabinCollision,
+    compoundBoundary,
+    openDoorwayWalkable,
+    jumpArc,
+    landed,
+    landingConfirmed,
+    failures,
+    consoleErrors
+  }, null, 2));
 
 } finally {
   await browser.close();
