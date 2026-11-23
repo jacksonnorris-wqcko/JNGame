@@ -47,7 +47,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.10.2&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.0&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -81,7 +81,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.10.2-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.0-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -153,16 +153,30 @@ try {
   await page.waitForFunction(() => {
     const state = window.WildrangeDiagnostics?.();
     return state && !state.lodgeModelLoading && state.lodgeModelReady &&
+      state.lodgeModelAssetName === "pinecrest-mountain-hut.glb" &&
+      !state.lodgeModelUsedFallback &&
       state.heroConiferReady && state.heroBroadleafReady && state.heroTreeModelCount === 4;
   }, null, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
-  if (!diagnostics.lodgeModelReady || diagnostics.lodgeModelMeshCount < 1) {
-    throw new Error("The authored Pinecrest log lodge GLB did not load: " + JSON.stringify({
+  if (!diagnostics.lodgeModelReady ||
+      diagnostics.lodgeModelAssetName !== "pinecrest-mountain-hut.glb" ||
+      diagnostics.lodgeModelUsedFallback ||
+      diagnostics.lodgeModelMeshCount < 8 ||
+      diagnostics.lodgeModelUniformScale <= 0 ||
+      diagnostics.lodgeModelWorldDimensions.x < 11.5 ||
+      diagnostics.lodgeModelWorldDimensions.z < 10.0 ||
+      diagnostics.lodgeModelWorldDimensions.y < 5.7) {
+    throw new Error("The full-scale Pinecrest Mountain Hut did not load with correct proportions: " + JSON.stringify({
       ready: diagnostics.lodgeModelReady,
+      asset: diagnostics.lodgeModelAssetName,
+      fallback: diagnostics.lodgeModelUsedFallback,
       failed: diagnostics.lodgeModelFailed,
       error: diagnostics.lodgeModelError,
-      meshes: diagnostics.lodgeModelMeshCount
+      meshes: diagnostics.lodgeModelMeshCount,
+      uniformScale: diagnostics.lodgeModelUniformScale,
+      dimensions: diagnostics.lodgeModelWorldDimensions,
+      nodeNames: diagnostics.lodgeModelNodeNames
     }));
   }
   if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
@@ -179,7 +193,7 @@ try {
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.10.2-compound.png");
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.0-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 2) {
     throw new Error("Pinecrest Lodge plaque must have two visible structural timber uprights: " + diagnostics.cabinSignSupportPostCount);
   }
@@ -384,7 +398,10 @@ try {
     titleScreenshotCaptured,
     compoundScreenshotCaptured,
     visualCaptureNotes,
-    diagnostics,
+    diagnostics: {
+      ...diagnostics,
+      lodgeModelNodeNames: (diagnostics.lodgeModelNodeNames || []).slice(0, 60)
+    },
     scoped,
     cabinFloor,
     openDoorAngle,
