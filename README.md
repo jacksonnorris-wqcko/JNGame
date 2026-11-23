@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.10.1**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.10.2**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -171,6 +171,12 @@ This pass adds complete GLB assets instead of relying only on the scene's proced
 The three source models are CC0 1.0 Universal from Innerscene. They are downloaded into the Pages/CI build by `scripts/download_licensed_3d_assets.sh`, validated as glTF 2.0 binary files, and then included in the Pages artifact. This avoids placing the binary model files in source control while keeping the game itself self-contained after deployment.
 
 The Playwright browser test waits for the lodge and all four hero tree instances, asserts that their detailed source geometry has been compacted into a small render-mesh count, and uploads title-screen and compound screenshots for visual verification.
+
+## 0.10.2 compound QA correction
+
+The 0.10.1 browser smoke run reached the compound and verified the roof material, end-grain faces and shadow system. Its only reported failure was a diagnostic naming mismatch: the four gate rails were called `compound gate lower/upper rail`, while the diagnostic matcher expected the word `fence`. The gate rail objects were present; their names now consistently include `compound gate fence`, so the complete fence count is 48 as designed.
+
+The title preflight screenshot was captured successfully. Browser QA now uses non-blocking viewport screenshots, then proceeds with the Start click and imported-model checks. Build and browser asset references are 0.10.2.
 
 ## Cost
 
