@@ -1,12 +1,13 @@
 {
-  "version": 3,
+  "version": 4,
   "license": "Mixed: CC0 1.0 Universal and CC BY 4.0; see per-asset records and models/ATTRIBUTION.md",
   "sources": {
     "ambientCG": "https://ambientcg.com/",
     "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest",
     "Polyfork": "https://polyfork.dev/licensing",
     "3D Assets": "https://3dassets.dev/",
-    "Innerscene 3D Parts Library": "https://www.innerscene.com/tools/library/3d-parts/"
+    "Innerscene 3D Parts Library": "https://www.innerscene.com/tools/library/3d-parts/",
+    "Grab3D": "https://grab3d.com/models/buildings/mountain-hut/"
   },
   "assets": [
     {
