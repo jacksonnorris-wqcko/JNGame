@@ -91,6 +91,8 @@ jobs:
               "public/assets/animals/pig-base.glb",
               "public/assets/weapons/bolt-action-rifle.glb",
               "public/assets/models/ATTRIBUTION.md",
+              "public/assets/buildings/pinecrest-lodge.glb",
+              "public/assets/buildings/pinecrest-mountain-hut.glb",
               "public/assets/asset-manifest.json"
             ];
             for (const file of requiredAssets) {
@@ -98,6 +100,11 @@ jobs:
             }
             const manifest = JSON.parse(fs.readFileSync("public/assets/asset-manifest.json", "utf8"));
             const models = new Map((manifest.assets || []).filter((asset) => asset.path).map((asset) => [asset.path, asset]));
+            const mountainHutRecord = models.get("buildings/pinecrest-mountain-hut.glb");
+            if (!mountainHutRecord || mountainHutRecord.license !== "CC0 1.0 Universal" ||
+                mountainHutRecord.source !== "https://grab3d.com/models/buildings/mountain-hut/") {
+              throw new Error("The primary Pinecrest Mountain Hut GLB must have its CC0 source/license record");
+            }
             const modelChecks = [
               { path: "animals/deer-base.glb", minBytes: 100000, meshes: 1, skins: 1, nodes: ["Head", "Neck", "LeftFrontUpLeg", "RightHindUpLeg"], clips: ["Idle", "Walk", "Run"] },
               { path: "animals/pig-base.glb", minBytes: 100000, meshes: 1, skins: 1, nodes: ["Head", "Jaw", "LeftFrontUpLeg", "RightHindUpLeg"], clips: ["Idle", "Walk", "Run"] },
@@ -166,7 +173,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wildrange-0.10.2-compound-visual
+          name: wildrange-0.11.0-lodge-redesign-visual
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
