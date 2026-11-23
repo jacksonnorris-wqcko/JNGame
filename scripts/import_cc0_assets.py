@@ -102,6 +102,15 @@ BUILD_TIME_ASSETS = [
         "integration": "Pinecrest Lodge authored exterior shell; Wildrange interior, interactive door, porch and compound systems retained"
     },
     {
+        "asset": "Mountain Hut",
+        "status": "downloaded-at-build",
+        "path": "buildings/pinecrest-mountain-hut.glb",
+        "approximate_bytes": 2700000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://grab3d.com/models/buildings/mountain-hut/",
+        "integration": "Primary Pinecrest Lodge architecture: stone lower level, dark timber upper level, weighted shingle roof, chimney and terrace"
+    },
+    {
         "asset": "Conifer, detailed needles",
         "status": "downloaded-at-build",
         "path": "vegetation/conifer-detailed.glb",
@@ -284,6 +293,7 @@ The following 3D meshes are bundled and modified in Wildrange.
 The following models are downloaded by scripts/download_licensed_3d_assets.sh for the browser/Pages build.
 
 - Log cabin 3 x 3 m, apex roof (https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac), CC0 1.0 Universal. Used as the authored Pinecrest Lodge exterior.
+- Mountain Hut by Grab3D (https://grab3d.com/models/buildings/mountain-hut/), CC0 1.0 Universal. Used as the primary Pinecrest Lodge architecture.
 - Conifer, detailed needles (https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef), CC0 1.0 Universal. Used for high-detail hero conifers.
 - Linden street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e), CC0 1.0 Universal. Used for high-detail hero broadleaf trees.
 """,
