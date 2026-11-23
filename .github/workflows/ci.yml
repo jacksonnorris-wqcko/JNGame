@@ -167,6 +167,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wildrange-0.10.0-compound-visual
-          path: artifacts/wildrange-0.10.0-compound.png
+          path: artifacts/
           if-no-files-found: warn
           retention-days: 14
