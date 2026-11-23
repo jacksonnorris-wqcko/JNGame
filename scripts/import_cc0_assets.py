@@ -278,11 +278,11 @@ def write_model_attributions() -> None:
         "- Forest Boar, Jointed by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a), CC0 1.0 Universal.\n"
         "- White-Tailed Deer high-detail static source by Grab3D (https://grab3d.com/models/animals/deer/), CC0 1.0 Universal. Imported for future retopology and rigging; not used as a live game model.\n"
         "\\n"
-        "## Build-time CC0 architecture and vegetation assets\\n\\n"
-        "The following models are downloaded by scripts/download_licensed_3d_assets.sh for the browser/Pages build.\\n\\n"
-        "- Log cabin 3 x 3 m, apex roof (https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac), CC0 1.0 Universal. Used as the authored Pinecrest Lodge exterior.\\n"
-        "- Conifer, detailed needles (https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef), CC0 1.0 Universal. Used for high-detail hero conifers.\\n"
-        "- Linden street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e), CC0 1.0 Universal. Used for high-detail hero broadleaf trees.\\n",
+        "## Build-time CC0 architecture and vegetation assets\n\n"
+        "The following models are downloaded by scripts/download_licensed_3d_assets.sh for the browser/Pages build.\n\n"
+        "- Log cabin 3 x 3 m, apex roof (https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac), CC0 1.0 Universal. Used as the authored Pinecrest Lodge exterior.\n"
+        "- Conifer, detailed needles (https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef), CC0 1.0 Universal. Used for high-detail hero conifers.\n"
+        "- Linden street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e), CC0 1.0 Universal. Used for high-detail hero broadleaf trees.\n",
         encoding="utf-8",
     )
 
