@@ -34,18 +34,61 @@ try {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
-  await page.waitForFunction(() => window.BABYLON && window.WildrangeDiagnostics, { timeout: 45000 });
-  await page.waitForTimeout(9000);
-
-  const titleVisible = await page.locator("#start-screen").evaluate((el) =>
-    getComputedStyle(el).display !== "none"
+  await page.waitForFunction(
+    () => Boolean(window.BABYLON && window.WildrangeDiagnostics),
+    null,
+    { timeout: 45000 }
   );
-  if (!titleVisible) throw new Error("Wildrange title screen did not appear");
+  await page.waitForTimeout(2500);
 
-  await page.locator("#player-name").fill("RANGER QA");
-  await page.locator("#start-button").click();
-  await page.waitForFunction(() =>
-    getComputedStyle(document.querySelector("#start-screen")).display === "none",
+  // Capture the title page before interacting. This makes a failed UI assertion
+  // inspectable as a workflow artifact instead of leaving only a locator timeout.
+  await fs.promises.mkdir("artifacts", { recursive: true });
+  const titleDom = await page.evaluate(() => {
+    const start = document.getElementById("start-screen");
+    const button = document.getElementById("start-button");
+    const name = document.getElementById("player-name");
+    return {
+      url: location.href,
+      readyState: document.readyState,
+      title: document.title,
+      bodyChildren: document.body?.children.length || 0,
+      startScreenFound: Boolean(start),
+      startScreenDisplay: start ? getComputedStyle(start).display : null,
+      startScreenVisibility: start ? getComputedStyle(start).visibility : null,
+      startButtonFound: Boolean(button),
+      playerNameFound: Boolean(name),
+      htmlStartExcerpt: document.documentElement.innerHTML.slice(
+        Math.max(0, document.documentElement.innerHTML.indexOf("start-screen") - 180),
+        document.documentElement.innerHTML.indexOf("start-screen") + 900
+      )
+    };
+  });
+  await page.screenshot({ path: "artifacts/wildrange-0.10.0-title-preflight.png", fullPage: true });
+  if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
+    throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
+      ...titleDom,
+      pageErrors: failures,
+      consoleErrors
+    }));
+  }
+  const titleVisible = titleDom.startScreenDisplay !== "none" && titleDom.startScreenVisibility !== "hidden";
+  if (!titleVisible) throw new Error("Wildrange title screen is not visible: " + JSON.stringify(titleDom));
+
+  // Drive the same native button click as a player, but avoid a selector wait
+  // that can mask the underlying page DOM if the UI is being replaced.
+  await page.evaluate(() => {
+    const name = document.getElementById("player-name");
+    const button = document.getElementById("start-button");
+    name.value = "RANGER QA";
+    button.click();
+  });
+  await page.waitForFunction(
+    () => {
+      const start = document.getElementById("start-screen");
+      return start && getComputedStyle(start).display === "none";
+    },
+    null,
     { timeout: 10000 }
   );
   await page.waitForFunction(() => {
