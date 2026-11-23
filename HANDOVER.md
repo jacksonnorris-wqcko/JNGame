@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.10.0`  
+**Current source build:** `0.10.1`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -85,17 +85,26 @@ This pass addresses the remaining "primitive assembly" look by changing the mate
 
 The 0.9.0 pass is intended as the beginning of the asset/material quality phase. It does not yet replace the cabin with an external detailed architecture GLB; any external GLB candidate needs to be downloaded, inspected, licensed and tested for fit before integration. A successful Actions run and visual browser review are still required before calling this release verified.
 
-## 0.10.0 authored 3D environment model pass
+## 0.10.1 authored 3D environment model pass
 
 This is the first pass that integrates larger, authored GLB architecture and vegetation assets into the compound:
 
 - Pinecrest Lodge loads the CC0 Innerscene log-cabin model from `public/assets/buildings/pinecrest-lodge.glb`. The model contains interlocking round logs, crossed corners, log gables, a shingled apex roof, barge boards, two windows and a glazed door. The imported mesh is fit to the existing lodge footprint. Existing interior furniture, Wildrange's interactive hinged door, signage, porch and compound access systems remain in place.
 - Four hero trees are instantiated from two CC0 assets: two detailed-needle conifers and two individually modelled-leaf linden trees. Remaining distant forest geometry uses the existing procedural system.
+- Each imported tree is material-batched during instantiation. The CC0 sources contain about 1,551 conifer geometry nodes and 625 linden geometry nodes; batching reduces those to a small set of render meshes per tree while preserving the materials and high-detail geometry. Diagnostics record both source mesh and final render mesh counts.
 - The procedural cabin/forest remains as a fallback if any downloaded model is unavailable.
 - `scripts/download_licensed_3d_assets.sh` downloads the three binary GLBs from Innerscene and validates the glTF 2.0 header and file size.
 - Both CI jobs and the GitHub Pages workflow run the asset downloader before tests/deployment.
-- Playwright now waits for the imported lodge and four hero trees, checks that the new model assets are usable, and captures `artifacts/wildrange-0.10.0-compound.png` for visual verification.
+- Playwright now waits for the imported lodge and four hero trees, checks that the new model assets are usable, and captures `artifacts/wildrange-0.10.1-compound.png` for visual verification.
 - The asset manifest and model provenance record the CC0 licenses and sources.
+
+## 0.10.1 performance and verification follow-up
+
+- Hero-tree mesh batching is now performed per instance and per material before applying world placement. The expected total source geometry count is greater than 4,000 across the four hero trees; the final render mesh count must remain between 8 and 40.
+- The imported static lodge door leaf, glazing and its static hardware are explicitly hidden so the existing interactive Wildrange door remains the only visible leaf.
+- Browser smoke test now reads the title-screen state through the page DOM, captures a preflight screenshot, clicks the real Start button and waits for the start overlay to close. It also uploads artifacts from failures so the title and in-game compound can be inspected.
+- The old CC0 texture-import workflow now only imports/commits PBR textures and HDRI. It no longer attempts a second Pages deployment; pages.yml is the single publishing workflow.
+- Browser asset cache-busters and title version are 0.10.1.
 
 ## 0.10.0 files and integration points
 
