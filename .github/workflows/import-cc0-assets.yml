@@ -1,4 +1,4 @@
-name: Import CC0 graphics assets and deploy
+name: Import CC0 graphics assets
 
 on:
   push:
@@ -11,8 +11,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: wildrange-asset-import
@@ -43,15 +41,3 @@ jobs:
           else
             echo "CC0 assets already present; no asset commit needed."
           fi
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-      - name: Upload updated browser game
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: public
-          name: wildrange-pages-assets-${{ github.run_attempt }}
-      - name: Deploy updated browser game
-        id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          artifact_name: wildrange-pages-assets-${{ github.run_attempt }}
