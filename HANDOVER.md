@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.10.2`  
+**Current source build:** `0.11.0`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -121,6 +121,23 @@ The 0.10.0 source has been parser-checked. The actual GLB downloads and browser 
 The 0.10.1 headless browser run successfully loaded the title screen, started the game, and passed the high-fidelity material/shadow diagnostics. It reported 44 fence rails against an expected 48. Investigation found four gate rails were excluded by the diagnostics regular expression because their mesh names were `compound gate lower/upper rail`, without the word `fence`. The four rails existed in the scene; the names have been standardised to `compound gate fence lower/upper rail`. No fence geometry or collision layout was changed.
 
 The 0.10.1 title preflight screenshot was successfully captured. The compound screenshot assertion was not reached because the fence diagnostic aborted the run. 0.10.2 reruns the browser test with the corrected naming, verifies all 48 fence rails and continues to the lodge and hero-tree asset readiness checks.
+
+## 0.11.0 Pinecrest Lodge architectural redesign
+
+The primary lodge asset is now Grab3D's Mountain Hut (CC0 1.0 Universal) rather than the stretched 3 x 3 m Innerscene cabin.
+
+- Asset: `public/assets/buildings/pinecrest-mountain-hut.glb`
+- Source: https://grab3d.com/models/buildings/mountain-hut/
+- License: CC0 1.0 Universal.
+- Model source dimensions: 13.76 × 12.15 × 7.07 m.
+- Source geometry: 37,766 triangles, 2K PBR maps for base colour, roughness, metallic and normal.
+- Architectural elements: rubble-stone ground floor, dark timber upper floor/gable, weighted shingle roof, stone chimney, shutters, windows and raised terrace.
+- Runtime fit: one uniform scale is calculated from target X/Y/Z bounds, preserving the authored aspect ratio. Model is centred on the existing Pinecrest root, base aligned to ground.
+- Fallback: the prior Innerscene log cabin remains loaded if the Mountain Hut GLB cannot be fetched or imported.
+- Legacy procedural porch platform, individual deck boards, stairs, canopy, balusters, handrails, porch braces, rain gutters/downpipes and stove flue are hidden for the primary Mountain Hut so its own terrace and roof details are not doubled.
+- The game continues to use the existing Wildrange interior, gameplay systems and interactive door.
+
+The build script downloads the model from Grab3D's direct GLB endpoint and validates file size, glTF magic, version 2 and declared file length. CI checks the primary asset path and its CC0 provenance. Browser QA requires the Mountain Hut to load without fallback and verifies its final dimensions and uniform scaling before capturing the compound screenshot.
 
 ## Validation status
 
