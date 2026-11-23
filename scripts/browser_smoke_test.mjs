@@ -149,12 +149,15 @@ try {
     }));
   }
   if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
-      diagnostics.heroTreeModelCount !== 4 || diagnostics.heroTreeMeshCount < 2) {
-    throw new Error("The high-detail hero tree assets did not load: " + JSON.stringify({
+      diagnostics.heroTreeModelCount !== 4 ||
+      diagnostics.heroTreeSourceMeshCount < 4000 ||
+      diagnostics.heroTreeMeshCount < 8 || diagnostics.heroTreeMeshCount > 40) {
+    throw new Error("The detailed hero trees did not load or were not efficiently batched: " + JSON.stringify({
       conifer: diagnostics.heroConiferReady,
       broadleaf: diagnostics.heroBroadleafReady,
       treeInstances: diagnostics.heroTreeModelCount,
-      treeMeshes: diagnostics.heroTreeMeshCount,
+      sourceMeshes: diagnostics.heroTreeSourceMeshCount,
+      renderMeshesAfterBatching: diagnostics.heroTreeMeshCount,
       failures: diagnostics.heroVegetationFailures
     }));
   }
