@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.10.1`  
+**Current source build:** `0.10.2`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -115,6 +115,12 @@ This is the first pass that integrates larger, authored GLB architecture and veg
 - `.github/workflows/ci.yml` and `.github/workflows/pages.yml`: download assets during validation and deployment.
 
 The 0.10.0 source has been parser-checked. The actual GLB downloads and browser screenshot must still be verified by the GitHub Actions run before declaring the deployed scene visually approved.
+
+## 0.10.2 QA correction and current status
+
+The 0.10.1 headless browser run successfully loaded the title screen, started the game, and passed the high-fidelity material/shadow diagnostics. It reported 44 fence rails against an expected 48. Investigation found four gate rails were excluded by the diagnostics regular expression because their mesh names were `compound gate lower/upper rail`, without the word `fence`. The four rails existed in the scene; the names have been standardised to `compound gate fence lower/upper rail`. No fence geometry or collision layout was changed.
+
+The 0.10.1 title preflight screenshot was successfully captured. The compound screenshot assertion was not reached because the fence diagnostic aborted the run. 0.10.2 reruns the browser test with the corrected naming, verifies all 48 fence rails and continues to the lodge and hero-tree asset readiness checks.
 
 ## Validation status
 
