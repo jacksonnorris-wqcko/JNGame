@@ -94,7 +94,7 @@ try {
   await page.waitForFunction(() => {
     const diagnostics = window.WildrangeDiagnostics?.();
     return diagnostics && (diagnostics.sceneReady || diagnostics.sceneInitError);
-  }, { timeout: 45000 });
+  }, null, { timeout: 45000 });
   const startupDiagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (startupDiagnostics.pinecrestRoofSurfaceCount !== 2 ||
       !startupDiagnostics.pinecrestRoofShingleMaterialReady ||
@@ -132,12 +132,12 @@ try {
   await page.waitForFunction(() => {
     const state = window.WildrangeDiagnostics?.();
     return state && state.importedAnimalCount >= 9 && state.weaponModelReady;
-  }, { timeout: 45000 });
+  }, null, { timeout: 45000 });
   await page.waitForFunction(() => {
     const state = window.WildrangeDiagnostics?.();
     return state && !state.lodgeModelLoading && state.lodgeModelReady &&
       state.heroConiferReady && state.heroBroadleafReady && state.heroTreeModelCount === 4;
-  }, { timeout: 90000 });
+  }, null, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!diagnostics.lodgeModelReady || diagnostics.lodgeModelMeshCount < 1) {
@@ -328,13 +328,13 @@ try {
   await page.waitForFunction(() => {
     const state = window.WildrangeDiagnostics?.();
     return state && state.aiming && state.scopeVisible;
-  }, { timeout: 8000 });
+  }, null, { timeout: 8000 });
   const scoped = await page.evaluate(() => window.WildrangeDiagnostics());
   if (scoped.scopeZoom !== 4) throw new Error("Default optic magnification was not 4x");
   await page.mouse.wheel(0, -500);
-  await page.waitForFunction(() => window.WildrangeDiagnostics?.().scopeZoom === 6, { timeout: 3000 });
+  await page.waitForFunction(() => window.WildrangeDiagnostics?.().scopeZoom === 6, null, { timeout: 3000 });
   await page.mouse.up({ button: "right" });
-  await page.waitForFunction(() => !window.WildrangeDiagnostics?.().aiming, { timeout: 3000 });
+  await page.waitForFunction(() => !window.WildrangeDiagnostics?.().aiming, null, { timeout: 3000 });
   const jumpsBefore = await page.evaluate(() => window.WildrangeDiagnostics().jumpCount);
   await page.keyboard.press("Space");
   // On heavily throttled headless GPUs the entire airborne phase can occur
