@@ -88,6 +88,39 @@ GAME_MODELS = [
         "source": "https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2",
     },
 ]
+# These models are downloaded by scripts/download_licensed_3d_assets.sh
+# in the browser/Pages build, but are listed here so later asset imports never
+# erase their provenance from the canonical asset manifest.
+BUILD_TIME_ASSETS = [
+    {
+        "asset": "Log cabin 3 x 3 m, apex roof",
+        "status": "downloaded-at-build",
+        "path": "buildings/pinecrest-lodge.glb",
+        "approximate_bytes": 4423912,
+        "license": "CC0 1.0 Universal",
+        "source": "https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac",
+        "integration": "Pinecrest Lodge authored exterior shell; Wildrange interior, interactive door, porch and compound systems retained"
+    },
+    {
+        "asset": "Conifer, detailed needles",
+        "status": "downloaded-at-build",
+        "path": "vegetation/conifer-detailed.glb",
+        "approximate_bytes": 7998880,
+        "license": "CC0 1.0 Universal",
+        "source": "https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef",
+        "integration": "Two high-detail hero conifers around Pinecrest compound"
+    },
+    {
+        "asset": "Linden street tree, detailed leaves",
+        "status": "downloaded-at-build",
+        "path": "vegetation/linden-detailed.glb",
+        "approximate_bytes": 3840824,
+        "license": "CC0 1.0 Universal",
+        "source": "https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e",
+        "integration": "Two high-detail hero broadleaf trees around Pinecrest compound"
+    }
+]
+
 ATTRIBUTION_PATH = ROOT / "public" / "assets" / "models" / "ATTRIBUTION.md"
 
 
@@ -243,7 +276,13 @@ def write_model_attributions() -> None:
         "- Bolt-Action Rifle by Polyfork (https://polyfork.dev/asset/bolt-action-rifle-2f1793), CC BY 4.0.\n"
         "- Marksman Rifle and Bipod by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-weapon-marksman-rifle-e20c7bc2), CC0 1.0 Universal.\n"
         "- Forest Boar, Jointed by 3DAssets.dev (https://3dassets.dev/assets/fps-survival-forest-outpost-creature-boar-2eae041a), CC0 1.0 Universal.\n"
-        "- White-Tailed Deer high-detail static source by Grab3D (https://grab3d.com/models/animals/deer/), CC0 1.0 Universal. Imported for future retopology and rigging; not used as a live game model.\n",
+        "- White-Tailed Deer high-detail static source by Grab3D (https://grab3d.com/models/animals/deer/), CC0 1.0 Universal. Imported for future retopology and rigging; not used as a live game model.\n"
+        "\\n"
+        "## Build-time CC0 architecture and vegetation assets\\n\\n"
+        "The following models are downloaded by scripts/download_licensed_3d_assets.sh for the browser/Pages build.\\n\\n"
+        "- Log cabin 3 x 3 m, apex roof (https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac), CC0 1.0 Universal. Used as the authored Pinecrest Lodge exterior.\\n"
+        "- Conifer, detailed needles (https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef), CC0 1.0 Universal. Used for high-detail hero conifers.\\n"
+        "- Linden street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e), CC0 1.0 Universal. Used for high-detail hero broadleaf trees.\\n",
         encoding="utf-8",
     )
 
@@ -255,15 +294,16 @@ def main() -> None:
     results.extend(import_game_model(model) for model in GAME_MODELS)
     write_model_attributions()
     manifest = {
-        "version": 2,
+        "version": 3,
         "license": "Mixed: CC0 1.0 Universal and CC BY 4.0; see per-asset records and models/ATTRIBUTION.md",
         "sources": {
             "ambientCG": "https://ambientcg.com/",
             "Poly Haven": "https://polyhaven.com/a/nature_reserve_forest",
             "Polyfork": "https://polyfork.dev/licensing",
-            "3D Assets": "https://3dassets.dev/"
+            "3D Assets": "https://3dassets.dev/",
+            "Innerscene 3D Parts Library": "https://www.innerscene.com/tools/library/3d-parts/"
         },
-        "assets": results
+        "assets": results + BUILD_TIME_ASSETS
     }
     (ROOT / "public" / "assets" / "asset-manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n",
