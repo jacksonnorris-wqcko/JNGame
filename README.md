@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.10.2**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.11.0**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -177,6 +177,16 @@ The Playwright browser test waits for the lodge and all four hero tree instances
 The 0.10.1 browser smoke run reached the compound and verified the roof material, end-grain faces and shadow system. Its only reported failure was a diagnostic naming mismatch: the four gate rails were called `compound gate lower/upper rail`, while the diagnostic matcher expected the word `fence`. The gate rail objects were present; their names now consistently include `compound gate fence`, so the complete fence count is 48 as designed.
 
 The title preflight screenshot was captured successfully. Browser QA now uses non-blocking viewport screenshots, then proceeds with the Start click and imported-model checks. Build and browser asset references are 0.10.2.
+
+## Pinecrest Lodge architectural redesign — 0.11.0
+
+The main lodge is now being replaced by a full-scale authored mountain-hut model rather than the small 3 x 3 m garden cabin previously stretched non-uniformly to fit the compound.
+
+The primary asset is Grab3D's Mountain Hut (CC0 1.0 Universal): 37,766 triangles, 2K PBR base-colour/roughness/metallic/normal maps and real-world dimensions of 13.76 × 12.15 × 7.07 m. Its design includes a rubble-stone lower level, dark timber upper level and gable, stone-weighted shingle roof, chimney, shutters, windows and a raised terrace.
+
+At runtime the model is fitted with one uniform scale so the architecture keeps its authored proportions. The older Innerscene log cabin remains as a load fallback. Legacy procedural porch/deck, steps, duplicate canopy, rainwater hardware and stove flue are hidden when the Mountain Hut loads, avoiding overlapping competing styles. Existing Wildrange interior/gameplay and the interactive lodge door are retained.
+
+The model is downloaded at build time by `scripts/download_licensed_3d_assets.sh`, checked as a glTF 2.0 binary and included in the GitHub Pages package. Its CC0 source and license are kept in the generated asset manifest and attribution file.
 
 ## Cost
 
