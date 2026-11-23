@@ -100,7 +100,7 @@
   let lodgeModelMeshCount = 0, lodgeModelError = "";
   let lodgeModelContainer = null, lodgeModelRoot = null;
   let heroConiferReady = false, heroBroadleafReady = false;
-  let heroTreeModelCount = 0, heroTreeMeshCount = 0;
+  let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
   let sceneInitError = "";
   // Reused movement vectors keep the fixed 60 Hz player step allocation-free.
@@ -1985,7 +1985,11 @@
         const importedNodes = entries.rootNodes.flatMap((node) => [node, ...node.getDescendants(false)]);
         for (const node of importedNodes) {
           const nodeName = String(node.name || "").toLowerCase();
-          if (/^(door|door_leaf|doorleaf|door_panel|doorpanel)(\.\d+)?$/.test(nodeName)) {
+          // The Wildrange hinged leaf remains interactive; remove every part of
+          // the imported static leaf (including the glass and hardware) to avoid
+          // two door models occupying the same opening.
+          if (/^(door|door_leaf|doorleaf|door_panel|doorpanel)(\.\d+)?$/.test(nodeName) ||
+              /^door leaf\b/i.test(nodeName)) {
             node.setEnabled(false);
           }
         }
@@ -2030,12 +2034,62 @@
     const wrapper = new BABYLON.TransformNode("Pinecrest high-detail " + label + " tree " + instanceIndex, scene);
     entries.rootNodes.forEach((node) => { node.parent = wrapper; });
     wrapper.rotationQuaternion = null;
+    wrapper.position.set(0, 0, 0);
+    wrapper.rotation.set(0, 0, 0);
+    wrapper.scaling.setAll(1);
+    wrapper.computeWorldMatrix(true);
+
+    // These source trees are authored as hundreds/thousands of static twig and
+    // needle objects. Batch each tree by material while all source transforms are
+    // still in its local space; this retains the high-detail surfaces but reduces
+    // thousands of draw calls to a handful of material batches per tree.
+    const sourceBounds = getImportedHierarchyBounds([wrapper]);
+    if (!sourceBounds) throw new Error(label + " tree asset contained no renderable geometry");
+    const sourceMeshes = sourceBounds.meshes;
+    heroTreeSourceMeshCount += sourceMeshes.length;
+    const byMaterial = new Map();
+    const unbatched = [];
+    for (const mesh of sourceMeshes) {
+      if (!mesh.material || mesh.getTotalVertices() < 1) {
+        unbatched.push(mesh);
+        continue;
+      }
+      const group = byMaterial.get(mesh.material) || [];
+      group.push(mesh);
+      byMaterial.set(mesh.material, group);
+    }
+
+    let materialBatch = 0;
+    const compactMeshes = [...unbatched];
+    for (const [material, meshes] of byMaterial.entries()) {
+      if (meshes.length < 2) {
+        compactMeshes.push(...meshes);
+        continue;
+      }
+      meshes.forEach((mesh) => mesh.computeWorldMatrix(true));
+      try {
+        const merged = BABYLON.Mesh.MergeMeshes(meshes, true, true, undefined, false, false);
+        if (merged) {
+          merged.name = "Pinecrest " + label + " tree material batch " + (++materialBatch);
+          merged.parent = wrapper;
+          merged.material = material;
+          merged.isPickable = false;
+          compactMeshes.push(merged);
+        } else {
+          compactMeshes.push(...meshes);
+        }
+      } catch (error) {
+        console.warn("Wildrange hero tree material batch skipped:", label, error);
+        compactMeshes.push(...meshes);
+      }
+    }
+
     wrapper.rotation.y = rand(0, Math.PI * 2);
     wrapper.computeWorldMatrix(true);
-    const bounds = getImportedHierarchyBounds(entries.rootNodes);
-    if (!bounds) throw new Error(label + " tree asset contained no renderable geometry");
+    const bounds = getImportedHierarchyBounds([wrapper]);
+    if (!bounds) throw new Error(label + " tree had no geometry after material batching");
     const size = bounds.max.subtract(bounds.min);
-    const scale = targetHeight / size.y;
+    const scale = targetHeight / Math.max(0.01, size.y);
     const centre = bounds.min.add(bounds.max).scale(0.5);
     const ground = heightAt(x, z);
     wrapper.scaling.setAll(scale);
@@ -2052,7 +2106,8 @@
       if (Math.hypot(node.position.x - x, node.position.z - z) < 6.2) node.setEnabled(false);
     }
 
-    for (const mesh of getImportedHierarchyBounds(entries.rootNodes).meshes) {
+    for (const mesh of compactMeshes) {
+      if (!mesh || mesh.isDisposed()) continue;
       mesh.isPickable = false;
       mesh.receiveShadows = true;
       mesh.metadata = { ...(mesh.metadata || {}), pinecrestHeroVegetation: label };
@@ -4677,6 +4732,7 @@
     heroBroadleafReady,
     heroTreeModelCount,
     heroTreeMeshCount,
+    heroTreeSourceMeshCount,
     heroVegetationFailures: heroVegetationFailures.slice(),
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
