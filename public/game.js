@@ -1363,8 +1363,8 @@
     for (const side of [-1, 1]) {
       const x0 = side < 0 ? -13 : 6.5;
       const x1 = side < 0 ? -6.5 : 13;
-      crossFenceRail(x0, x1, -14, 0.68, mat.wood, "compound gate lower rail");
-      crossFenceRail(x0, x1, -14, 1.30, mat.woodLight, "compound gate upper rail");
+      crossFenceRail(x0, x1, -14, 0.68, mat.wood, "compound gate fence lower rail");
+      crossFenceRail(x0, x1, -14, 1.30, mat.woodLight, "compound gate fence upper rail");
     }
     const gateGround = localGroundY(0, -14);
     box("Pinecrest entry gate lintel", { width: 6.7, height: 0.24, depth: 0.26 },
