@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  import-and-deploy:
+  import-assets:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Wildrange
