@@ -232,6 +232,15 @@
       "integration": "Pinecrest Lodge authored exterior shell; Wildrange interior, interactive door, porch and compound systems retained"
     },
     {
+      "asset": "Mountain Hut",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-mountain-hut.glb",
+      "approximate_bytes": 2700000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://grab3d.com/models/buildings/mountain-hut/",
+      "integration": "Primary Pinecrest Lodge architecture: stone lower level, dark timber upper level, weighted shingle roof, chimney and terrace"
+    },
+    {
       "asset": "Conifer, detailed needles",
       "status": "downloaded-at-build",
       "path": "vegetation/conifer-detailed.glb",
