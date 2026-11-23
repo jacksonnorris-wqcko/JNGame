@@ -99,6 +99,10 @@
   let lodgeModelReady = false, lodgeModelLoading = false, lodgeModelFailed = false;
   let lodgeModelMeshCount = 0, lodgeModelError = "";
   let lodgeModelContainer = null, lodgeModelRoot = null;
+  let lodgeModelAssetName = "", lodgeModelUsedFallback = false;
+  let lodgeModelUniformScale = 0;
+  let lodgeModelWorldDimensions = { x: 0, y: 0, z: 0 };
+  let lodgeModelNodeNames = [];
   let heroConiferReady = false, heroBroadleafReady = false;
   let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
@@ -1946,19 +1950,52 @@
     return hidden;
   }
 
+  function hideLegacyLodgePorch(root) {
+    const legacyPorch = /^(lodge porch platform|porch deck board|solid lodge entry stair \d+|stair front nosing \d+|porch support post|porch post cap|Pinecrest porch timber knee brace|Pinecrest porch brass brace bolt|porch canopy|porch handrail|porch baluster|cabin stove flue|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest lodge metal rain gutter|Pinecrest lodge copper rain downpipe|Pinecrest downpipe outlet shoe)$/i;
+    let hidden = 0;
+    for (const mesh of root.getChildMeshes(false)) {
+      if (!mesh || mesh.isDisposed()) continue;
+      if (legacyPorch.test(mesh.name)) {
+        mesh.setEnabled(false);
+        hidden++;
+      }
+    }
+    return hidden;
+  }
+
   function loadPinecrestLodgeModel(lodgeRoot) {
     lodgeModelLoading = true;
-    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/buildings/", "pinecrest-lodge.glb", scene)
-      .then((container) => {
+
+    (async () => {
+      let container = null;
+      try {
+        try {
+          container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
+            "./assets/buildings/", "pinecrest-mountain-hut.glb", scene
+          );
+          lodgeModelAssetName = "pinecrest-mountain-hut.glb";
+        } catch (primaryError) {
+          // Keep the previous, fully-tested log cabin as a safe fallback if the
+          // larger architectural asset is unavailable on a local or cached build.
+          console.warn("Mountain Hut model unavailable; using the original log cabin:", primaryError);
+          container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
+            "./assets/buildings/", "pinecrest-lodge.glb", scene
+          );
+          lodgeModelAssetName = "pinecrest-lodge.glb";
+          lodgeModelUsedFallback = true;
+        }
+
         lodgeModelContainer = container;
         const entries = container.instantiateModelsToScene(
           (name) => "PINECREST_AUTHORED_LODGE__" + name,
           true
         );
-        const importedRoot = new BABYLON.TransformNode("Pinecrest authored log lodge", scene);
+        const importedRoot = new BABYLON.TransformNode("Pinecrest authored mountain lodge", scene);
         entries.rootNodes.forEach((node) => { node.parent = importedRoot; });
         importedRoot.rotationQuaternion = null;
-        // The source asset faces +Z; the Pinecrest approach and interactive door face -Z.
+
+        // The authored architectural assets face +Z; rotate the arrival facade
+        // toward the Pinecrest access path at -Z.
         importedRoot.rotation.y = Math.PI;
         importedRoot.computeWorldMatrix(true);
         const bounds = getImportedHierarchyBounds(entries.rootNodes);
@@ -1966,35 +2003,38 @@
         const size = bounds.max.subtract(bounds.min);
         if (size.x <= 0 || size.y <= 0 || size.z <= 0) throw new Error("The lodge GLB has invalid dimensions");
 
-        // Match the existing lodge footprint and wall height while retaining the
-        // asset's own interlocking logs, gable joinery, roof, barge boards and glazing.
-        const sx = 11.25 / size.x;
-        const sy = 7.45 / size.y;
-        const sz = 8.85 / size.z;
-        importedRoot.scaling.set(sx, sy, sz);
+        // Fit uniformly inside the existing compound footprint. The old 3 x 3 m
+        // cabin was stretched by different X/Y/Z scales, which flattened its
+        // architecture. The new hut keeps its authored proportions and is sized
+        // to occupy the lodge foundation, yard and approach without distortion.
+        const scale = lodgeModelUsedFallback
+          ? Math.min(12.2 / size.x, 10.9 / size.z, 7.0 / size.y)
+          : Math.min(12.65 / size.x, 10.95 / size.z, 6.95 / size.y);
+        importedRoot.scaling.setAll(scale);
         const centre = bounds.min.add(bounds.max).scale(0.5);
         importedRoot.position.set(
-          lodgeRoot.position.x - centre.x * sx,
-          lodgeRoot.position.y - bounds.min.y * sy,
-          lodgeRoot.position.z - centre.z * sz
+          lodgeRoot.position.x - centre.x * scale,
+          lodgeRoot.position.y - bounds.min.y * scale,
+          lodgeRoot.position.z - centre.z * scale
         );
         importedRoot.computeWorldMatrix(true);
 
-        // Keep the authored asset's own door frame but use Wildrange's existing
-        // interactive hinged door, which is already wired to the lodge interaction.
         const importedNodes = entries.rootNodes.flatMap((node) => [node, ...node.getDescendants(false)]);
+        lodgeModelNodeNames = importedNodes.map((node) => String(node.name || "")).filter(Boolean).slice(0, 160);
+
+        // Keep the existing Wildrange interactive door as the live gameplay door.
+        // Static model leaves are disabled to prevent two overlapping door slabs.
         for (const node of importedNodes) {
           const nodeName = String(node.name || "").toLowerCase();
-          // The Wildrange hinged leaf remains interactive; remove every part of
-          // the imported static leaf (including the glass and hardware) to avoid
-          // two door models occupying the same opening.
           if (/^(door|door_leaf|doorleaf|door_panel|doorpanel)(\.\d+)?$/.test(nodeName) ||
-              /^door leaf\b/i.test(nodeName)) {
+              /^door leaf\b/i.test(nodeName) ||
+              /^(door leaf glazing|door leaf handles|door leaf hinges)$/i.test(nodeName)) {
             node.setEnabled(false);
           }
         }
 
         const hiddenLegacyMeshCount = hideLegacyCabinExterior(lodgeRoot);
+        const hiddenLegacyPorchCount = lodgeModelUsedFallback ? 0 : hideLegacyLodgePorch(lodgeRoot);
         let meshCount = 0;
         for (const mesh of getImportedHierarchyBounds(entries.rootNodes).meshes) {
           mesh.isPickable = false;
@@ -2007,23 +2047,32 @@
         }
         lodgeModelRoot = importedRoot;
         lodgeModelMeshCount = meshCount;
+        lodgeModelUniformScale = scale;
+        lodgeModelWorldDimensions = {
+          x: Number((size.x * scale).toFixed(3)),
+          y: Number((size.y * scale).toFixed(3)),
+          z: Number((size.z * scale).toFixed(3))
+        };
         lodgeModelReady = meshCount > 0;
         lodgeModelFailed = !lodgeModelReady;
         lodgeModelLoading = false;
         if (!lodgeModelReady) throw new Error("The imported lodge produced no renderable meshes");
-        console.info("Pinecrest authored log lodge loaded", {
+        console.info("Pinecrest authored lodge loaded", {
+          asset: lodgeModelAssetName,
           meshCount,
           hiddenLegacyMeshCount,
-          dimensions: { x: size.x, y: size.y, z: size.z }
+          hiddenLegacyPorchCount,
+          uniformScale: scale,
+          dimensions: lodgeModelWorldDimensions
         });
-      })
-      .catch((error) => {
+      } catch (error) {
         lodgeModelLoading = false;
         lodgeModelFailed = true;
         lodgeModelError = error && error.message ? error.message : String(error);
         modelLoadFailures.push("lodge: " + lodgeModelError);
         console.error("Pinecrest authored lodge unavailable; retaining procedural lodge fallback:", error);
-      });
+      }
+    })();
   }
 
   function instantiateHeroTree(container, label, x, z, targetHeight, instanceIndex) {
@@ -4728,6 +4777,11 @@
     lodgeModelFailed,
     lodgeModelMeshCount,
     lodgeModelError,
+    lodgeModelAssetName,
+    lodgeModelUsedFallback,
+    lodgeModelUniformScale,
+    lodgeModelWorldDimensions,
+    lodgeModelNodeNames,
     heroConiferReady,
     heroBroadleafReady,
     heroTreeModelCount,
