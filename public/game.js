@@ -69,6 +69,8 @@
   let audioContext = null;
   let playerVelocity = new BABYLON.Vector3(0, 0, 0);
   let cabinDoorPivot = null;
+  let cabinDoorClosedYaw = 0;
+  let cabinDoorUsesImportedLeaf = false;
   let cabinDoorOpen = false;
   let cabinDoorUpdateCount = 0;
   let contractBoardTexture = null;
@@ -1951,7 +1953,7 @@
   }
 
   function hideLegacyLodgePorch(root) {
-    const legacyPorch = /^(lodge porch platform|porch deck board|solid lodge entry stair \d+|stair front nosing \d+|porch support post|porch post cap|Pinecrest porch timber knee brace|Pinecrest porch brass brace bolt|porch canopy|porch handrail|porch baluster|cabin stove flue|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest lodge metal rain gutter|Pinecrest lodge copper rain downpipe|Pinecrest downpipe outlet shoe)$/i;
+    const legacyPorch = /^(lodge porch platform|porch deck board|solid lodge entry stair \d+|stair front nosing \d+|porch support post|porch post cap|Pinecrest porch timber knee brace|Pinecrest porch brass brace bolt|porch canopy|porch handrail|porch baluster|lodge door recess|door jamb|door header|cabin stove flue|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest lodge metal rain gutter|Pinecrest lodge copper rain downpipe|Pinecrest downpipe outlet shoe)$/i;
     let hidden = 0;
     for (const mesh of root.getChildMeshes(false)) {
       if (!mesh || mesh.isDisposed()) continue;
@@ -2022,14 +2024,25 @@
         const importedNodes = entries.rootNodes.flatMap((node) => [node, ...node.getDescendants(false)]);
         lodgeModelNodeNames = importedNodes.map((node) => String(node.name || "")).filter(Boolean).slice(0, 160);
 
-        // Keep the existing Wildrange interactive door as the live gameplay door.
-        // Static model leaves are disabled to prevent two overlapping door slabs.
+        // Prefer the authored Mountain Hut door leaf when its hinge node is present.
+        // The previous hand-built door is hidden as a single hierarchy so the
+        // entrance has one real leaf, one set of hinges and one interactive pivot.
+        const importedDoorPivot = !lodgeModelUsedFallback
+          ? importedNodes.find((node) => /mountain-hut_door_l/i.test(String(node.name || "")))
+          : null;
+        if (importedDoorPivot) {
+          if (cabinDoorPivot && cabinDoorPivot !== importedDoorPivot) cabinDoorPivot.setEnabled(false);
+          cabinDoorPivot = importedDoorPivot;
+          cabinDoorPivot.rotationQuaternion = null;
+          cabinDoorClosedYaw = Number(cabinDoorPivot.rotation.y) || 0;
+          cabinDoorUsesImportedLeaf = true;
+        }
         for (const node of importedNodes) {
           const nodeName = String(node.name || "").toLowerCase();
           if (/^(door|door_leaf|doorleaf|door_panel|doorpanel)(\.\d+)?$/.test(nodeName) ||
               /^door leaf\b/i.test(nodeName) ||
               /^(door leaf glazing|door leaf handles|door leaf hinges)$/i.test(nodeName)) {
-            node.setEnabled(false);
+            if (node !== importedDoorPivot) node.setEnabled(false);
           }
         }
 
@@ -3974,7 +3987,7 @@
     // Apply the hinge transform immediately; the scene render loop refreshes its world matrix.
     if (cabinDoorPivot) {
       cabinDoorPivot.rotationQuaternion = null;
-      cabinDoorPivot.rotation.y = cabinDoorOpen ? 1.48 : 0;
+      cabinDoorPivot.rotation.y = cabinDoorClosedYaw + (cabinDoorOpen ? 1.48 : 0);
       cabinDoorPivot.computeWorldMatrix(true);
       cabinDoorPivot.getChildMeshes().forEach((mesh) => mesh.computeWorldMatrix(true));
     }
@@ -3986,7 +3999,7 @@
   function updateCabinDoor(dt) {
     if (!cabinDoorPivot) return;
     cabinDoorUpdateCount++;
-    const target = cabinDoorOpen ? 1.48 : 0;
+    const target = cabinDoorClosedYaw + (cabinDoorOpen ? 1.48 : 0);
     const difference = target - cabinDoorPivot.rotation.y;
     const maxStep = Math.max(0, dt) * 3.2;
     cabinDoorPivot.rotation.y += Math.max(-maxStep, Math.min(maxStep, difference));
@@ -4753,7 +4766,8 @@
     jumpCount,
     playerGrounded,
     playerHeight: camera ? camera.position.y - walkSurfaceAt(camera.position.x, camera.position.z) - (crouched ? 1.12 : 1.72) : 0,
-    cabinDoorAngle: cabinDoorPivot ? Number(cabinDoorPivot.rotation.y.toFixed(3)) : null,
+    cabinDoorAngle: cabinDoorPivot ? Number((cabinDoorPivot.rotation.y - cabinDoorClosedYaw).toFixed(3)) : null,
+    cabinDoorUsesImportedLeaf,
     cabinDoorUpdateCount,
     boardTextureUScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.uScale : null,
     boardTextureVScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.vScale : null,
@@ -4843,7 +4857,7 @@
   if (new URLSearchParams(window.location.search).has("qa")) {
     window.WildrangeQA = {
       setDoor: (open) => setCabinDoor(Boolean(open)),
-      doorAngle: () => cabinDoorPivot ? cabinDoorPivot.rotation.y : null,
+      doorAngle: () => cabinDoorPivot ? cabinDoorPivot.rotation.y - cabinDoorClosedYaw : null,
       teleportIntoCabin: () => {
         if (!camera) return false;
         camera.position.set(-14, 2.74, 43);
