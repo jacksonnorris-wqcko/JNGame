@@ -105,6 +105,10 @@
   let lodgeModelUniformScale = 0;
   let lodgeModelWorldDimensions = { x: 0, y: 0, z: 0 };
   let lodgeModelNodeNames = [];
+  let lodgeModelHiddenLegacyMeshCount = 0;
+  let lodgeModelHiddenLegacyPorchCount = 0;
+  let lodgeModelLegacyVisualStats = { visible: 0, roof: 0, sign: 0, chimney: 0, porch: 0 };
+  let lodgeModelSignTexture = null, lodgeModelSignFaceMesh = null, lodgeModelSignBackingMesh = null;
   let lodgeInteriorRoot = null;
   let lodgeInteriorFloorHeight = 1.02;
   let lodgeDeckSurfaceHeight = 1.335;
@@ -1947,30 +1951,150 @@
     return count ? { min, max, meshes, count } : null;
   }
 
-  function hideLegacyCabinExterior(root) {
-    const legacyShell = /^(lodge stone foundation|lodge timber floor|front log course|rear log course|side log course|Pinecrest (front|rear|side) log cut end|lodge corner timber|lodge front cross beam|lodge rear cross beam|lodge timber gable|lodge pitched roof|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest gable (diagonal king timber|collar tie|king post|timber vent|vent brass rim|vent louver)|Pinecrest lodge front wall opaque backing|lodge interior (left wall|right wall|rear wall|front lintel)|rear interior wall timber batten|side interior wall timber batten|window recess|window glazed pane|window upright|window sill|window cross rail|window transom|window shutter backing|window shutter vertical slat|window shutter cross brace|window shutter iron hinge strap|window shutter brass hinge pin|Pinecrest window flower box body|Pinecrest window flower box front board|Pinecrest window flower box iron bracket|Pinecrest window box foliage|Pinecrest window box flower)$/i;
+  const LEGACY_LODGE_SHELL_PATTERN = /^(lodge stone foundation|lodge timber floor|front log course|rear log course|side log course|Pinecrest (front|rear|side) log cut end|lodge corner timber|lodge front cross beam|lodge rear cross beam|lodge timber gable|lodge pitched roof|Pinecrest continuous cedar shingle roof surface|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest gable (diagonal king timber|collar tie|king post|timber vent|vent brass rim|vent louver)|Pinecrest lodge front wall opaque backing|lodge interior (left wall|right wall|rear wall|front lintel)|rear interior wall timber batten|side interior wall timber batten|window recess|window glazed pane|window upright|window sill|window cross rail|window mullion|window transom|window shutter backing|window shutter vertical slat|window shutter cross brace|window shutter iron hinge strap|window shutter brass hinge pin|Pinecrest window flower box body|Pinecrest window flower box front board|Pinecrest window flower box iron bracket|Pinecrest window box foliage|Pinecrest window box flower|chimney stone|chimney flue|chimney cap|Pinecrest lodge sign backing|Pinecrest lodge sign face|Pinecrest lodge sign iron bracket|Pinecrest lodge sign iron post strap|Pinecrest lodge sign lower support|Pinecrest lodge sign mounting cleat|Pinecrest lodge sign portal knee brace|Pinecrest lodge sign post brass bolt|Pinecrest lodge sign post cap|Pinecrest lodge sign post stone shoe|Pinecrest lodge sign structural header|Pinecrest lodge sign structural timber post|lodge sign brass fixing|Pinecrest lodge copper rain downpipe|Pinecrest lodge metal rain gutter|Pinecrest gutter forged bracket|Pinecrest downpipe outlet shoe|outpost flag pole|Pinecrest outpost flag|outpost flag gold stripe)$/i;
+  const LEGACY_LODGE_PORCH_PATTERN = /^(lodge porch platform|porch deck board|solid lodge entry stair \d+|stair front nosing \d+|porch support post|porch post cap|Pinecrest porch timber knee brace|Pinecrest porch brass brace bolt|porch canopy|porch handrail|porch baluster|porch footing|porch bearer|entry stair handrail post|entry stair left handrail|entry stair right handrail|lodge door recess|door jamb|door lintel|door header|cabin stove flue|porch lantern|Pinecrest porch companion lantern|Pinecrest porch companion lantern glass)$/i;
+
+  function isLegacyLodgeVisualName(name) {
+    return LEGACY_LODGE_SHELL_PATTERN.test(String(name || "")) ||
+      LEGACY_LODGE_PORCH_PATTERN.test(String(name || ""));
+  }
+
+  function countLegacyLodgeVisuals(root) {
+    const stats = { visible: 0, roof: 0, sign: 0, chimney: 0, porch: 0 };
+    if (!root) return stats;
+    for (const mesh of root.getChildMeshes(false)) {
+      if (!mesh || mesh.isDisposed() || !mesh.isEnabled() || !mesh.isVisible) continue;
+      const name = String(mesh.name || "");
+      if (!isLegacyLodgeVisualName(name)) continue;
+      stats.visible++;
+      if (/roof|rafter|fascia|ridge|gable/i.test(name)) stats.roof++;
+      if (/lodge sign|lodge sign brass/i.test(name)) stats.sign++;
+      if (/chimney/i.test(name)) stats.chimney++;
+      if (LEGACY_LODGE_PORCH_PATTERN.test(name)) stats.porch++;
+    }
+    return stats;
+  }
+
+  function disableLegacyLodgeMeshes(root, pattern) {
     let hidden = 0;
     for (const mesh of root.getChildMeshes(false)) {
-      if (!mesh || mesh.isDisposed()) continue;
-      if (legacyShell.test(mesh.name)) {
-        mesh.setEnabled(false);
-        hidden++;
-      }
+      if (!mesh || mesh.isDisposed() || !pattern.test(String(mesh.name || ""))) continue;
+      if (mesh.isWorldMatrixFrozen) mesh.unfreezeWorldMatrix();
+      mesh.isVisible = false;
+      mesh.setEnabled(false);
+      hidden++;
     }
     return hidden;
   }
 
+  function hideLegacyCabinExterior(root) {
+    return disableLegacyLodgeMeshes(root, LEGACY_LODGE_SHELL_PATTERN);
+  }
+
   function hideLegacyLodgePorch(root) {
-    const legacyPorch = /^(lodge porch platform|porch deck board|solid lodge entry stair \d+|stair front nosing \d+|porch support post|porch post cap|Pinecrest porch timber knee brace|Pinecrest porch brass brace bolt|porch canopy|porch handrail|porch baluster|lodge door recess|door jamb|door header|cabin stove flue|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest lodge metal rain gutter|Pinecrest lodge copper rain downpipe|Pinecrest downpipe outlet shoe)$/i;
-    let hidden = 0;
-    for (const mesh of root.getChildMeshes(false)) {
-      if (!mesh || mesh.isDisposed()) continue;
-      if (legacyPorch.test(mesh.name)) {
-        mesh.setEnabled(false);
-        hidden++;
-      }
+    return disableLegacyLodgeMeshes(root, LEGACY_LODGE_PORCH_PATTERN);
+  }
+
+  function createMountainHutNameplate(importedRoot, doorPivot, uniformScale) {
+    const doorBounds = getImportedHierarchyBounds([doorPivot]);
+    if (!doorBounds || !uniformScale || uniformScale <= 0) return null;
+    importedRoot.computeWorldMatrix(true);
+    const inverseRoot = importedRoot.getWorldMatrix().clone();
+    inverseRoot.invert();
+
+    const doorCentreX = (doorBounds.min.x + doorBounds.max.x) / 2;
+    const signWorldPosition = new BABYLON.Vector3(
+      doorCentreX,
+      doorBounds.max.y + 0.42,
+      doorBounds.min.z - 0.10
+    );
+    const localPosition = BABYLON.Vector3.TransformCoordinates(signWorldPosition, inverseRoot);
+    const doorWidth = doorBounds.max.x - doorBounds.min.x;
+    const signWidth = BABYLON.Scalar.Clamp(doorWidth + 0.90, 2.15, 3.05);
+    const signHeight = 0.52;
+    const localWidth = signWidth / uniformScale;
+    const localHeight = signHeight / uniformScale;
+    const localDepth = 0.105 / uniformScale;
+
+    lodgeModelSignBackingMesh = BABYLON.MeshBuilder.CreateBox(
+      "Pinecrest mountain lodge sign backing",
+      { width: localWidth, height: localHeight, depth: localDepth },
+      scene
+    );
+    lodgeModelSignBackingMesh.parent = importedRoot;
+    lodgeModelSignBackingMesh.position.copyFrom(localPosition);
+    lodgeModelSignBackingMesh.material = mat.bark;
+    lodgeModelSignBackingMesh.receiveShadows = true;
+    lodgeModelSignBackingMesh.isPickable = false;
+
+    lodgeModelSignTexture = new BABYLON.DynamicTexture(
+      "Pinecrest Mountain Hut nameplate texture",
+      { width: 1024, height: 256 },
+      scene,
+      true
+    );
+    const ctx = lodgeModelSignTexture.getContext();
+    ctx.fillStyle = "#20342a";
+    ctx.fillRect(0, 0, 1024, 256);
+    ctx.strokeStyle = "#c9ad74";
+    ctx.lineWidth = 12;
+    ctx.strokeRect(16, 16, 992, 224);
+    ctx.strokeStyle = "#6f684d";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(34, 34, 956, 188);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f2e6c9";
+    ctx.font = "bold 82px Georgia";
+    ctx.fillText("PINECREST LODGE", 512, 105);
+    ctx.fillStyle = "#c8b98f";
+    ctx.font = "28px Georgia";
+    ctx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 181);
+    lodgeModelSignTexture.update(true);
+
+    const signMaterial = makeReadableSignMaterial(
+      "Pinecrest Mountain Hut nameplate material",
+      lodgeModelSignTexture,
+      true
+    );
+    lodgeModelSignFaceMesh = BABYLON.MeshBuilder.CreatePlane(
+      "Pinecrest mountain lodge sign face",
+      {
+        width: (signWidth - 0.14) / uniformScale,
+        height: (signHeight - 0.12) / uniformScale,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+      },
+      scene
+    );
+    lodgeModelSignFaceMesh.parent = importedRoot;
+    lodgeModelSignFaceMesh.position.set(
+      localPosition.x,
+      localPosition.y,
+      localPosition.z + (localDepth / 2) + (0.012 / uniformScale)
+    );
+    lodgeModelSignFaceMesh.material = signMaterial;
+    lodgeModelSignFaceMesh.isPickable = false;
+
+    for (const side of [-1, 1]) {
+      const trim = BABYLON.MeshBuilder.CreateBox(
+        "Pinecrest mountain lodge sign brass edge",
+        { width: 0.035 / uniformScale, height: (signHeight - 0.06) / uniformScale, depth: 0.025 / uniformScale },
+        scene
+      );
+      trim.parent = importedRoot;
+      trim.position.set(
+        localPosition.x + side * ((signWidth / 2 - 0.035) / uniformScale),
+        localPosition.y,
+        localPosition.z + (localDepth / 2) + (0.025 / uniformScale)
+      );
+      trim.material = mat.gold;
+      trim.isPickable = false;
     }
-    return hidden;
+    return {
+      width: signWidth,
+      height: signHeight,
+      position: { x: signWorldPosition.x, y: signWorldPosition.y, z: signWorldPosition.z }
+    };
   }
 
   function loadPinecrestLodgeModel(lodgeRoot) {
@@ -2052,6 +2176,7 @@
             doorInteraction.z = doorPosition.z - 0.85;
           }
           cabinDoorUsesImportedLeaf = true;
+          createMountainHutNameplate(importedRoot, importedDoorPivot, scale);
         }
         for (const node of importedNodes) {
           const nodeName = String(node.name || "").toLowerCase();
@@ -2064,6 +2189,9 @@
 
         const hiddenLegacyMeshCount = hideLegacyCabinExterior(lodgeRoot);
         const hiddenLegacyPorchCount = lodgeModelUsedFallback ? 0 : hideLegacyLodgePorch(lodgeRoot);
+        lodgeModelHiddenLegacyMeshCount = hiddenLegacyMeshCount;
+        lodgeModelHiddenLegacyPorchCount = hiddenLegacyPorchCount;
+        lodgeModelLegacyVisualStats = countLegacyLodgeVisuals(lodgeRoot);
         let meshCount = 0;
         for (const mesh of getImportedHierarchyBounds(entries.rootNodes).meshes) {
           mesh.isPickable = false;
@@ -4831,8 +4959,19 @@
     } : null,
     gateSignReady: Boolean(gateSignTexture && gateSignTexture.isReady()),
     gateSignBackReady: Boolean(gateSignBackTexture && gateSignBackTexture.isReady()),
-    cabinSignReady: Boolean(cabinSignTexture && cabinSignTexture.isReady()),
-    cabinSignSupportPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge sign structural timber post").length : 0,
+    cabinSignReady: Boolean(lodgeModelSignTexture && lodgeModelSignTexture.isReady()),
+    cabinSignSupportPostCount: scene ? scene.meshes.filter((mesh) =>
+      mesh.name === "Pinecrest lodge sign structural timber post" && mesh.isEnabled() && mesh.isVisible).length : 0,
+    lodgeModelSignReady: Boolean(lodgeModelSignFaceMesh && lodgeModelSignTexture && lodgeModelSignTexture.isReady()),
+    lodgeModelSignFaceVisible: isReadableSignFace(lodgeModelSignFaceMesh),
+    lodgeModelSignFacePosition: lodgeModelSignFaceMesh ? {
+      x: Number(lodgeModelSignFaceMesh.getAbsolutePosition().x.toFixed(3)),
+      y: Number(lodgeModelSignFaceMesh.getAbsolutePosition().y.toFixed(3)),
+      z: Number(lodgeModelSignFaceMesh.getAbsolutePosition().z.toFixed(3))
+    } : null,
+    lodgeModelHiddenLegacyMeshCount,
+    lodgeModelHiddenLegacyPorchCount,
+    lodgeModelLegacyVisualStats,
     lodgeModelReady,
     lodgeModelLoading,
     lodgeModelFailed,
@@ -4854,23 +4993,29 @@
     heroTreeSourceMeshCount,
     heroVegetationFailures: heroVegetationFailures.slice(),
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
-    cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge front wall opaque backing").length : 0,
-    pinecrestGableBeamCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gable diagonal king timber").length : 0,
-    pinecrestRoofSurfaceCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest continuous cedar shingle roof surface").length : 0,
+    cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) =>
+      mesh.name === "Pinecrest lodge front wall opaque backing" && mesh.isEnabled() && mesh.isVisible).length : 0,
+    pinecrestGableBeamCount: scene ? scene.meshes.filter((mesh) =>
+      mesh.name === "Pinecrest gable diagonal king timber" && mesh.isEnabled() && mesh.isVisible).length : 0,
+    pinecrestRoofSurfaceCount: scene ? scene.meshes.filter((mesh) =>
+      mesh.name === "Pinecrest continuous cedar shingle roof surface" && mesh.isEnabled() && mesh.isVisible).length : 0,
     pinecrestRoofShingleMaterialReady: Boolean(mat.roofShingle && mat.roofShingle.albedoTexture && mat.roofShingle.bumpTexture),
-    pinecrestLogEndgrainCount: scene ? scene.meshes.filter((mesh) => /Pinecrest .* log cut end/.test(mesh.name)).length : 0,
+    pinecrestLogEndgrainCount: scene ? scene.meshes.filter((mesh) =>
+      /Pinecrest .* log cut end/.test(mesh.name) && mesh.isEnabled() && mesh.isVisible).length : 0,
     compoundShadowCasterCount: Number(lights.compoundShadowCasterCount) || 0,
     compoundShadowMapSize: lights.shadows && lights.shadows.getShadowMap() ? lights.shadows.getShadowMap().getSize().width : 0,
     compoundFencePostCount: scene ? scene.meshes.filter((mesh) => /compound (perimeter|north|gate) fence post/.test(mesh.name)).length : 0,
     compoundFenceRailCount: scene ? scene.meshes.filter((mesh) => /compound (side|north|gate) fence (lower|upper) rail/.test(mesh.name)).length : 0,
-    pinecrestRainGutterCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest lodge metal rain gutter").length : 0,
-    pinecrestWindowFlowerBoxCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest window flower box body").length : 0,
+    pinecrestRainGutterCount: scene ? scene.meshes.filter((mesh) =>
+      mesh.name === "Pinecrest lodge metal rain gutter" && mesh.isEnabled() && mesh.isVisible).length : 0,
+    pinecrestWindowFlowerBoxCount: scene ? scene.meshes.filter((mesh) =>
+      mesh.name === "Pinecrest window flower box body" && mesh.isEnabled() && mesh.isVisible).length : 0,
     pinecrestWoodshedPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest firewood shelter structural post").length : 0,
     pinecrestWoodshedLogCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest woodshed split firewood").length : 0,
     pinecrestFernFrondCount: scene ? scene.meshes.filter((mesh) => /Pinecrest .* fern frond/.test(mesh.name)).length : 0,
     outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),
     harvestSignReady: Boolean(harvestSignTexture && harvestSignTexture.isReady()),
-    cabinSignFaceVisible: isReadableSignFace(cabinSignFrontMesh),
+    cabinSignFaceVisible: isReadableSignFace(lodgeModelSignFaceMesh),
     gateSignFrontFaceVisible: isReadableSignFace(gateSignFrontMesh),
     gateSignBackFaceVisible: isReadableSignFace(gateSignBackMesh),
     missionBoardFrontFaceVisible: isReadableSignFace(boardPaperFrontMesh),
