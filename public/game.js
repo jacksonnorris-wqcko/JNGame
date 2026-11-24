@@ -2088,6 +2088,17 @@
         if (lodgeInteriorRoot) {
           const interiorOffset = lodgeInteriorFloorHeight - 1.04;
           lodgeInteriorRoot.position.y = interiorOffset;
+          lodgeInteriorRoot.computeWorldMatrix(true);
+          let adjustedInteriorMeshCount = 0;
+          // createScene freezes static meshes before asynchronous GLBs finish
+          // loading. Unfreeze/recompute this group so the floor alignment reaches
+          // the actual rendered vertices and shadow casters, not just the parent.
+          for (const mesh of lodgeInteriorRoot.getChildMeshes(false)) {
+            if (mesh.isWorldMatrixFrozen) mesh.unfreezeWorldMatrix();
+            mesh.computeWorldMatrix(true);
+            adjustedInteriorMeshCount++;
+          }
+          lights.lodgeInteriorAdjustedMeshCount = adjustedInteriorMeshCount;
           for (const light of cabinInteriorLights) light.position.y += interiorOffset;
         }
         lodgeModelReady = meshCount > 0;
@@ -4834,6 +4845,7 @@
     lodgeModelNodeNames,
     lodgeInteriorFloorHeight,
     lodgeDeckSurfaceHeight,
+    lodgeInteriorAdjustedMeshCount: Number(lights.lodgeInteriorAdjustedMeshCount) || 0,
     lodgeDoorWorldPosition,
     heroConiferReady,
     heroBroadleafReady,
