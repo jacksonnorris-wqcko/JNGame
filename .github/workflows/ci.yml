@@ -123,8 +123,10 @@ jobs:
                 cedarReport.variants?.standard?.triangles !== 10512 ||
                 cedarReport.variants?.standard?.materials !== 13 ||
                 cedarReport.bounds?.max?.[1] < 6.0 ||
-                !cedarScene.navigation) {
-              throw new Error("Cedarwatch source metrics or navigation package is incomplete");
+                !cedarScene.walk || !Array.isArray(cedarScene.walk.boxes) ||
+                cedarScene.walk.boxes.length < 15 ||
+                cedarScene.walk.route?.length < 4) {
+              throw new Error("Cedarwatch source metrics or doorway-aware walk data is incomplete");
             }
             const cedarBytes = fs.readFileSync("public/assets/buildings/pinecrest-cedarwatch-cabin.glb");
             if (cedarBytes.toString("ascii", 0, 4) !== "glTF" || cedarBytes.readUInt32LE(4) !== 2) {
