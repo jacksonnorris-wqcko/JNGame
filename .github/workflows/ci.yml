@@ -93,6 +93,7 @@ jobs:
               "public/assets/models/ATTRIBUTION.md",
               "public/assets/buildings/pinecrest-lodge.glb",
               "public/assets/buildings/pinecrest-mountain-hut.glb",
+              "public/assets/buildings/pinecrest-timber-frame-house.glb",
               "public/assets/vegetation/norway-spruce.glb",
               "public/assets/vegetation/oak-detailed.glb",
               "public/assets/vegetation/fern-clump.glb",
@@ -106,7 +107,17 @@ jobs:
             const mountainHutRecord = models.get("buildings/pinecrest-mountain-hut.glb");
             if (!mountainHutRecord || mountainHutRecord.license !== "CC0 1.0 Universal" ||
                 mountainHutRecord.source !== "https://grab3d.com/models/buildings/mountain-hut/") {
-              throw new Error("The primary Pinecrest Mountain Hut GLB must have its CC0 source/license record");
+              throw new Error("The fallback Pinecrest Mountain Hut GLB must have its CC0 source/license record");
+            }
+            const timberLodgeRecord = models.get("buildings/pinecrest-timber-frame-house.glb");
+            if (!timberLodgeRecord ||
+                timberLodgeRecord.license !== "CC0 1.0 Universal" ||
+                timberLodgeRecord.source !== "https://tevy.dev/models/timber-frame-house/") {
+              throw new Error("The candidate timber-framed lodge must have its pinned CC0 source/license record");
+            }
+            if (timberLodgeRecord.mesh_count < 10 || timberLodgeRecord.material_count < 8 ||
+                timberLodgeRecord.node_names?.includes("door") !== true) {
+              throw new Error("The timber lodge must expose its authored meshes, materials and moving door node: " + JSON.stringify(timberLodgeRecord));
             }
             const newVegetation = [
               ["vegetation/norway-spruce.glb", "https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f"],
@@ -187,7 +198,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wildrange-0.12.1-gate-centred-lodge-cleanup
+          name: wildrange-0.13.0-gate-centred-lodge-cleanup
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
