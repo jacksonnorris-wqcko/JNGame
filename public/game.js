@@ -2230,6 +2230,92 @@
     };
   }
 
+  function createCedarwatchNameplate(importedRoot, uniformScale) {
+    if (!importedRoot || !uniformScale || uniformScale <= 0) return null;
+    const signWidth = 2.55;
+    const signHeight = 0.48;
+    const localDepth = 0.085 / uniformScale;
+    // The Cedarwatch front wall and open doorway are authored on local +Z.
+    // Mount the nameplate above the door, not on a freestanding post or a legacy wall.
+    const localPosition = new BABYLON.Vector3(0, 2.62, 2.43);
+
+    lodgeModelSignBackingMesh = BABYLON.MeshBuilder.CreateBox(
+      "Pinecrest Cedarwatch lodge sign backing",
+      { width: signWidth / uniformScale, height: signHeight / uniformScale, depth: localDepth },
+      scene
+    );
+    lodgeModelSignBackingMesh.parent = importedRoot;
+    lodgeModelSignBackingMesh.position.copyFrom(localPosition);
+    lodgeModelSignBackingMesh.material = mat.bark;
+    lodgeModelSignBackingMesh.receiveShadows = true;
+    lodgeModelSignBackingMesh.isPickable = false;
+
+    lodgeModelSignTexture = new BABYLON.DynamicTexture(
+      "Pinecrest Cedarwatch nameplate texture",
+      { width: 1024, height: 256 },
+      scene,
+      true
+    );
+    const ctx = lodgeModelSignTexture.getContext();
+    ctx.fillStyle = "#20342a";
+    ctx.fillRect(0, 0, 1024, 256);
+    ctx.strokeStyle = "#c9ad74";
+    ctx.lineWidth = 12;
+    ctx.strokeRect(16, 16, 992, 224);
+    ctx.strokeStyle = "#6f684d";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(34, 34, 956, 188);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f2e6c9";
+    ctx.font = "bold 82px Georgia";
+    ctx.fillText("PINECREST LODGE", 512, 105);
+    ctx.fillStyle = "#c8b98f";
+    ctx.font = "28px Georgia";
+    ctx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 181);
+    lodgeModelSignTexture.update(true);
+
+    const signMaterial = makeReadableSignMaterial(
+      "Pinecrest Cedarwatch nameplate material",
+      lodgeModelSignTexture,
+      true
+    );
+    lodgeModelSignFaceMesh = BABYLON.MeshBuilder.CreatePlane(
+      "Pinecrest Cedarwatch lodge sign face",
+      {
+        width: (signWidth - 0.14) / uniformScale,
+        height: (signHeight - 0.12) / uniformScale,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+      },
+      scene
+    );
+    lodgeModelSignFaceMesh.parent = importedRoot;
+    lodgeModelSignFaceMesh.position.set(
+      localPosition.x,
+      localPosition.y,
+      localPosition.z + (localDepth / 2) + (0.012 / uniformScale)
+    );
+    lodgeModelSignFaceMesh.material = signMaterial;
+    lodgeModelSignFaceMesh.isPickable = false;
+
+    for (const side of [-1, 1]) {
+      const trim = BABYLON.MeshBuilder.CreateBox(
+        "Pinecrest Cedarwatch sign brass edge",
+        { width: 0.035 / uniformScale, height: (signHeight - 0.06) / uniformScale, depth: 0.025 / uniformScale },
+        scene
+      );
+      trim.parent = importedRoot;
+      trim.position.set(
+        localPosition.x + side * ((signWidth / 2 - 0.035) / uniformScale),
+        localPosition.y,
+        localPosition.z + (localDepth / 2) + (0.025 / uniformScale)
+      );
+      trim.material = mat.gold;
+      trim.isPickable = false;
+    }
+    return { width: signWidth, height: signHeight, position: localPosition.asArray() };
+  }
+
   function loadPinecrestLodgeModel(lodgeRoot) {
     lodgeModelLoading = true;
 
@@ -2366,6 +2452,7 @@
           cabinInteriorLights.forEach((light) => light.setEnabled(false));
           lodgeAuthoredInteriorReady = true;
           lights.lodgeInteriorAdjustedMeshCount = 0;
+          createCedarwatchNameplate(importedRoot, scale);
 
           const cabinInteractionIndex = interactables.findIndex((item) => item.action === "cabin");
           if (cabinInteractionIndex >= 0) interactables.splice(cabinInteractionIndex, 1);
@@ -5495,7 +5582,8 @@
     mergedScenerySourceMeshCount,
     aiming,
     cabinDoorOpen,
-    cabinDoorReady: Boolean(cabinDoorPivot),
+    // Cedarwatch uses a permanently open authored doorway rather than a swinging leaf.
+    cabinDoorReady: lodgeDoorwayOpen || Boolean(cabinDoorPivot),
     lodgeDoorwayOpen,
     lodgeDoorwayWidth: Number(lodgeDoorwayWidth.toFixed(2)),
     lodgeNavigationBoxCount: lodgeNavigationBoxes.length,
