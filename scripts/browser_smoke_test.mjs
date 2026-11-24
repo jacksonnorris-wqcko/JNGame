@@ -193,11 +193,13 @@ try {
       diagnostics.lodgeModelAssetName !== "pinecrest-mountain-hut.glb" ||
       diagnostics.lodgeModelUsedFallback ||
       diagnostics.lodgeModelMeshCount < 8 ||
-      diagnostics.lodgeModelUniformScale <= 0 ||
-      diagnostics.lodgeModelWorldDimensions.x < 11.5 ||
-      diagnostics.lodgeModelWorldDimensions.z < 10.0 ||
-      diagnostics.lodgeModelWorldDimensions.y < 5.7) {
-    throw new Error("The full-scale Pinecrest Mountain Hut did not load with correct proportions: " + JSON.stringify({
+      diagnostics.lodgeModelUniformScale < 1.30 ||
+      diagnostics.lodgeModelWorldDimensions.x < 17.5 ||
+      diagnostics.lodgeModelWorldDimensions.z < 15.5 ||
+      diagnostics.lodgeModelWorldDimensions.y < 8.5 ||
+      diagnostics.lodgeBuildingFootprint.width < 11.6 ||
+      diagnostics.lodgeBuildingFootprint.depth < 8.3) {
+    throw new Error("The Pinecrest lodge was not fitted using the building footprint: " + JSON.stringify({
       ready: diagnostics.lodgeModelReady,
       asset: diagnostics.lodgeModelAssetName,
       fallback: diagnostics.lodgeModelUsedFallback,
@@ -205,8 +207,18 @@ try {
       error: diagnostics.lodgeModelError,
       meshes: diagnostics.lodgeModelMeshCount,
       uniformScale: diagnostics.lodgeModelUniformScale,
-      dimensions: diagnostics.lodgeModelWorldDimensions,
+      sceneDimensions: diagnostics.lodgeModelWorldDimensions,
+      buildingFootprint: diagnostics.lodgeBuildingFootprint,
       nodeNames: diagnostics.lodgeModelNodeNames
+    }));
+  }
+  if (!diagnostics.cabinDoorUsesImportedLeaf ||
+      diagnostics.cabinDoorAxis !== "z" ||
+      !diagnostics.lodgeLegacyDoorHidden) {
+    throw new Error("The imported local-Z hinge must replace and hide the old procedural door: " + JSON.stringify({
+      usesImportedLeaf: diagnostics.cabinDoorUsesImportedLeaf,
+      axis: diagnostics.cabinDoorAxis,
+      oldDoorHidden: diagnostics.lodgeLegacyDoorHidden
     }));
   }
   if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
@@ -321,8 +333,9 @@ try {
   const closedDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
   const cabinCollision = await page.evaluate(() => {
     const door = window.WildrangeQA.doorwayPosition();
+    const points = window.WildrangeQA.cabinTestPoints();
     return {
-      interiorWalkableWithDoorClosed: window.WildrangeQA.canStandAt(-14, 43),
+      interiorWalkableWithDoorClosed: window.WildrangeQA.canStandAt(points.interior.x, points.interior.z),
       doorwayBlockedWithDoorClosed: !window.WildrangeQA.canStandAt(door.x, door.z),
       doorX: door.x,
       doorZ: door.z,
@@ -330,14 +343,15 @@ try {
         const target = window.WildrangeQA.doorInteractionPosition();
         return Math.hypot(target.x - door.x, target.z - door.z);
       })(),
-      deckWalkable: window.WildrangeQA.canStandAt(-14, 37.2),
-      stairsWalkable: window.WildrangeQA.canStandAt(-14, 35.55),
-      entryPathWalkable: window.WildrangeQA.canStandAt(-14, 31.2),
-      interiorHeight: window.WildrangeQA.surfaceAt(-14, 43),
-      deckHeight: window.WildrangeQA.surfaceAt(-14, 37.2),
-      stairHeight: window.WildrangeQA.surfaceAt(-14, 35.55),
-      pathHeight: window.WildrangeQA.surfaceAt(-14, 31.2),
-      hingeUpdates: window.WildrangeDiagnostics().cabinDoorUpdateCount
+      deckWalkable: window.WildrangeQA.canStandAt(points.terrace.x, points.terrace.z),
+      stairsWalkable: window.WildrangeQA.canStandAt(points.stairs.x, points.stairs.z),
+      entryPathWalkable: window.WildrangeQA.canStandAt(points.path.x, points.path.z),
+      interiorHeight: window.WildrangeQA.surfaceAt(points.interior.x, points.interior.z),
+      deckHeight: window.WildrangeQA.surfaceAt(points.terrace.x, points.terrace.z),
+      stairHeight: window.WildrangeQA.surfaceAt(points.stairs.x, points.stairs.z),
+      pathHeight: window.WildrangeQA.surfaceAt(points.path.x, points.path.z),
+      hingeUpdates: window.WildrangeDiagnostics().cabinDoorUpdateCount,
+      testPoints: points
     };
   });
   const compoundBoundary = await page.evaluate(() => ({
