@@ -4910,6 +4910,11 @@
       canStandAt: (x, z) => canStandAt(Number(x), Number(z)),
       surfaceAt: (x, z) => walkSurfaceAt(Number(x), Number(z)),
       doorwayPosition: () => ({ x: lodgeDoorWorldPosition.x, z: lodgeDoorWorldPosition.z }),
+      doorInteractionPosition: () => {
+        const target = interactables.find((item) => item.action === "cabin");
+        return target ? { x: target.x, z: target.z } : { x: -14, z: 38.7 };
+      },
+      cameraYaw: () => camera ? camera.rotation.y : null,
       lodgeFloorHeight: () => lodgeInteriorFloorHeight,
       lodgeDeckHeight: () => lodgeDeckSurfaceHeight,
       bearingFor: (degrees) => bearingName(Number(degrees))
