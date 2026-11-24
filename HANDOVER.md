@@ -216,7 +216,23 @@ The 0.11.4 screenshot review showed that the Mountain Hut appeared undersized an
 
 The Grab3D source manifest identifies this Mountain Hut as an exterior-only model, with no authored interior. This correction restores usable entrance and walkable-interior integration using the existing Wildrange interior group; it does not claim the building now has a bespoke authored interior art pass.
 
-## 0.12.0 Pinecrest environment-art overhaul
+## 0.12.1 Pinecrest art refinement
+
+The first 0.12.0 browser screenshot exposed four remaining visual problems: the wide gate nameplate obscured the lodge, the new spruce dominated the near view, imported fern source materials appeared nearly black, and the meadow's narrow triangle blades did not read as grass.
+
+### Refinements
+
+- Relocate the gate nameplate to the left of the entrance and reduce it to a 2.52 × 0.50 m face. The plaque is supported from the left gate post with two cantilever brackets; the central passage remains open.
+- Push the two Norway spruce models to the outer forest edge and reduce their target heights to 11.5 and 12 m.
+- Override the imported fern material with a dedicated two-sided green foliage PBR material, disable fern shadow casting and move the four clumps into the existing timber planter beds.
+- Replace the single-triangle blades with three crossed, tapered quads per grass cluster. The target is 6,200 clusters, with the first 4,700 concentrated in the spawn-side meadow. The card mesh uses vertex colour without directional lighting so vertical blades do not render as black silhouettes.
+- Narrow the levelled terrain blend to the lodge and gate approach. The spawn location is outside the flat interior region and should sample the natural terrain height field.
+- Change the gravel apron from an oval to a rounded-rectangular outline and lighten its PBR tint.
+- Reduce first-person rifle scale to 74% of its original attachment scale.
+
+The browser QA now has assertions for fern material readiness, side-mounted sign width, player spawn ground height, crossed grass cards and vertex count. Existing checks continue to cover all vegetation imports, compound signs, the lodge door/interior, wildlife rigs, rifle optics and jumping.
+
+## 0.12.1 Pinecrest art refinement
 
 The 0.11.5 gameplay screenshot showed a broad empty foreground, repeated rounded procedural tree silhouettes and an outpost yard that did not read as a deliberately finished space. This pass starts a coordinated art overhaul rather than adding more isolated props.
 
