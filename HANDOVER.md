@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.11.0`  
+**Current source build:** `0.11.1`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -138,6 +138,30 @@ The primary lodge asset is now Grab3D's Mountain Hut (CC0 1.0 Universal) rather 
 - The game continues to use the existing Wildrange interior, gameplay systems and interactive door.
 
 The build script downloads the model from Grab3D's direct GLB endpoint and validates file size, glTF magic, version 2 and declared file length. CI checks the primary asset path and its CC0 provenance. Browser QA requires the Mountain Hut to load without fallback and verifies its final dimensions and uniform scaling before capturing the compound screenshot.
+
+## 0.11.1 Mountain Hut entrance and interior alignment
+
+This follow-up makes the existing player and lodge interaction systems follow the real imported model transforms instead of the previous hand-built cabin coordinates.
+
+### Interior
+
+- A dedicated `lodgeInteriorRoot` groups the custom floorboards, interior wall panels, battens, furniture and decor.
+- When the Mountain Hut loads, `lodgeInteriorFloorHeight` and `lodgeDeckSurfaceHeight` are calculated from the authored source floor height multiplied by the model's uniform scale. The custom interior group and warm interior lights are shifted to that floor.
+- Old interior wall panels and battens that conflict with the Mountain Hut's own wall/window system are hidden with the legacy shell.
+
+### Entrance and movement
+
+- `lodgeDoorWorldPosition` is derived from the imported `mountain-hut_door_l` pivot's absolute world position after the lodge root transform is applied.
+- The LODGE DOOR interaction target is moved to within 0.85 m of the physical pivot.
+- `lodgeDoorwayContains()` is shared by the closed-door collision and the open doorway walk-through.
+- `walkSurfaceAt()` and `canStandAt()` now use the imported interior floor and terrace heights, with the approach steps interpolating up to the terrace. The old cabin's 1.335 m deck assumption is removed for the Mountain Hut.
+- The test teleport into the lodge is placed at the calculated interior floor height.
+
+### First view
+
+- New-game spawn retains the existing position but sets its yaw toward the Pinecrest Lodge centre.
+- Untouched saved games at the original spawn coordinates/yaw are migrated to the same heading. Other saved player positions and view directions are preserved.
+- Browser QA checks the initial camera heading, the imported doorway when closed/open, the interaction target distance, interior floor, terrace, steps and entry path.
 
 ## Validation status
 
