@@ -51,6 +51,24 @@ cp "$CEDAR_TMP/cedarwatch/scene.json" "$BUILDINGS/pinecrest-cedarwatch-scene.jso
 cp "$CEDAR_TMP/cedarwatch/report.json" "$BUILDINGS/pinecrest-cedarwatch-report.json"
 echo "Fetched Cedarwatch Cabin: standard GLB plus scene navigation and measured report"
 
+# Replace the stylised fern clusters with real woodland photogrammetry scans.
+fetch_asset \
+  "https://scenecrate.com/worlds/free/sunburst-fern/delivery.zip" \
+  "$CEDAR_TMP/woodland-fern.zip" \
+  "Photoreal Woodland Bracken Fern (CC0)"
+unzip -q "$CEDAR_TMP/woodland-fern.zip" -d "$CEDAR_TMP/woodland-fern"
+cp "$CEDAR_TMP/woodland-fern/models/standard.glb" "$VEGETATION/woodland-bracken-fern.glb"
+cp "$CEDAR_TMP/woodland-fern/report.json" "$VEGETATION/woodland-bracken-fern-report.json"
+
+fetch_asset \
+  "https://scenecrate.com/worlds/free/glowcap-cluster/delivery.zip" \
+  "$CEDAR_TMP/mossy-boulders.zip" \
+  "Photoreal Mossy Forest Boulders (CC0)"
+unzip -q "$CEDAR_TMP/mossy-boulders.zip" -d "$CEDAR_TMP/mossy-boulders"
+cp "$CEDAR_TMP/mossy-boulders/models/standard.glb" "$VEGETATION/mossy-forest-boulders.glb"
+cp "$CEDAR_TMP/mossy-boulders/report.json" "$VEGETATION/mossy-forest-boulders-report.json"
+echo "Fetched photogrammetry fern and mossy boulder scans"
+
 fetch_asset \
   "https://www.innerscene.com/api/library/conifer-detailed-needles-ca8e7cef/download" \
   "$VEGETATION/conifer-detailed.glb" \
@@ -76,7 +94,7 @@ fetch_asset \
   "$VEGETATION/fern-clump.glb" \
   "Fern clumps (CC0)"
 
-python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$BUILDINGS/pinecrest-timber-frame-house.glb" "$BUILDINGS/pinecrest-cedarwatch-cabin.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" <<'PY'
+python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$BUILDINGS/pinecrest-timber-frame-house.glb" "$BUILDINGS/pinecrest-cedarwatch-cabin.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" "$VEGETATION/woodland-bracken-fern.glb" "$VEGETATION/mossy-forest-boulders.glb" <<'PY'
 import os
 import struct
 import sys
@@ -91,6 +109,8 @@ minimum_bytes = {
     "norway-spruce.glb": 1_000_000,
     "oak-detailed.glb": 4_000_000,
     "fern-clump.glb": 2_000_000,
+    "woodland-bracken-fern.glb": 350_000,
+    "mossy-forest-boulders.glb": 1_000_000,
 }
 for path in sys.argv[1:]:
     size = os.path.getsize(path)
@@ -120,6 +140,11 @@ for path in sys.argv[1:]:
         stream.seek(12)
         json_length, json_type = struct.unpack("<II", stream.read(8))
         json_bytes = stream.read(json_length) if json_type == 0x4E4F534A else b""
+    if os.path.basename(path) in {"woodland-bracken-fern.glb", "mossy-forest-boulders.glb"}:
+        report_name = os.path.basename(path).replace(".glb", "-report.json")
+        report_path = os.path.join(os.path.dirname(path), report_name)
+        report = __import__("json").load(open(report_path, encoding="utf-8"))
+        print("Photogrammetry asset report:", os.path.basename(path), report.get("bounds"), report.get("variants", {}).get("standard"))
     if json_bytes and os.path.basename(path) == "pinecrest-timber-frame-house.glb":
         document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
         print("Timber lodge GLB nodes:", ", ".join(node.get("name", "") for node in document.get("nodes", []) if node.get("name")))
