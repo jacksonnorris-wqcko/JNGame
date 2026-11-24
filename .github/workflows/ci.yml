@@ -184,6 +184,7 @@ jobs:
           '
 
   browser-smoke:
+    timeout-minutes: 12
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -213,7 +214,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wildrange-0.13.0-gate-centred-lodge-cleanup
+          name: wildrange-0.13.1-pinecrest-visual-upgrade
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
