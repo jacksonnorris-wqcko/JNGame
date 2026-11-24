@@ -47,7 +47,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.5&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.12.0&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -81,7 +81,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.5-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.12.0-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -159,7 +159,10 @@ try {
     return state && !state.lodgeModelLoading && state.lodgeModelReady &&
       state.lodgeModelAssetName === "pinecrest-mountain-hut.glb" &&
       !state.lodgeModelUsedFallback &&
-      state.heroConiferReady && state.heroBroadleafReady && state.heroTreeModelCount === 4;
+      state.heroConiferReady && state.heroBroadleafReady &&
+      state.heroSpruceReady && state.heroOakReady && state.heroFernReady &&
+      state.heroTreeModelCount === 8 && state.heroFernCount === 4 &&
+      state.groundCoverClusterCount >= 4000 && state.yardApronReady && state.terrainVertexTinted;
   }, null, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
@@ -222,20 +225,29 @@ try {
     }));
   }
   if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
-      diagnostics.heroTreeModelCount !== 4 ||
-      diagnostics.heroTreeSourceMeshCount < 4000 ||
-      diagnostics.heroTreeMeshCount < 8 || diagnostics.heroTreeMeshCount > 40) {
-    throw new Error("The detailed hero trees did not load or were not efficiently batched: " + JSON.stringify({
+      !diagnostics.heroSpruceReady || !diagnostics.heroOakReady || !diagnostics.heroFernReady ||
+      diagnostics.heroTreeModelCount !== 8 || diagnostics.heroFernCount !== 4 ||
+      diagnostics.heroTreeSourceMeshCount < 12000 ||
+      diagnostics.heroTreeMeshCount < 16 || diagnostics.heroTreeMeshCount > 120 ||
+      diagnostics.groundCoverClusterCount < 4000 ||
+      !diagnostics.yardApronReady || !diagnostics.terrainVertexTinted) {
+    throw new Error("Pinecrest authored vegetation, foreground cover or yard surface did not load: " + JSON.stringify({
       conifer: diagnostics.heroConiferReady,
       broadleaf: diagnostics.heroBroadleafReady,
+      spruce: diagnostics.heroSpruceReady,
+      oak: diagnostics.heroOakReady,
+      ferns: [diagnostics.heroFernReady, diagnostics.heroFernCount],
       treeInstances: diagnostics.heroTreeModelCount,
       sourceMeshes: diagnostics.heroTreeSourceMeshCount,
       renderMeshesAfterBatching: diagnostics.heroTreeMeshCount,
+      groundCoverClusters: diagnostics.groundCoverClusterCount,
+      yardApron: diagnostics.yardApronReady,
+      terrainVertexTinted: diagnostics.terrainVertexTinted,
       failures: diagnostics.heroVegetationFailures
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.5-compound.png");
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.12.0-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 0) {
     throw new Error("The old raised lodge sign portal must be hidden after the Mountain Hut replacement: " + diagnostics.cabinSignSupportPostCount);
   }
@@ -250,7 +262,7 @@ try {
       diagnostics.pinecrestWindowFlowerBoxCount !== 0 ||
       diagnostics.pinecrestWoodshedPostCount !== 4 ||
       diagnostics.pinecrestWoodshedLogCount !== 12 ||
-      diagnostics.pinecrestFernFrondCount < 35) {
+      diagnostics.pinecrestFernFrondCount < 4) {
     throw new Error("Pinecrest still shows old cabin dressing or is missing compound details: " + JSON.stringify({
       legacyGableBeams: diagnostics.pinecrestGableBeamCount,
       legacyGutters: diagnostics.pinecrestRainGutterCount,
