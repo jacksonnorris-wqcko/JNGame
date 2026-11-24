@@ -120,6 +120,15 @@ BUILD_TIME_ASSETS = [
         "integration": "Candidate primary Pinecrest hunting lodge: two-storey dark oak framing, stone chimney, thatched roof, lean-to woodshed and walkable furnished ground-floor room"
     },
     {
+        "asset": "Cedarwatch Cabin",
+        "status": "downloaded-at-build",
+        "path": "buildings/pinecrest-cedarwatch-cabin.glb",
+        "approximate_bytes": 956496,
+        "license": "CC0 1.0 Universal",
+        "source": "https://scenecrate.com/scenes/forest-cabin",
+        "integration": "Primary Pinecrest hunting lodge: cedar cladding, layered green shingles, amber windows, dressed-stone chimney, furnished interior and open 1.64 m front doorway"
+    },
+    {
         "asset": "Conifer, detailed needles",
         "status": "downloaded-at-build",
         "path": "vegetation/conifer-detailed.glb",
