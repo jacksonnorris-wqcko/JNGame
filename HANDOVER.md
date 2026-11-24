@@ -1,9 +1,9 @@
 # JNGame / Wildrange — Development Handover
 
-**Updated:** 18 November 2026  
+**Updated:** 24 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
-**Working branch:** `main`  
-**Current source build:** `0.11.4`  
+**Working branch:** `art/pinecrest-world-visual-overhaul`  
+**Current source build:** `0.13.0 candidate (review branch; browser QA pending)`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -21,6 +21,30 @@ Wildrange is a stylised first-person hunting adventure. The priority is a stable
 - `.github/workflows/pages.yml` — GitHub Pages deployment.
 
 Progress is currently stored in browser `localStorage`. There is no account system, cloud save service or multiplayer backend.
+
+## 0.13.0 Cedarwatch lodge and woodland replacement — candidate
+
+**Status:** Static validation passed on commit `5d8762719e8f60f7796f5c84903fe9992eb5c42c`. Chrome gameplay validation is still running; do not merge or call this live yet.
+
+### Lodge
+- The primary imported lodge is now `pinecrest-cedarwatch-cabin.glb`. The Mountain Hut and original log cabin remain fallback assets only.
+- The Cedarwatch package includes a furnished room and an open doorway. Its measured source bounds are approximately 11.44 m × 10.17 m × 6.26 m; runtime scale is 1.60.
+- The root is aligned to the source walk-floor datum and the existing Pinecrest entrance position.
+- The source `walk.boxes` are transformed into world-space collision rectangles, preserving wall, frame, workbench, bed/platform, firewood and tree-trunk blocking while leaving the central doorway clear.
+- The former grouped procedural interior and interior point lights are disabled when Cedarwatch loads to prevent duplicated walls/furniture.
+- The old cabin shell, porch and procedural door are suppressed; the previous Mountain Hut door hinge is no longer required for the open-door Cedarwatch variant.
+- A new brass-edged Pinecrest Lodge plaque is parented to the Cedarwatch front facade above the entrance.
+
+### Woodland and compound edge
+- The former fern asset/material override is removed. The new photogrammetry bracken GLB keeps its authored alpha/PBR material.
+- Three scanned moss/lichen boulder clusters replace the repeated low-subdivision ico-sphere boundary row.
+- The old repeated stone edging has been removed.
+
+### Candidate QA gates
+- Static JS syntax, HTML/cache version consistency, asset presence/provenance and Cedarwatch walk-data validation: passed.
+- Browser smoke test must verify Cedarwatch loads, the nameplate is readable, the doorway and furnished interior are walkable, compound signs and collision remain correct, scanned ferns/boulders load, and the scene renders without browser errors.
+- A composited compound screenshot is required for visual approval. The previous 0.13.0 run timed out while using Playwright's standard screenshot path; the current test uses Chrome DevTools capture instead.
+- PR 2 remains open against `main`. No merge or Pages deployment has been performed.
 
 ## 0.8.21 visual finish
 
