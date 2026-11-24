@@ -97,4 +97,7 @@ for path in sys.argv[1:]:
         print("Timber lodge GLB nodes:", ", ".join(node.get("name", "") for node in document.get("nodes", []) if node.get("name")))
         print("Timber lodge GLB animations:", ", ".join(animation.get("name", "") for animation in document.get("animations", [])))
         print("Timber lodge GLB mesh/material counts:", len(document.get("meshes", [])), len(document.get("materials", [])))
+        for node in document.get("nodes", []):
+            if node.get("name") in {"timber-frame-house", "door", "door_iron", "door_wood", "shutter_1", "shutter_2"}:
+                print("Timber lodge node transform:", node.get("name"), "translation=", node.get("translation"), "rotation=", node.get("rotation"), "scale=", node.get("scale"), "children=", node.get("children"))
 PY
