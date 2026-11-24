@@ -2328,7 +2328,7 @@
           // The supplied navigation map places the centre of its open doorway at local (0, 0, +2.4).
           importedRoot.position.set(
             targetDoorCentre.x,
-            lodgeRoot.position.y - scaledBounds.min.y,
+            lodgeRoot.position.y - Number(cedarScene.walk.floor_y || 0) * scale,
             targetDoorCentre.z + 2.4 * scale
           );
           importedRoot.computeWorldMatrix(true);
@@ -2340,7 +2340,7 @@
             z: importedRoot.position.z
           };
           lodgeBuildingFootprint = { width: 6.0 * scale, depth: 4.8 * scale };
-          lodgeInteriorFloorHeight = importedRoot.position.y + Number(cedarScene.walk.floor_y || 0) * scale;
+          lodgeInteriorFloorHeight = lodgeRoot.position.y + Number(cedarScene.walk.floor_y || 0) * scale;
           lodgeDeckSurfaceHeight = lodgeInteriorFloorHeight;
           lodgeDoorwayOpen = true;
           cabinDoorOpen = true;
