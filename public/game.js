@@ -794,6 +794,7 @@
     mat.grassBlade.disableLighting = true;
     mat.grassBlade.diffuseColor = BABYLON.Color3.White();
     mat.grassBlade.specularColor = BABYLON.Color3.Black();
+    mat.grassBlade.emissiveColor = hex("#263b1c");
     mat.shore = makePbrSurface("Lake gravel and shore", "rock", 4, "#b9af93");
     mat.gravel = makePbrSurface("Pinecrest compacted gravel yard", "rock", 4.2, "#c2b496");
     mat.waterRipple = makeMaterial("Lake water glints", "#c5e0db");
@@ -4015,6 +4016,9 @@
         z = rand(-132, 132);
       }
       if (isPinecrestCompoundClearance(x, z)) continue;
+      // Keep the first-person start area clear enough that grass cards do not
+      // dominate the bottom of the screen or obscure the compound approach.
+      if (Math.hypot(x + 14, z - 19) < 5.2) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 25) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
@@ -4024,9 +4028,9 @@
       const shade = rand(0.82, 1.16);
       for (let blade = 0; blade < 3; blade++) {
         const angle = rand(0, Math.PI * 2) + blade * Math.PI / 3;
-        const half = rand(0.055, 0.105);
-        const height = rand(0.38, 0.88);
-        const lean = rand(0.035, 0.16);
+        const half = rand(0.042, 0.078);
+        const height = rand(0.24, 0.52);
+        const lean = rand(0.025, 0.10);
         const sideX = Math.cos(angle) * half;
         const sideZ = Math.sin(angle) * half;
         const leanAngle = angle + rand(-0.55, 0.55);
@@ -4042,12 +4046,12 @@
           tipX + tipSideX, y + height, tipZ + tipSideZ,
           tipX - tipSideX, y + height, tipZ - tipSideZ
         );
-        const rootGreen = clamp(0.25 * shade + rand(-0.025, 0.025), 0.18, 0.36);
-        const tipGreen = clamp(0.43 * shade + rand(-0.035, 0.035), 0.30, 0.58);
-        const rootRed = clamp(0.14 * shade + rand(-0.018, 0.018), 0.09, 0.22);
-        const tipRed = clamp(0.20 * shade + rand(-0.02, 0.02), 0.13, 0.29);
-        const rootBlue = clamp(0.075 * shade, 0.04, 0.12);
-        const tipBlue = clamp(0.115 * shade, 0.07, 0.16);
+        const rootGreen = clamp(0.38 * shade + rand(-0.025, 0.025), 0.30, 0.48);
+        const tipGreen = clamp(0.62 * shade + rand(-0.035, 0.035), 0.50, 0.76);
+        const rootRed = clamp(0.17 * shade + rand(-0.018, 0.018), 0.13, 0.24);
+        const tipRed = clamp(0.24 * shade + rand(-0.02, 0.02), 0.17, 0.33);
+        const rootBlue = clamp(0.09 * shade, 0.06, 0.15);
+        const tipBlue = clamp(0.145 * shade, 0.10, 0.20);
         colors.push(
           rootRed, rootGreen, rootBlue, 1,
           rootRed * 1.06, rootGreen * 1.04, rootBlue, 1,
