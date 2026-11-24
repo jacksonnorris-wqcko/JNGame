@@ -89,12 +89,7 @@ fetch_asset \
   "$VEGETATION/oak-detailed.glb" \
   "Oak street tree, detailed leaves (CC0)"
 
-fetch_asset \
-  "https://www.innerscene.com/api/library/fern-clumps-82a87bea/download" \
-  "$VEGETATION/fern-clump.glb" \
-  "Fern clumps (CC0)"
-
-python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$BUILDINGS/pinecrest-timber-frame-house.glb" "$BUILDINGS/pinecrest-cedarwatch-cabin.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" "$VEGETATION/woodland-bracken-fern.glb" "$VEGETATION/mossy-forest-boulders.glb" <<'PY'
+python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$BUILDINGS/pinecrest-timber-frame-house.glb" "$BUILDINGS/pinecrest-cedarwatch-cabin.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/woodland-bracken-fern.glb" "$VEGETATION/mossy-forest-boulders.glb" <<'PY'
 import os
 import struct
 import sys
@@ -108,7 +103,6 @@ minimum_bytes = {
     "linden-detailed.glb": 1_000_000,
     "norway-spruce.glb": 1_000_000,
     "oak-detailed.glb": 4_000_000,
-    "fern-clump.glb": 2_000_000,
     "woodland-bracken-fern.glb": 350_000,
     "mossy-forest-boulders.glb": 1_000_000,
 }
