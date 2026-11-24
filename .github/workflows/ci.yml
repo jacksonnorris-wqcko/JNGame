@@ -183,6 +183,42 @@ jobs:
             console.log("Wildrange browser build validation passed.");
           '
 
+  visual-capture:
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and validate CC0 lodge and vegetation GLBs
+        run: bash scripts/download_licensed_3d_assets.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start the static game server
+        run: |
+          mkdir -p artifacts
+          python3 -m http.server 8000 --directory public > /tmp/wildrange-http.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/play.html > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/wildrange-http.log
+          exit 1
+      - name: Capture the 0.13.1 compound from the real gate spawn
+        run: node scripts/visual_capture.mjs
+      - name: Upload the 0.13.1 compound screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wildrange-0.13.1-pinecrest-visual
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
   browser-smoke:
     timeout-minutes: 12
     runs-on: ubuntu-latest
