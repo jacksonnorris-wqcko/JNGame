@@ -115,9 +115,26 @@ jobs:
                 timberLodgeRecord.source !== "https://tevy.dev/models/timber-frame-house/") {
               throw new Error("The candidate timber-framed lodge must have its pinned CC0 source/license record");
             }
-            if (timberLodgeRecord.mesh_count < 10 || timberLodgeRecord.material_count < 8 ||
-                timberLodgeRecord.node_names?.includes("door") !== true) {
-              throw new Error("The timber lodge must expose its authored meshes, materials and moving door node: " + JSON.stringify(timberLodgeRecord));
+            const timberBytes = fs.readFileSync("public/assets/buildings/pinecrest-timber-frame-house.glb");
+            if (timberBytes.toString("ascii", 0, 4) !== "glTF" || timberBytes.readUInt32LE(4) !== 2) {
+              throw new Error("The candidate timber lodge is not a glTF 2.0 binary");
+            }
+            const jsonChunkLength = timberBytes.readUInt32LE(12);
+            const jsonChunkType = timberBytes.readUInt32LE(16);
+            if (jsonChunkType !== 0x4E4F534A || 20 + jsonChunkLength > timberBytes.length) {
+              throw new Error("The candidate timber lodge has an invalid glTF JSON chunk");
+            }
+            const timberDocument = JSON.parse(timberBytes.subarray(20, 20 + jsonChunkLength).toString("utf8").replace(/\\0+\\s*$/, ""));
+            const timberNodeNames = (timberDocument.nodes || []).map((node) => node.name || "");
+            if ((timberDocument.meshes || []).length < 20 ||
+                (timberDocument.materials || []).length < 12 ||
+                !timberNodeNames.includes("door") ||
+                !["shutter_1", "shutter_2", "shutter_3", "shutter_4"].every((name) => timberNodeNames.includes(name))) {
+              throw new Error("The timber lodge must expose the authored architecture, door and four shutter pivots: " + JSON.stringify({
+                meshes: timberDocument.meshes?.length,
+                materials: timberDocument.materials?.length,
+                nodes: timberNodeNames
+              }));
             }
             const newVegetation = [
               ["vegetation/norway-spruce.glb", "https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f"],
