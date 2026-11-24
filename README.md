@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Published browser build: unchanged by this review branch. **Candidate build: 0.13.0** (`art/pinecrest-world-visual-overhaul`). Base game assets are stored under `public/assets/`; the candidate adds the Cedarwatch lodge and scanned woodland assets.
+Published browser build: **0.13.0**. **Candidate build: 0.13.1** (`art/pinecrest-visual-upgrade-0131`). Base game assets are stored under `public/assets/`; the candidate adds the Cedarwatch lodge and scanned woodland assets.
 
 
 | Action | Control |
@@ -260,7 +260,20 @@ This coordinated visual pass addresses the flat, empty foreground and repeated t
 
 All new models are downloaded during CI/Pages builds and have their source and CC0 license recorded in the asset manifest and attribution file. The next validation gate checks that all eight hero trees, four fern clumps, foreground grass, gravel apron and terrain tint load in headless Chrome before this build is called visually approved.
 
-## 0.13.0 Cedarwatch lodge and woodland asset replacement — candidate
+## 0.13.1 Cedarwatch exterior art finish — candidate
+
+The 0.13.1 visual refinement targets the actual imported Cedarwatch scene nodes rather than adding arbitrary props:
+
+- Remove the two bundled cone-shaped cedar trees and four faceted bushes that were visibly out of style beside the lodge.
+- Apply a weathered vertical cedar-board albedo and normal finish to the authored wall panels.
+- Refinish the 100+ individual roof tiles in a deeper forest-green palette with restrained variation.
+- Warm the amber glazing and recolour the existing structural timber trim.
+- Move the imported, high-detail forest trees into the compound's visible outer frame.
+- Improve bracken lighting so scanned leaves keep readable green detail.
+
+The candidate remains on the review branch until the browser screenshot is inspected.
+
+## 0.13.1 Cedarwatch lodge and woodland asset replacement — candidate
 
 This is a larger replacement pass following the 0.12.1 screenshots. It is intentionally held on the review branch pending the rendered Chrome gameplay test and visual inspection.
 

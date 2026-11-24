@@ -126,6 +126,7 @@
   let heroSpruceReady = false, heroOakReady = false, heroFernReady = false;
   let heroFernCount = 0;
   let heroFernMaterialReady = false;
+  let heroFernRenderMaterial = null;
   let heroBoulderCount = 0, heroBoulderMeshCount = 0;
   let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
@@ -793,6 +794,7 @@
     mat.grassBlade.disableLighting = true;
     mat.grassBlade.diffuseColor = BABYLON.Color3.White();
     mat.grassBlade.specularColor = BABYLON.Color3.Black();
+    mat.grassBlade.emissiveColor = hex("#263b1c");
     mat.shore = makePbrSurface("Lake gravel and shore", "rock", 4, "#b9af93");
     mat.gravel = makePbrSurface("Pinecrest compacted gravel yard", "rock", 4.2, "#c2b496");
     mat.waterRipple = makeMaterial("Lake water glints", "#c5e0db");
@@ -1418,14 +1420,14 @@
     const fencePost = (x, z, name) => {
       const groundY = localGroundY(x, z);
       const footing = BABYLON.MeshBuilder.CreateCylinder("compound fence stone footing",
-        { height: 0.28, diameterTop: 0.44, diameterBottom: 0.52, tessellation: 8 }, scene);
+        { height: 0.22, diameterTop: 0.36, diameterBottom: 0.43, tessellation: 10 }, scene);
       footing.parent = root;
       footing.position.set(x, groundY + 0.14, z);
       footing.rotation.y = Math.PI / 8;
       footing.material = mat.stoneDark;
       footing.isPickable = false;
       const post = BABYLON.MeshBuilder.CreateCylinder(name,
-        { height: 1.92, diameterTop: 0.235, diameterBottom: 0.34, tessellation: 10 }, scene);
+        { height: 1.92, diameterTop: 0.18, diameterBottom: 0.25, tessellation: 12 }, scene);
       post.parent = root;
       post.position.set(x, groundY + 0.96, z);
       post.rotation.y = rand(-0.025, 0.025);
@@ -1433,7 +1435,7 @@
       post.isPickable = false;
       post.receiveShadows = true;
       const cap = BABYLON.MeshBuilder.CreateCylinder("compound fence post cap",
-        { height: 0.12, diameterTop: 0.28, diameterBottom: 0.36, tessellation: 10 }, scene);
+        { height: 0.10, diameterTop: 0.22, diameterBottom: 0.28, tessellation: 12 }, scene);
       cap.parent = root;
       cap.position.set(x, groundY + 1.98, z);
       cap.material = mat.woodLight;
@@ -1441,14 +1443,14 @@
       // Dark steel connector bands hide rail joints and make the fence read as assembled hardware.
       for (const level of [0.68, 1.30]) {
         const bracket = BABYLON.MeshBuilder.CreateCylinder("compound fence steel rail bracket",
-          { height: 0.14, diameterTop: 0.37, diameterBottom: 0.37, tessellation: 10 }, scene);
+          { height: 0.105, diameterTop: 0.285, diameterBottom: 0.285, tessellation: 12 }, scene);
         bracket.parent = root;
         bracket.position.set(x, groundY + level, z);
         bracket.material = mat.black;
         bracket.isPickable = false;
-        const bolt = BABYLON.MeshBuilder.CreateSphere("compound fence brass bolt", { diameter: 0.075, segments: 10 }, scene);
+        const bolt = BABYLON.MeshBuilder.CreateSphere("compound fence brass bolt", { diameter: 0.055, segments: 10 }, scene);
         bolt.parent = root;
-        bolt.position.set(x, groundY + level, z - 0.205);
+        bolt.position.set(x, groundY + level, z - 0.164);
         bolt.material = mat.gold;
         bolt.isPickable = false;
       }
@@ -1457,7 +1459,7 @@
       const y0 = localGroundY(x, z0), y1 = localGroundY(x, z1);
       const length = Math.hypot(z1 - z0, y1 - y0);
       const rail = BABYLON.MeshBuilder.CreateCylinder(name,
-        { height: length, diameterTop: 0.16, diameterBottom: 0.21, tessellation: 12 }, scene);
+        { height: length, diameterTop: 0.115, diameterBottom: 0.15, tessellation: 12 }, scene);
       rail.parent = root;
       rail.position.set(x, (y0 + y1) / 2 + height, (z0 + z1) / 2);
       rail.rotation.x = Math.atan2(z1 - z0, y1 - y0);
@@ -1471,7 +1473,7 @@
       const dx = x1 - x0, dy = y1 - y0;
       const length = Math.hypot(dx, dy);
       const rail = BABYLON.MeshBuilder.CreateCylinder(name,
-        { height: length, diameterTop: 0.16, diameterBottom: 0.21, tessellation: 12 }, scene);
+        { height: length, diameterTop: 0.115, diameterBottom: 0.15, tessellation: 12 }, scene);
       rail.parent = root;
       rail.position.set((x0 + x1) / 2, (y0 + y1) / 2 + height, z);
       rail.rotation.z = Math.atan2(-dx, dy);
@@ -2316,6 +2318,232 @@
     return { width: signWidth, height: signHeight, position: localPosition.asArray() };
   }
 
+  function createCedarwatchSidingMaterial() {
+    const size = 1024;
+    const albedo = new BABYLON.DynamicTexture(
+      "Cedarwatch weathered vertical cedar cladding",
+      { width: size, height: size }, scene, true
+    );
+    const ctx = albedo.getContext();
+    let seed = 53819;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const palette = ["#725039", "#7c573e", "#684630", "#805b42", "#76513a", "#6c4933"];
+    ctx.fillStyle = "#33251c";
+    ctx.fillRect(0, 0, size, size);
+    const plankWidth = 86;
+    for (let plank = 0; plank < 12; plank++) {
+      const x = plank * plankWidth;
+      const width = plankWidth - 3;
+      const base = palette[plank % palette.length];
+      const wash = ctx.createLinearGradient(x, 0, x + width, 0);
+      wash.addColorStop(0, "#3b2a20");
+      wash.addColorStop(0.08, base);
+      wash.addColorStop(0.52, base);
+      wash.addColorStop(0.94, "#503a2b");
+      wash.addColorStop(1, "#33251c");
+      ctx.fillStyle = wash;
+      ctx.fillRect(x + 2, 0, width, size);
+      ctx.fillStyle = "rgba(22,17,13,.34)";
+      ctx.fillRect(x, 0, 2, size);
+      ctx.fillStyle = "rgba(202,157,109,.23)";
+      ctx.fillRect(x + 3, 0, 2, size);
+      for (let grain = 0; grain < 34; grain++) {
+        const gx = x + 5 + random() * (width - 10);
+        const start = random() * size;
+        const length = 80 + random() * 690;
+        ctx.strokeStyle = random() > 0.55 ? "rgba(28,19,13,.18)" : "rgba(220,177,128,.12)";
+        ctx.lineWidth = 0.5 + random() * 1.7;
+        ctx.beginPath();
+        ctx.moveTo(gx, start);
+        ctx.bezierCurveTo(
+          gx + (random() - 0.5) * 5, start + length * 0.28,
+          gx + (random() - 0.5) * 4, start + length * 0.68,
+          gx + (random() - 0.5) * 5, Math.min(size, start + length)
+        );
+        ctx.stroke();
+      }
+      if (random() > 0.22) {
+        const kx = x + 20 + random() * (width - 40);
+        const ky = 90 + random() * (size - 180);
+        ctx.strokeStyle = "rgba(35,23,15,.44)";
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.ellipse(kx, ky, 5 + random() * 5, 12 + random() * 13, random() * 0.14, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(213,174,129,.24)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(kx + 1, ky, 2.5, 7, 0.04, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    albedo.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    albedo.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+    albedo.uScale = 2.2;
+    albedo.vScale = 1.45;
+    albedo.anisotropicFilteringLevel = 16;
+    albedo.update(false);
+
+    // Fine plank relief gives the siding visible grooves rather than a flat colour swap.
+    const bumpSize = 512;
+    const heightCanvas = document.createElement("canvas");
+    heightCanvas.width = bumpSize;
+    heightCanvas.height = bumpSize;
+    const heightCtx = heightCanvas.getContext("2d");
+    heightCtx.fillStyle = "rgb(142,142,142)";
+    heightCtx.fillRect(0, 0, bumpSize, bumpSize);
+    for (let plank = 0; plank < 12; plank++) {
+      const x = plank * (bumpSize / 12);
+      heightCtx.fillStyle = "rgb(72,72,72)";
+      heightCtx.fillRect(x, 0, 2, bumpSize);
+      heightCtx.fillStyle = "rgb(180,180,180)";
+      heightCtx.fillRect(x + 3, 0, 2, bumpSize);
+      for (let groove = 0; groove < 14; groove++) {
+        const gx = x + 7 + random() * 31;
+        heightCtx.strokeStyle = random() > 0.5 ? "rgb(118,118,118)" : "rgb(164,164,164)";
+        heightCtx.lineWidth = 1;
+        heightCtx.beginPath();
+        heightCtx.moveTo(gx, random() * bumpSize);
+        heightCtx.lineTo(gx + (random() - 0.5) * 3, random() * bumpSize);
+        heightCtx.stroke();
+      }
+    }
+    const heightData = heightCtx.getImageData(0, 0, bumpSize, bumpSize).data;
+    const normalCanvas = document.createElement("canvas");
+    normalCanvas.width = bumpSize;
+    normalCanvas.height = bumpSize;
+    const normalCtx = normalCanvas.getContext("2d");
+    const normalData = normalCtx.createImageData(bumpSize, bumpSize);
+    const output = normalData.data;
+    for (let y = 1; y < bumpSize - 1; y++) {
+      for (let x = 1; x < bumpSize - 1; x++) {
+        const index = (y * bumpSize + x) * 4;
+        const dx = heightData[index + 4] - heightData[index - 4];
+        const dy = heightData[index + bumpSize * 4] - heightData[index - bumpSize * 4];
+        let nx = -dx * 0.035, ny = -dy * 0.035;
+        const length = Math.sqrt(nx * nx + ny * ny + 1);
+        nx /= length; ny /= length;
+        output[index] = Math.round((nx * 0.5 + 0.5) * 255);
+        output[index + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+        output[index + 2] = Math.round((1 / length * 0.5 + 0.5) * 255);
+        output[index + 3] = 255;
+      }
+    }
+    normalCtx.putImageData(normalData, 0, 0);
+    const normal = new BABYLON.DynamicTexture(
+      "Cedarwatch carved cedar siding normal",
+      normalCanvas, scene, false
+    );
+    normal.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+    normal.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+    normal.uScale = 2.2;
+    normal.vScale = 1.45;
+    normal.anisotropicFilteringLevel = 16;
+    normal.update(false);
+
+    const material = new BABYLON.PBRMaterial("Cedarwatch hand-finished cedar boards", scene);
+    material.albedoTexture = albedo;
+    material.bumpTexture = normal;
+    material.bumpTexture.level = 0.34;
+    material.albedoColor = BABYLON.Color3.White();
+    material.metallic = 0;
+    material.roughness = 0.9;
+    material.environmentIntensity = 0.42;
+    material.directIntensity = 1.15;
+    return material;
+  }
+
+  function createCedarwatchRoofMaterials() {
+    const makeRoof = (name, colour, roughness) => {
+      const material = new BABYLON.PBRMaterial(name, scene);
+      material.albedoColor = hex(colour);
+      material.metallic = 0.06;
+      material.roughness = roughness;
+      material.environmentIntensity = 0.32;
+      material.directIntensity = 1.08;
+      material.specularColor = hex("#687a68");
+      return material;
+    };
+    return {
+      dark: makeRoof("Cedarwatch deep forest shingle", "#263a30", 0.9),
+      mid: makeRoof("Cedarwatch weathered evergreen shingle", "#344b3c", 0.86),
+      light: makeRoof("Cedarwatch sun-aged shingle variation", "#405541", 0.88)
+    };
+  }
+
+  function createCedarwatchWindowMaterial() {
+    const glass = new BABYLON.PBRMaterial("Cedarwatch warm amber glazing", scene);
+    glass.albedoColor = hex("#c99a60");
+    glass.emissiveColor = hex("#75421f");
+    glass.emissiveIntensity = 0.42;
+    glass.metallic = 0.04;
+    glass.roughness = 0.24;
+    glass.alpha = 0.94;
+    glass.backFaceCulling = false;
+    glass.environmentIntensity = 0.72;
+    glass.directIntensity = 1.0;
+    return glass;
+  }
+
+  function applyCedarwatchExteriorFinish(importedNodes) {
+    const siding = createCedarwatchSidingMaterial();
+    const roof = createCedarwatchRoofMaterials();
+    const glazing = createCedarwatchWindowMaterial();
+    const roofTiles = [];
+    let wallCount = 0, windowCount = 0, hiddenAccessoryCount = 0, trimCount = 0;
+    for (const node of importedNodes || []) {
+      const rawName = String(node.name || "").replace(/^PINECREST_AUTHORED_LODGE__/, "");
+      const name = rawName.toLowerCase();
+      const isMesh = node && typeof node.getTotalVertices === "function" && node.getTotalVertices() > 0;
+      if (/^(cedar tree trunk|layered cedar crown|low faceted sage bush)/i.test(rawName)) {
+        node.setEnabled(false);
+        hiddenAccessoryCount++;
+        continue;
+      }
+      if (!isMesh) continue;
+      if (/^(rear wall|door-side solid wall|side wall panel|side window (lower|upper) wall|triangular cedar gable)/i.test(rawName)) {
+        node.material = siding;
+        wallCount++;
+        continue;
+      }
+      if (/^(front amber window|opaque amber side window)/i.test(rawName)) {
+        node.material = glazing;
+        windowCount++;
+        continue;
+      }
+      if (/^layered cedar-roof tile/i.test(rawName)) {
+        roofTiles.push(node);
+        continue;
+      }
+      if (/^closed green roof plane/i.test(rawName)) {
+        node.material = roof.dark;
+        continue;
+      }
+      if (/^(cabin corner post|front cedar plank edge|rear cedar plank edge|exposed gable tie beam|gable left rafter|gable right rafter|gable diagonal brace)/i.test(rawName)) {
+        node.material = mat.woodLight;
+        trimCount++;
+      }
+    }
+    roofTiles.forEach((mesh, index) => {
+      mesh.material = index % 7 === 0 ? roof.light : index % 3 === 0 ? roof.dark : roof.mid;
+    });
+    lights.cedarwatchHiddenAccessoryCount = hiddenAccessoryCount;
+    lights.cedarwatchFacadeWallMeshCount = wallCount;
+    lights.cedarwatchWindowGlassCount = windowCount;
+    lights.cedarwatchRoofTileCount = roofTiles.length;
+    lights.cedarwatchTimberTrimCount = trimCount;
+    return {
+      hiddenAccessories: hiddenAccessoryCount,
+      facadeWalls: wallCount,
+      windowGlazing: windowCount,
+      roofTiles: roofTiles.length,
+      timberTrim: trimCount
+    };
+  }
+
   function loadPinecrestLodgeModel(lodgeRoot) {
     lodgeModelLoading = true;
 
@@ -2361,9 +2589,14 @@
         const importedNodes = entries.rootNodes.flatMap((node) => [node, ...node.getDescendants(false)]);
         lodgeModelNodeNames = importedNodes.map((node) => String(node.name || "")).filter(Boolean).slice(0, 160);
 
+        // Cedarwatch's pack includes two decorative cone trees and four faceted
+        // sage bushes as part of the source scene. They fight the forest asset style
+        // and were the oversized cone/black silhouettes visible beside the lodge.
+        const usesCedarwatch = lodgeModelAssetName === "pinecrest-cedarwatch-cabin.glb";
+        if (usesCedarwatch) applyCedarwatchExteriorFinish(importedNodes);
+
         // GLB instantiation prefixes every node name. Match the authored hinge
         // by suffix, otherwise the old procedural door remains in front of the hut.
-        const usesCedarwatch = lodgeModelAssetName === "pinecrest-cedarwatch-cabin.glb";
         const usesMountainHut = lodgeModelAssetName === "pinecrest-mountain-hut.glb";
         const importedDoorPivot = usesCedarwatch
           ? null
@@ -2436,7 +2669,9 @@
           lodgeLegacyDoorHidden = true;
           cabinDoorPivot = null;
 
-          lodgeNavigationBoxes = cedarScene.walk.boxes.map((boxData) => ({
+          lodgeNavigationBoxes = cedarScene.walk.boxes
+            .filter((boxData) => !/tree trunk/i.test(String(boxData.name || "")))
+            .map((boxData) => ({
             name: boxData.name || "Cedarwatch collision",
             minX: importedRoot.position.x - Number(boxData.max[0]) * scale,
             maxX: importedRoot.position.x - Number(boxData.min[0]) * scale,
@@ -2693,12 +2928,43 @@
     for (const mesh of compactMeshes) {
       if (!mesh || mesh.isDisposed()) continue;
       mesh.isPickable = false;
-      // The scanned bracken uses alpha-cutout leaves and its own baked PBR maps.
-      // Preserve those authored materials; only opt it out of the shadow pass.
+      // Rebuild the photogrammetry fern shader explicitly. The source GLB uses
+      // a masked diffuse-alpha leaf atlas; the old imported PBR preset rendered
+      // almost black under the valley lighting even after a small albedo tint.
       mesh.receiveShadows = label !== "fern";
-      if (label === "fern" && mesh.material?.getActiveTextures) {
+      if (label === "fern" && mesh.material) {
+        const sourceMaterial = mesh.material;
+        if (!heroFernRenderMaterial) {
+          const baseTexture = sourceMaterial.albedoTexture || sourceMaterial.diffuseTexture || null;
+          const normalTexture = sourceMaterial.bumpTexture || sourceMaterial.normalTexture || null;
+          const opacityTexture = sourceMaterial.opacityTexture || null;
+          if (baseTexture) baseTexture.hasAlpha = true;
+          heroFernRenderMaterial = new BABYLON.PBRMaterial("Pinecrest sunlit bracken leaf cutout", scene);
+          heroFernRenderMaterial.albedoTexture = baseTexture;
+          heroFernRenderMaterial.bumpTexture = normalTexture;
+          heroFernRenderMaterial.opacityTexture = opacityTexture;
+          heroFernRenderMaterial.useAlphaFromAlbedoTexture = Boolean(baseTexture);
+          heroFernRenderMaterial.useAlphaFromDiffuseTexture = Boolean(baseTexture);
+          heroFernRenderMaterial.transparencyMode =
+            BABYLON.PBRMaterial.PBRMATERIAL_ALPHATEST ??
+            BABYLON.Material.MATERIAL_ALPHATEST;
+          heroFernRenderMaterial.alphaCutOff = 0.36;
+          heroFernRenderMaterial.albedoColor = hex("#a4c57b");
+          heroFernRenderMaterial.emissiveColor = hex("#5b8040");
+          heroFernRenderMaterial.emissiveIntensity = 0.58;
+          heroFernRenderMaterial.metallic = 0;
+          heroFernRenderMaterial.roughness = 0.94;
+          heroFernRenderMaterial.environmentIntensity = 0.82;
+          heroFernRenderMaterial.directIntensity = 1.25;
+          heroFernRenderMaterial.backFaceCulling = false;
+          heroFernRenderMaterial.twoSidedLighting = true;
+        }
+        mesh.material = heroFernRenderMaterial;
+        const textures = heroFernRenderMaterial.getActiveTextures
+          ? heroFernRenderMaterial.getActiveTextures()
+          : [];
         heroFernMaterialReady = heroFernMaterialReady ||
-          mesh.material.getActiveTextures().some((texture) => texture && texture.isReady());
+          (textures.length === 0 || textures.some((texture) => texture && texture.isReady()));
       }
       mesh.metadata = { ...(mesh.metadata || {}), pinecrestHeroVegetation: label };
       if (label !== "fern" && lights.shadows && !mesh.material?.needAlphaBlending?.()) {
@@ -2752,12 +3018,12 @@
 
   function loadPinecrestHeroVegetation() {
     const coniferPlacements = [
-      { x: -49, z: 36, height: 15.0 },
-      { x: 25, z: 69, height: 14.0 }
+      { x: -38, z: 47, height: 12.5 },
+      { x: 10, z: 61, height: 12.2 }
     ];
     const broadleafPlacements = [
-      { x: -55, z: 66, height: 9.0 },
-      { x: 24, z: 31, height: 9.5 }
+      { x: -41, z: 64, height: 9.6 },
+      { x: 12, z: 43, height: 9.2 }
     ];
 
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "conifer-detailed.glb", scene)
@@ -2792,8 +3058,8 @@
     // Norway spruce is a tall narrow silhouette; the oak has individually
     // modelled leaves and a broader crown so the forest is not one repeated shape.
     const sprucePlacements = [
-      { x: -78, z: 104, height: 11.5 },
-      { x: 78, z: 116, height: 12.0 }
+      { x: -61, z: 91, height: 12.4 },
+      { x: 53, z: 98, height: 12.0 }
     ];
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "norway-spruce.glb", scene)
       .then((container) => {
@@ -2810,8 +3076,8 @@
       });
 
     const oakPlacements = [
-      { x: -63, z: 87, height: 11.0 },
-      { x: 48, z: 43, height: 10.8 }
+      { x: -55, z: 72, height: 11.2 },
+      { x: 34, z: 56, height: 10.8 }
     ];
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "oak-detailed.glb", scene)
       .then((container) => {
@@ -3750,6 +4016,9 @@
         z = rand(-132, 132);
       }
       if (isPinecrestCompoundClearance(x, z)) continue;
+      // Keep the first-person start area clear enough that grass cards do not
+      // dominate the bottom of the screen or obscure the compound approach.
+      if (Math.hypot(x + 14, z - 19) < 5.2) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 25) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
@@ -3759,9 +4028,9 @@
       const shade = rand(0.82, 1.16);
       for (let blade = 0; blade < 3; blade++) {
         const angle = rand(0, Math.PI * 2) + blade * Math.PI / 3;
-        const half = rand(0.055, 0.105);
-        const height = rand(0.38, 0.88);
-        const lean = rand(0.035, 0.16);
+        const half = rand(0.042, 0.078);
+        const height = rand(0.24, 0.52);
+        const lean = rand(0.025, 0.10);
         const sideX = Math.cos(angle) * half;
         const sideZ = Math.sin(angle) * half;
         const leanAngle = angle + rand(-0.55, 0.55);
@@ -3777,12 +4046,12 @@
           tipX + tipSideX, y + height, tipZ + tipSideZ,
           tipX - tipSideX, y + height, tipZ - tipSideZ
         );
-        const rootGreen = clamp(0.25 * shade + rand(-0.025, 0.025), 0.18, 0.36);
-        const tipGreen = clamp(0.43 * shade + rand(-0.035, 0.035), 0.30, 0.58);
-        const rootRed = clamp(0.14 * shade + rand(-0.018, 0.018), 0.09, 0.22);
-        const tipRed = clamp(0.20 * shade + rand(-0.02, 0.02), 0.13, 0.29);
-        const rootBlue = clamp(0.075 * shade, 0.04, 0.12);
-        const tipBlue = clamp(0.115 * shade, 0.07, 0.16);
+        const rootGreen = clamp(0.38 * shade + rand(-0.025, 0.025), 0.30, 0.48);
+        const tipGreen = clamp(0.62 * shade + rand(-0.035, 0.035), 0.50, 0.76);
+        const rootRed = clamp(0.17 * shade + rand(-0.018, 0.018), 0.13, 0.24);
+        const tipRed = clamp(0.24 * shade + rand(-0.02, 0.02), 0.17, 0.33);
+        const rootBlue = clamp(0.09 * shade, 0.06, 0.15);
+        const tipBlue = clamp(0.145 * shade, 0.10, 0.20);
         colors.push(
           rootRed, rootGreen, rootBlue, 1,
           rootRed * 1.06, rootGreen * 1.04, rootBlue, 1,
@@ -5527,6 +5796,11 @@
     fernMaterialReady: Boolean(heroFernReady && heroFernMaterialReady),
     heroBoulderCount,
     heroBoulderMeshCount,
+    cedarwatchHiddenAccessoryCount: Number(lights.cedarwatchHiddenAccessoryCount) || 0,
+    cedarwatchFacadeWallMeshCount: Number(lights.cedarwatchFacadeWallMeshCount) || 0,
+    cedarwatchWindowGlassCount: Number(lights.cedarwatchWindowGlassCount) || 0,
+    cedarwatchRoofTileCount: Number(lights.cedarwatchRoofTileCount) || 0,
+    cedarwatchTimberTrimCount: Number(lights.cedarwatchTimberTrimCount) || 0,
     gateSignWorldWidth: gateSignFrontMesh
       ? Number((gateSignFrontMesh.getBoundingInfo().boundingBox.extendSizeWorld.x * 2).toFixed(2))
       : 0,

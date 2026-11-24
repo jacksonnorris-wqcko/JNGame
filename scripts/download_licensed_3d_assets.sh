@@ -139,6 +139,65 @@ for path in sys.argv[1:]:
         report_path = os.path.join(os.path.dirname(path), report_name)
         report = __import__("json").load(open(report_path, encoding="utf-8"))
         print("Photogrammetry asset report:", os.path.basename(path), report.get("bounds"), report.get("variants", {}).get("standard"))
+    if json_bytes and os.path.basename(path) == "woodland-bracken-fern.glb":
+        document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
+        print("BRACKEN_FERN_GLTF materials:")
+        for index, material in enumerate(document.get("materials", [])):
+            pbr = material.get("pbrMetallicRoughness", {})
+            print("FERN_MATERIAL", index, material.get("name", ""),
+                  "baseColor=", pbr.get("baseColorFactor"),
+                  "baseColorTexture=", pbr.get("baseColorTexture"),
+                  "normalTexture=", material.get("normalTexture"),
+                  "alphaMode=", material.get("alphaMode"),
+                  "alphaCutoff=", material.get("alphaCutoff"))
+        print("BRACKEN_FERN_GLTF images:", [image.get("name", image.get("uri", "")) for image in document.get("images", [])])
+        print("BRACKEN_FERN_GLTF nodes:", [(node.get("name", ""), node.get("mesh")) for node in document.get("nodes", []) if node.get("mesh") is not None])
+        # Export the original base-colour/alpha atlas into the QA artifact so
+        # the foliage's black appearance can be traced to the source pixels.
+        with open(path, "rb") as glb_stream:
+            glb_stream.seek(12)
+            json_length, json_type = struct.unpack("<II", glb_stream.read(8))
+            glb_stream.seek(20 + json_length)
+            bin_length, bin_type = struct.unpack("<II", glb_stream.read(8))
+            binary_chunk = glb_stream.read(bin_length) if bin_type == 0x004E4942 else b""
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(path), "../../.."))
+        artifact_dir = os.path.join(root_dir, "artifacts")
+        os.makedirs(artifact_dir, exist_ok=True)
+        for image_index, image in enumerate(document.get("images", [])):
+            name = image.get("name", "fern-image-" + str(image_index))
+            buffer_view_index = image.get("bufferView")
+            if buffer_view_index is None:
+                continue
+            view = document.get("bufferViews", [])[buffer_view_index]
+            start = int(view.get("byteOffset", 0))
+            length = int(view["byteLength"])
+            image_bytes = binary_chunk[start:start + length]
+            if not image_bytes:
+                continue
+            extension = ".png" if image.get("mimeType") == "image/png" else ".jpg"
+            filename = "fern-source-" + str(image_index) + extension
+            with open(os.path.join(artifact_dir, filename), "wb") as image_file:
+                image_file.write(image_bytes)
+            print("EXPORTED_FERN_TEXTURE", filename, "name=", name, "bytes=", len(image_bytes), "mime=", image.get("mimeType"))
+
+    if json_bytes and os.path.basename(path) == "pinecrest-cedarwatch-cabin.glb":
+        document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
+        materials = document.get("materials", [])
+        images = document.get("images", [])
+        meshes = document.get("meshes", [])
+        print("Cedarwatch GLB node hierarchy:")
+        for index, node in enumerate(document.get("nodes", [])):
+            mesh_index = node.get("mesh")
+            mesh_name = meshes[mesh_index].get("name", "") if isinstance(mesh_index, int) and mesh_index < len(meshes) else ""
+            print("CEDAR_NODE", index, node.get("name", ""), "mesh=", mesh_name,
+                  "translation=", node.get("translation"), "children=", node.get("children"))
+        print("Cedarwatch GLB materials:")
+        for index, material in enumerate(materials):
+            pbr = material.get("pbrMetallicRoughness", {})
+            print("CEDAR_MATERIAL", index, material.get("name", ""),
+                  "baseColor=", pbr.get("baseColorFactor"), "baseColorTexture=", pbr.get("baseColorTexture"),
+                  "normalTexture=", material.get("normalTexture"), "alphaMode=", material.get("alphaMode"))
+        print("Cedarwatch GLB images:", [image.get("name", image.get("uri", "")) for image in images])
     if json_bytes and os.path.basename(path) == "pinecrest-timber-frame-house.glb":
         document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
         print("Timber lodge GLB nodes:", ", ".join(node.get("name", "") for node in document.get("nodes", []) if node.get("name")))
