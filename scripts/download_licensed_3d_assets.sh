@@ -39,7 +39,22 @@ fetch_asset \
   "$VEGETATION/linden-detailed.glb" \
   "Linden street tree, detailed leaves (CC0)"
 
-python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" <<'PY'
+fetch_asset \
+  "https://www.innerscene.com/api/library/mature-norway-spruce-tree-48c2566f/download" \
+  "$VEGETATION/norway-spruce.glb" \
+  "Mature Norway spruce (CC0)"
+
+fetch_asset \
+  "https://www.innerscene.com/api/library/oak-street-tree-detailed-leaves-a273fef9/download" \
+  "$VEGETATION/oak-detailed.glb" \
+  "Oak street tree, detailed leaves (CC0)"
+
+fetch_asset \
+  "https://www.innerscene.com/api/library/fern-clumps-82a87bea/download" \
+  "$VEGETATION/fern-clump.glb" \
+  "Fern clumps (CC0)"
+
+python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" <<'PY'
 import os
 import struct
 import sys
@@ -49,6 +64,9 @@ minimum_bytes = {
     "pinecrest-mountain-hut.glb": 2_000_000,
     "conifer-detailed.glb": 1_000_000,
     "linden-detailed.glb": 1_000_000,
+    "norway-spruce.glb": 1_000_000,
+    "oak-detailed.glb": 4_000_000,
+    "fern-clump.glb": 2_000_000,
 }
 for path in sys.argv[1:]:
     size = os.path.getsize(path)
