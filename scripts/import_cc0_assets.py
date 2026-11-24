@@ -165,13 +165,22 @@ BUILD_TIME_ASSETS = [
         "integration": "Two broadleaf hero trees add a different canopy silhouette around Pinecrest"
     },
     {
-        "asset": "Fern clumps",
+        "asset": "Photoreal Woodland Bracken Fern",
         "status": "downloaded-at-build",
-        "path": "vegetation/fern-clump.glb",
-        "approximate_bytes": 3200000,
+        "path": "vegetation/woodland-bracken-fern.glb",
+        "approximate_bytes": 393625,
         "license": "CC0 1.0 Universal",
-        "source": "https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea",
-        "integration": "Four PBR fern clumps soften the Pinecrest fence and garden edges"
+        "source": "https://scenecrate.com/free-3d-game-assets",
+        "integration": "Four photogrammetry-scanned bracken fern clumps with alpha-cutout fronds and embedded PBR maps in Pinecrest garden beds"
+    },
+    {
+        "asset": "Photoreal Mossy Forest Boulders",
+        "status": "downloaded-at-build",
+        "path": "vegetation/mossy-forest-boulders.glb",
+        "approximate_bytes": 1425000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://scenecrate.com/free-3d-game-assets",
+        "integration": "Photogrammetry-scanned moss and lichen boulders replacing low-detail compound-edge stones"
     }
 ]
 
