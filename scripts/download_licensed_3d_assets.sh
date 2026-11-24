@@ -114,7 +114,8 @@ for path in sys.argv[1:]:
         scene_data = json.load(open(scene_path, encoding="utf-8"))
         print("Cedarwatch measured bounds:", report.get("bounds"))
         print("Cedarwatch standard metrics:", report.get("variants", {}).get("standard"))
-        print("Cedarwatch navigation data:", json.dumps(scene_data.get("navigation", {}))[:7000])
+        print("Cedarwatch scene top-level keys:", list(scene_data.keys()))
+        print("Cedarwatch navigation data:", json.dumps(scene_data, separators=(",", ":"))[:12000])
     with open(path, "rb") as stream:
         stream.seek(12)
         json_length, json_type = struct.unpack("<II", stream.read(8))
