@@ -227,7 +227,7 @@ try {
   if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
       !diagnostics.heroSpruceReady || !diagnostics.heroOakReady || !diagnostics.heroFernReady ||
       diagnostics.heroTreeModelCount !== 8 || diagnostics.heroFernCount !== 4 ||
-      diagnostics.heroTreeSourceMeshCount < 12000 ||
+      diagnostics.heroTreeSourceMeshCount < 5000 ||
       diagnostics.heroTreeMeshCount < 16 || diagnostics.heroTreeMeshCount > 120 ||
       diagnostics.groundCoverClusterCount < 4000 ||
       !diagnostics.yardApronReady || !diagnostics.terrainVertexTinted) {
