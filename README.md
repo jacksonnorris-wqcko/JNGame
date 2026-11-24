@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.11.2**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.11.3**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -199,6 +199,22 @@ The first Mountain Hut implementation passed its GLB import and rendering tests,
 - New hunters, plus untouched saves still at the original spawn coordinates, start facing Pinecrest Lodge rather than looking beside it.
 
 The Playwright suite now checks the physical imported doorway when closed/open, the interaction target's proximity to the pivot, the new interior and terrace heights, the walkable approach, and the opening camera heading. It also verifies that all interior child meshes are unfrozen and recomputed after the asynchronous height alignment, preventing stale transforms from leaving the furniture at the previous floor level. The 0.11.1 build keeps the Mountain Hut as the primary architecture and the original log cabin as a load fallback.
+
+## 0.11.3 Pinecrest visual cleanup after Mountain Hut integration
+
+A screenshot review exposed an unacceptable overlap: the imported Mountain Hut was visible at the same time as pieces of the previous procedural log cabin. The old continuous cedar roof surface, chimney, lodge plaque/portal, flag, entry stair rails, porch supports and box lantern housings were not all included in the legacy cleanup patterns. The result looked like two buildings stacked together.
+
+The 0.11.3 pass corrects the visibility rules:
+
+- Disables the old cedar roof surfaces, ridge/fascia/rafters, gable timbers, chimney stones/flue/cap, old log courses/end-grain and window dressing when the Mountain Hut is the active model.
+- Removes the old elevated lodge sign portal and its backing, posts, brackets, fixings and face.
+- Removes the old porch deck/handrails/steps/supports, entry stair rails and mismatched lantern housings; their old light sources are disabled too.
+- Removes the flag and pole that crossed the new roofline.
+- Keeps the separate outpost gate sign, outfitter signage, woodshed, compound fence, mission board, harvest station and the grouped lodge interior.
+- Adds a smaller brass-edged Pinecrest Lodge nameplate directly above the imported Mountain Hut door, positioned from the door's actual world bounds.
+- Adds browser diagnostics for any legacy lodge roof, sign, chimney, porch, flag or lantern mesh that remains enabled. The smoke test requires all these visible-legacy counts to be zero.
+
+This is a targeted correction to the mixed-asset failure shown in the 24 November screenshot. It does not yet claim that the rest of the compound has reached final art quality; it makes the main lodge read as one building rather than two overlapping sets of geometry.
 
 ## Cost
 
