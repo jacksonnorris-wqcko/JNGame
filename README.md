@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.12.0**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.12.1**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -233,6 +233,20 @@ The 0.11.4 screenshot review exposed two integration faults that made the new Mo
 - Browser QA now fails if the old door remains active, the imported door is not used, the wrong hinge axis is selected, or the actual building footprint falls below the integration target.
 
 The source asset is exterior-only, so this is an integration and traversal correction rather than a claim that a fully authored interior has been added. The existing grouped Wildrange interior remains aligned to the fitted building floor.
+
+## 0.12.1 Pinecrest visual follow-up
+
+The first 0.12.0 browser capture still showed an entrance banner across the cabin, large stylised spruce in the near view, black fern fronds and meadow grass that was too fine to read as ground cover. The second pass addresses those visible issues.
+
+- Move the outpost nameplate to the left side of the gate and reduce it to a 2.52 m × 0.50 m face, supported by short cantilever brackets. The centre gate opening and lodge view are no longer covered by a wide banner.
+- Move the two Norway spruce hero models back to the forest edge and reduce their target height to 11.5–12 m.
+- Recolour imported fern geometry with a dedicated two-sided green PBR foliage material and move the four clumps into the compound's two timber planting beds.
+- Replace thin grass triangles with three crossed tapered cards per tuft. Increase the meadow to 6,200 target clusters and concentrate the first 4,700 in the player-side approach area.
+- Reduce the flattened terrain area to the actual lodge apron; the starting position now samples the surrounding natural height field instead of remaining inside a large flat oval.
+- Make the yard apron more rounded-rectangular and lighten its gravel material so it reads as a working yard rather than a dark oval stone disc.
+- Reduce the first-person weapon's screen footprint slightly to expose more of the environment.
+
+The browser smoke test now checks the side-mounted sign width, spawn terrain height, fern material readiness, grass-card count and grass vertex count, in addition to model loading and existing movement/door/compound checks.
 
 ## 0.12.0 Pinecrest environment-art overhaul
 
