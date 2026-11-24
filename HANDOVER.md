@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.11.3`  
+**Current source build:** `0.11.4`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -188,6 +188,16 @@ The 24 November gameplay screenshot showed the imported Mountain Hut and the pre
 - The browser smoke screenshot is `artifacts/wildrange-0.11.3-compound.png`.
 
 This pass is a corrective cleanup for the visibly mixed architecture in the supplied screenshot. It does not certify the remaining outfitter, woodshed, terrain or wildlife as final-quality assets; those need their own coherent art passes.
+
+## 0.11.4 gate-centred first-person spawn
+
+The supplied screenshot showed the hunter standing to the right of the south gate opening and looking diagonally across the nearest fence rails. Fresh games now spawn at `(-14, 19)` with yaw 0, centred on the gate passage and facing straight toward Pinecrest Lodge. The gate/fence geometry and collision layout are not moved.
+
+- Untouched legacy saves at approximately `(0, 19)` are migrated if their yaw is either the original 0 or the previous Pinecrest-facing angle `atan2(-14, 24)`.
+- The migration updates X to -14 and yaw to 0, retaining Z, inventory and progression.
+- Existing saves where the player has moved are unchanged.
+- `WildrangeQA.cameraPosition()` exposes spawn X/Z for browser verification.
+- Playwright asserts X=-14, Z=19 and yaw=0.
 
 ## Validation status
 
