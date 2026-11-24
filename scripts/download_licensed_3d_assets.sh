@@ -152,6 +152,34 @@ for path in sys.argv[1:]:
                   "alphaCutoff=", material.get("alphaCutoff"))
         print("BRACKEN_FERN_GLTF images:", [image.get("name", image.get("uri", "")) for image in document.get("images", [])])
         print("BRACKEN_FERN_GLTF nodes:", [(node.get("name", ""), node.get("mesh")) for node in document.get("nodes", []) if node.get("mesh") is not None])
+        # Export the original base-colour/alpha atlas into the QA artifact so
+        # the foliage's black appearance can be traced to the source pixels.
+        with open(path, "rb") as glb_stream:
+            glb_stream.seek(12)
+            json_length, json_type = struct.unpack("<II", glb_stream.read(8))
+            glb_stream.seek(20 + json_length)
+            bin_length, bin_type = struct.unpack("<II", glb_stream.read(8))
+            binary_chunk = glb_stream.read(bin_length) if bin_type == 0x004E4942 else b""
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(path), "../../.."))
+        artifact_dir = os.path.join(root_dir, "artifacts")
+        os.makedirs(artifact_dir, exist_ok=True)
+        for image_index, image in enumerate(document.get("images", [])):
+            name = image.get("name", "fern-image-" + str(image_index))
+            buffer_view_index = image.get("bufferView")
+            if buffer_view_index is None:
+                continue
+            view = document.get("bufferViews", [])[buffer_view_index]
+            start = int(view.get("byteOffset", 0))
+            length = int(view["byteLength"])
+            image_bytes = binary_chunk[start:start + length]
+            if not image_bytes:
+                continue
+            extension = ".png" if image.get("mimeType") == "image/png" else ".jpg"
+            filename = "fern-source-" + str(image_index) + extension
+            with open(os.path.join(artifact_dir, filename), "wb") as image_file:
+                image_file.write(image_bytes)
+            print("EXPORTED_FERN_TEXTURE", filename, "name=", name, "bytes=", len(image_bytes), "mime=", image.get("mimeType"))
+
     if json_bytes and os.path.basename(path) == "pinecrest-cedarwatch-cabin.glb":
         document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
         materials = document.get("materials", [])
