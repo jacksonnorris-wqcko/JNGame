@@ -105,6 +105,11 @@
   let lodgeModelUniformScale = 0;
   let lodgeModelWorldDimensions = { x: 0, y: 0, z: 0 };
   let lodgeModelNodeNames = [];
+  let lodgeInteriorRoot = null;
+  let lodgeInteriorFloorHeight = 1.02;
+  let lodgeDeckSurfaceHeight = 1.335;
+  let lodgeDoorWorldPosition = { x: -14, z: 38.7 };
+  let cabinInteriorLights = [];
   let heroConiferReady = false, heroBroadleafReady = false;
   let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
@@ -994,17 +999,19 @@
 
     box("lodge stone foundation", { width: 12.1, height: 0.72, depth: 9.1 }, new BABYLON.Vector3(0, 0.48, 0), mat.stoneDark, root);
     box("lodge timber floor", { width: 11.8, height: 0.22, depth: 8.8 }, new BABYLON.Vector3(0, 0.91, 0), mat.wood, root);
+    lodgeInteriorRoot = new BABYLON.TransformNode("Pinecrest lodge interior furnishing group", scene);
+    lodgeInteriorRoot.parent = root;
     for (let board = 0; board < 18; board++) {
       box("interior pine floorboard", { width: 11.55, height: 0.035, depth: 0.405 },
-        new BABYLON.Vector3(0, 1.04, -3.65 + board * 0.43), board % 3 === 0 ? mat.woodLight : mat.wood, root);
+        new BABYLON.Vector3(0, 1.04, -3.65 + board * 0.43), board % 3 === 0 ? mat.woodLight : mat.wood, lodgeInteriorRoot);
     }
-    for (const z of [-3.78, 3.78]) box("interior floor skirting", { width: 10.7, height: 0.18, depth: 0.12 }, new BABYLON.Vector3(0, 1.16, z), mat.woodLight, root);
-    for (const x of [-5.22, 5.22]) box("interior side skirting", { width: 0.12, height: 0.18, depth: 7.55 }, new BABYLON.Vector3(x, 1.16, 0), mat.woodLight, root);
+    for (const z of [-3.78, 3.78]) box("interior floor skirting", { width: 10.7, height: 0.18, depth: 0.12 }, new BABYLON.Vector3(0, 1.16, z), mat.woodLight, lodgeInteriorRoot);
+    for (const x of [-5.22, 5.22]) box("interior side skirting", { width: 0.12, height: 0.18, depth: 7.55 }, new BABYLON.Vector3(x, 1.16, 0), mat.woodLight, lodgeInteriorRoot);
     // Build separate interior wall panels so the lodge has a real walkable room.
-    box("lodge interior left wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(-5.42, 3.55, 0), mat.woodLight, root);
-    box("lodge interior right wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(5.42, 3.55, 0), mat.woodLight, root);
-    box("lodge interior rear wall", { width: 10.8, height: 4.9, depth: 0.24 }, new BABYLON.Vector3(0, 3.55, 3.94), mat.woodLight, root);
-    box("lodge interior front lintel", { width: 11.0, height: 1.15, depth: 0.24 }, new BABYLON.Vector3(0, 5.35, -3.96), mat.woodLight, root);
+    box("lodge interior left wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(-5.42, 3.55, 0), mat.woodLight, lodgeInteriorRoot);
+    box("lodge interior right wall", { width: 0.24, height: 4.9, depth: 8.0 }, new BABYLON.Vector3(5.42, 3.55, 0), mat.woodLight, lodgeInteriorRoot);
+    box("lodge interior rear wall", { width: 10.8, height: 4.9, depth: 0.24 }, new BABYLON.Vector3(0, 3.55, 3.94), mat.woodLight, lodgeInteriorRoot);
+    box("lodge interior front lintel", { width: 11.0, height: 1.15, depth: 0.24 }, new BABYLON.Vector3(0, 5.35, -3.96), mat.woodLight, lodgeInteriorRoot);
 
     for (let row = 0; row < 10; row++) {
       const y = 1.28 + row * 0.46;
@@ -1077,61 +1084,62 @@
     }
 
     // A lived-in ranger cabin: bunk, writing desk, stove, shelves and warm interior light.
-    box("cabin woven rug", { width: 4.0, height: 0.035, depth: 3.0 }, new BABYLON.Vector3(0.5, 1.04, 1.0), mat.sign, root);
-    box("ranger bunk frame", { width: 2.5, height: 0.42, depth: 3.4 }, new BABYLON.Vector3(-3.55, 1.28, 1.55), mat.wood, root);
-    box("ranger bunk mattress", { width: 2.35, height: 0.3, depth: 3.15 }, new BABYLON.Vector3(-3.55, 1.62, 1.55), mat.roofLight, root);
-    box("folded blanket", { width: 2.36, height: 0.13, depth: 1.25 }, new BABYLON.Vector3(-3.55, 1.84, 2.35), mat.sign, root);
-    box("bunk pillow", { width: 1.0, height: 0.22, depth: 0.58 }, new BABYLON.Vector3(-3.55, 1.83, 0.35), mat.window, root);
-    box("ranger bunk quilt", { width: 2.25, height: 0.09, depth: 2.18 }, new BABYLON.Vector3(-3.55, 1.82, 1.5), mat.sign, root);
+    box("cabin woven rug", { width: 4.0, height: 0.035, depth: 3.0 }, new BABYLON.Vector3(0.5, 1.04, 1.0), mat.sign, lodgeInteriorRoot);
+    box("ranger bunk frame", { width: 2.5, height: 0.42, depth: 3.4 }, new BABYLON.Vector3(-3.55, 1.28, 1.55), mat.wood, lodgeInteriorRoot);
+    box("ranger bunk mattress", { width: 2.35, height: 0.3, depth: 3.15 }, new BABYLON.Vector3(-3.55, 1.62, 1.55), mat.roofLight, lodgeInteriorRoot);
+    box("folded blanket", { width: 2.36, height: 0.13, depth: 1.25 }, new BABYLON.Vector3(-3.55, 1.84, 2.35), mat.sign, lodgeInteriorRoot);
+    box("bunk pillow", { width: 1.0, height: 0.22, depth: 0.58 }, new BABYLON.Vector3(-3.55, 1.83, 0.35), mat.window, lodgeInteriorRoot);
+    box("ranger bunk quilt", { width: 2.25, height: 0.09, depth: 2.18 }, new BABYLON.Vector3(-3.55, 1.82, 1.5), mat.sign, lodgeInteriorRoot);
     for (const x of [-4.65, -2.45]) for (const z of [0.0, 3.1]) {
-      box("bunk timber leg", { width: 0.14, height: 0.86, depth: 0.14 }, new BABYLON.Vector3(x, 1.22, z), mat.bark, root);
+      box("bunk timber leg", { width: 0.14, height: 0.86, depth: 0.14 }, new BABYLON.Vector3(x, 1.22, z), mat.bark, lodgeInteriorRoot);
     }
-    box("bunk headboard", { width: 2.55, height: 1.12, depth: 0.16 }, new BABYLON.Vector3(-3.55, 1.72, 3.25), mat.woodLight, root);
-    box("bedside field chest", { width: 1.0, height: 0.68, depth: 0.82 }, new BABYLON.Vector3(-1.85, 1.36, 2.95), mat.wood, root);
-    box("bedside chest lid", { width: 1.08, height: 0.12, depth: 0.9 }, new BABYLON.Vector3(-1.85, 1.75, 2.95), mat.woodLight, root);
+    box("bunk headboard", { width: 2.55, height: 1.12, depth: 0.16 }, new BABYLON.Vector3(-3.55, 1.72, 3.25), mat.woodLight, lodgeInteriorRoot);
+    box("bedside field chest", { width: 1.0, height: 0.68, depth: 0.82 }, new BABYLON.Vector3(-1.85, 1.36, 2.95), mat.wood, lodgeInteriorRoot);
+    box("bedside chest lid", { width: 1.08, height: 0.12, depth: 0.9 }, new BABYLON.Vector3(-1.85, 1.75, 2.95), mat.woodLight, lodgeInteriorRoot);
     const chestLatch = BABYLON.MeshBuilder.CreateSphere("bedside chest brass latch", { diameter: 0.11, segments: 8 }, scene);
-    chestLatch.parent = root; chestLatch.position.set(-1.85, 1.52, 2.48); chestLatch.material = mat.gold; chestLatch.isPickable = false;
-    box("writing desk", { width: 2.7, height: 0.16, depth: 1.05 }, new BABYLON.Vector3(2.75, 2.05, 2.65), mat.woodLight, root);
-    for (const x of [1.65, 3.85]) for (const z of [2.3, 3.0]) box("desk leg", { width: 0.13, height: 1.95, depth: 0.13 }, new BABYLON.Vector3(x, 1.05, z), mat.bark, root);
-    box("field journal", { width: 0.62, height: 0.1, depth: 0.46 }, new BABYLON.Vector3(2.35, 2.18, 2.55), mat.roof, root);
-    box("oil lamp base", { width: 0.22, height: 0.12, depth: 0.22 }, new BABYLON.Vector3(3.35, 2.18, 2.55), mat.black, root);
+    chestLatch.parent = lodgeInteriorRoot; chestLatch.position.set(-1.85, 1.52, 2.48); chestLatch.material = mat.gold; chestLatch.isPickable = false;
+    box("writing desk", { width: 2.7, height: 0.16, depth: 1.05 }, new BABYLON.Vector3(2.75, 2.05, 2.65), mat.woodLight, lodgeInteriorRoot);
+    for (const x of [1.65, 3.85]) for (const z of [2.3, 3.0]) box("desk leg", { width: 0.13, height: 1.95, depth: 0.13 }, new BABYLON.Vector3(x, 1.05, z), mat.bark, lodgeInteriorRoot);
+    box("field journal", { width: 0.62, height: 0.1, depth: 0.46 }, new BABYLON.Vector3(2.35, 2.18, 2.55), mat.roof, lodgeInteriorRoot);
+    box("oil lamp base", { width: 0.22, height: 0.12, depth: 0.22 }, new BABYLON.Vector3(3.35, 2.18, 2.55), mat.black, lodgeInteriorRoot);
     const cabinLamp = BABYLON.MeshBuilder.CreateSphere("cabin desk lamp", { diameter: 0.22, segments: 10 }, scene);
-    cabinLamp.parent = root; cabinLamp.position.set(3.35, 2.38, 2.55); cabinLamp.material = mat.gold; cabinLamp.isPickable = false;
+    cabinLamp.parent = lodgeInteriorRoot; cabinLamp.position.set(3.35, 2.38, 2.55); cabinLamp.material = mat.gold; cabinLamp.isPickable = false;
     const interiorLight = new BABYLON.PointLight("warm cabin interior", new BABYLON.Vector3(-14, 4.1, 44.5), scene);
     interiorLight.diffuse = hex("#ffd19a"); interiorLight.intensity = 0.88; interiorLight.range = 16;
     const rearWallLight = new BABYLON.PointLight("cabin rear wall lantern", new BABYLON.Vector3(-14, 4.2, 46.1), scene);
     rearWallLight.diffuse = hex("#f4bd7a"); rearWallLight.intensity = 0.32; rearWallLight.range = 11;
-    box("cabin stove body", { width: 1.05, height: 1.55, depth: 0.95 }, new BABYLON.Vector3(3.75, 1.82, -2.65), mat.black, root);
-    const stoveDoor = box("cabin stove iron door", { width: 0.58, height: 0.65, depth: 0.06 }, new BABYLON.Vector3(3.75, 1.7, -3.15), mat.stone, root);
+    cabinInteriorLights = [interiorLight, rearWallLight];
+    box("cabin stove body", { width: 1.05, height: 1.55, depth: 0.95 }, new BABYLON.Vector3(3.75, 1.82, -2.65), mat.black, lodgeInteriorRoot);
+    const stoveDoor = box("cabin stove iron door", { width: 0.58, height: 0.65, depth: 0.06 }, new BABYLON.Vector3(3.75, 1.7, -3.15), mat.stone, lodgeInteriorRoot);
     const stoveDoorMaterial = makeMaterial("Cabin stove firebox", "#5b2815", 0.8);
     stoveDoorMaterial.emissiveColor = hex("#5b2815"); stoveDoor.material = stoveDoorMaterial;
-    const stoveWindow = box("stove ember viewing glass", { width: 0.4, height: 0.34, depth: 0.035 }, new BABYLON.Vector3(3.75, 1.74, -3.19), mat.gold, root);
+    const stoveWindow = box("stove ember viewing glass", { width: 0.4, height: 0.34, depth: 0.035 }, new BABYLON.Vector3(3.75, 1.74, -3.19), mat.gold, lodgeInteriorRoot);
     const stoveEmbers = makeMaterial("Stove ember glow", "#d45d25", 0.55);
     stoveEmbers.emissiveColor = hex("#c94a1b"); stoveWindow.material = stoveEmbers;
     for (const x of [3.38, 4.12]) for (const z of [-2.95, -2.35]) {
-      box("iron stove foot", { width: 0.13, height: 0.38, depth: 0.13 }, new BABYLON.Vector3(x, 1.05, z), mat.black, root);
+      box("iron stove foot", { width: 0.13, height: 0.38, depth: 0.13 }, new BABYLON.Vector3(x, 1.05, z), mat.black, lodgeInteriorRoot);
     }
-    box("stove cooking plate", { width: 1.12, height: 0.13, depth: 1.02 }, new BABYLON.Vector3(3.75, 2.62, -2.65), mat.stone, root);
+    box("stove cooking plate", { width: 1.12, height: 0.13, depth: 1.02 }, new BABYLON.Vector3(3.75, 2.62, -2.65), mat.stone, lodgeInteriorRoot);
     const stoveHandle = BABYLON.MeshBuilder.CreateCylinder("stove door handle", { height: 0.28, diameter: 0.07, tessellation: 10 }, scene);
-    stoveHandle.parent = root; stoveHandle.rotation.x = Math.PI / 2; stoveHandle.position.set(4.1, 1.7, -3.2); stoveHandle.material = mat.gold; stoveHandle.isPickable = false;
+    stoveHandle.parent = lodgeInteriorRoot; stoveHandle.rotation.x = Math.PI / 2; stoveHandle.position.set(4.1, 1.7, -3.2); stoveHandle.material = mat.gold; stoveHandle.isPickable = false;
     const stovePipe = BABYLON.MeshBuilder.CreateCylinder("cabin stove flue", { height: 3.1, diameter: 0.18, tessellation: 12 }, scene);
-    stovePipe.parent = root; stovePipe.position.set(3.75, 4.0, -2.65); stovePipe.material = mat.black; stovePipe.isPickable = false;
-    box("wall shelf", { width: 3.0, height: 0.14, depth: 0.48 }, new BABYLON.Vector3(-1.5, 4.65, 3.72), mat.wood, root);
-    for (let book = 0; book < 4; book++) box("field guide book", { width: 0.32, height: 0.62, depth: 0.34 }, new BABYLON.Vector3(-2.4 + book * 0.48, 5.02, 3.62), [mat.roof, mat.sign, mat.woodLight, mat.black][book], root);
+    stovePipe.parent = lodgeInteriorRoot; stovePipe.position.set(3.75, 4.0, -2.65); stovePipe.material = mat.black; stovePipe.isPickable = false;
+    box("wall shelf", { width: 3.0, height: 0.14, depth: 0.48 }, new BABYLON.Vector3(-1.5, 4.65, 3.72), mat.wood, lodgeInteriorRoot);
+    for (let book = 0; book < 4; book++) box("field guide book", { width: 0.32, height: 0.62, depth: 0.34 }, new BABYLON.Vector3(-2.4 + book * 0.48, 5.02, 3.62), [mat.roof, mat.sign, mat.woodLight, mat.black][book], lodgeInteriorRoot);
     for (let batten = 0; batten < 20; batten++) {
       box("rear interior wall timber batten", { width: 0.11, height: 4.25, depth: 0.08 },
-        new BABYLON.Vector3(-5.0 + batten * 0.52, 3.45, 3.76), batten % 4 === 0 ? mat.woodLight : mat.wood, root);
+        new BABYLON.Vector3(-5.0 + batten * 0.52, 3.45, 3.76), batten % 4 === 0 ? mat.woodLight : mat.wood, lodgeInteriorRoot);
     }
     for (const x of [-5.25, 5.25]) {
       for (let batten = 0; batten < 12; batten++) {
         box("side interior wall timber batten", { width: 0.08, height: 4.25, depth: 0.11 },
-          new BABYLON.Vector3(x, 3.45, -3.5 + batten * 0.64), mat.wood, root);
+          new BABYLON.Vector3(x, 3.45, -3.5 + batten * 0.64), mat.wood, lodgeInteriorRoot);
       }
     }
-    box("cabin mounted hunting rifle rack", { width: 2.25, height: 0.12, depth: 0.22 }, new BABYLON.Vector3(0.5, 3.5, -3.72), mat.wood, root);
-    for (const x of [-0.35, 0.5, 1.35]) box("rifle rack support", { width: 0.12, height: 0.45, depth: 0.14 }, new BABYLON.Vector3(x, 3.24, -3.7), mat.gold, root);
-    box("cabin framed wildlife photograph", { width: 1.35, height: 1.05, depth: 0.1 }, new BABYLON.Vector3(3.85, 4.25, 3.72), mat.woodLight, root);
-    box("cabin photograph print", { width: 1.12, height: 0.82, depth: 0.035 }, new BABYLON.Vector3(3.85, 4.25, 3.64), mat.sign, root);
+    box("cabin mounted hunting rifle rack", { width: 2.25, height: 0.12, depth: 0.22 }, new BABYLON.Vector3(0.5, 3.5, -3.72), mat.wood, lodgeInteriorRoot);
+    for (const x of [-0.35, 0.5, 1.35]) box("rifle rack support", { width: 0.12, height: 0.45, depth: 0.14 }, new BABYLON.Vector3(x, 3.24, -3.7), mat.gold, lodgeInteriorRoot);
+    box("cabin framed wildlife photograph", { width: 1.35, height: 1.05, depth: 0.1 }, new BABYLON.Vector3(3.85, 4.25, 3.72), mat.woodLight, lodgeInteriorRoot);
+    box("cabin photograph print", { width: 1.12, height: 0.82, depth: 0.035 }, new BABYLON.Vector3(3.85, 4.25, 3.64), mat.sign, lodgeInteriorRoot);
 
     for (const x of [-5.5, 5.5]) for (const z of [-4.05, 4.05]) {
       const post = box("lodge corner timber", { width: 0.48, height: 5.55, depth: 0.48 }, new BABYLON.Vector3(x, 3.45, z), mat.wood, root);
@@ -1940,7 +1948,7 @@
   }
 
   function hideLegacyCabinExterior(root) {
-    const legacyShell = /^(lodge stone foundation|lodge timber floor|front log course|rear log course|side log course|Pinecrest (front|rear|side) log cut end|lodge corner timber|lodge front cross beam|lodge rear cross beam|lodge timber gable|lodge pitched roof|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest gable (diagonal king timber|collar tie|king post|timber vent|vent brass rim|vent louver)|Pinecrest lodge front wall opaque backing|window recess|window glazed pane|window upright|window sill|window cross rail|window transom|window shutter backing|window shutter vertical slat|window shutter cross brace|window shutter iron hinge strap|window shutter brass hinge pin|Pinecrest window flower box body|Pinecrest window flower box front board|Pinecrest window flower box iron bracket|Pinecrest window box foliage|Pinecrest window box flower)$/i;
+    const legacyShell = /^(lodge stone foundation|lodge timber floor|front log course|rear log course|side log course|Pinecrest (front|rear|side) log cut end|lodge corner timber|lodge front cross beam|lodge rear cross beam|lodge timber gable|lodge pitched roof|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest gable (diagonal king timber|collar tie|king post|timber vent|vent brass rim|vent louver)|Pinecrest lodge front wall opaque backing|lodge interior (left wall|right wall|rear wall|front lintel)|rear interior wall timber batten|side interior wall timber batten|window recess|window glazed pane|window upright|window sill|window cross rail|window transom|window shutter backing|window shutter vertical slat|window shutter cross brace|window shutter iron hinge strap|window shutter brass hinge pin|Pinecrest window flower box body|Pinecrest window flower box front board|Pinecrest window flower box iron bracket|Pinecrest window box foliage|Pinecrest window box flower)$/i;
     let hidden = 0;
     for (const mesh of root.getChildMeshes(false)) {
       if (!mesh || mesh.isDisposed()) continue;
@@ -2028,13 +2036,21 @@
         // The previous hand-built door is hidden as a single hierarchy so the
         // entrance has one real leaf, one set of hinges and one interactive pivot.
         const importedDoorPivot = !lodgeModelUsedFallback
-          ? importedNodes.find((node) => /mountain-hut_door_l/i.test(String(node.name || "")))
+          ? importedNodes.find((node) => String(node.name || "").toLowerCase() === "mountain-hut_door_l")
           : null;
         if (importedDoorPivot) {
           if (cabinDoorPivot && cabinDoorPivot !== importedDoorPivot) cabinDoorPivot.setEnabled(false);
           cabinDoorPivot = importedDoorPivot;
           cabinDoorPivot.rotationQuaternion = null;
           cabinDoorClosedYaw = Number(cabinDoorPivot.rotation.y) || 0;
+          cabinDoorPivot.computeWorldMatrix(true);
+          const doorPosition = cabinDoorPivot.getAbsolutePosition();
+          lodgeDoorWorldPosition = { x: doorPosition.x, z: doorPosition.z };
+          const doorInteraction = interactables.find((item) => item.action === "cabin");
+          if (doorInteraction) {
+            doorInteraction.x = doorPosition.x;
+            doorInteraction.z = doorPosition.z - 0.85;
+          }
           cabinDoorUsesImportedLeaf = true;
         }
         for (const node of importedNodes) {
@@ -2066,6 +2082,14 @@
           y: Number((size.y * scale).toFixed(3)),
           z: Number((size.z * scale).toFixed(3))
         };
+        const sourceFloorY = lodgeModelUsedFallback ? 0.12 : 0.55;
+        lodgeInteriorFloorHeight = sourceFloorY * scale;
+        lodgeDeckSurfaceHeight = sourceFloorY * scale;
+        if (lodgeInteriorRoot) {
+          const interiorOffset = lodgeInteriorFloorHeight - 1.04;
+          lodgeInteriorRoot.position.y = interiorOffset;
+          for (const light of cabinInteriorLights) light.position.y += interiorOffset;
+        }
         lodgeModelReady = meshCount > 0;
         lodgeModelFailed = !lodgeModelReady;
         lodgeModelLoading = false;
@@ -3556,18 +3580,24 @@
     sound(150, 0.055, "triangle", 0.012);
   }
 
+  function lodgeDoorwayContains(x, z) {
+    return Math.abs(x - lodgeDoorWorldPosition.x) < 0.78 &&
+      Math.abs(z - lodgeDoorWorldPosition.z) < 0.72;
+  }
+
   function walkSurfaceAt(x, z) {
     const localX = x + 14;
     const localZ = z - 43;
-    if (Math.abs(localX) <= 5.2 && localZ > -4.0 && localZ < 4.5) return 1.02;
-    if (Math.abs(localX) <= 4.1 && localZ >= -15.0 && localZ <= -9.2) return 0.26;
-    if (Math.abs(localX) <= 3.65 && localZ >= -6.65 && localZ <= -4.0) return 1.335;
-    if (Math.abs(localX) <= 1.95 && localZ >= -9.22 && localZ < -6.65) {
-      if (localZ < -8.5) return 0.4;
-      if (localZ < -7.8) return 0.7;
-      if (localZ < -7.1) return 1.0;
-      return 1.3;
+    const insideRoom = Math.abs(localX) <= 5.1 && localZ > -1.35 && localZ < 4.5;
+    const onTerrace = Math.abs(localX) <= 4.85 && localZ >= -5.9 && localZ <= -2.45;
+    const onApproachSteps = Math.abs(localX) <= 2.8 && localZ >= -9.25 && localZ < -5.9;
+    if (insideRoom) return lodgeInteriorFloorHeight;
+    if (lodgeDoorwayContains(x, z) || onTerrace) return lodgeDeckSurfaceHeight;
+    if (onApproachSteps) {
+      const rise = clamp((localZ + 9.25) / 3.35, 0, 1);
+      return 0.1 + rise * (lodgeDeckSurfaceHeight - 0.1);
     }
+    if (Math.abs(localX) <= 4.1 && localZ >= -15.0 && localZ < -9.25) return 0.26;
     return heightAt(x, z);
   }
 
@@ -3578,22 +3608,23 @@
     }
     const localX = x + 14;
     const localZ = z - 43;
-    // Compound rails are solid boundaries, with a deliberately open front gate.
+    // Compound rails are solid boundaries, with the front gate deliberately open.
     const onSideFence = Math.abs(Math.abs(localX) - 13) < 0.48 && localZ >= -12.25 && localZ <= 9.25;
     const onNorthFence = Math.abs(localZ - 12) < 0.48 && Math.abs(localX) <= 13.2;
-    // Only collide with the two visible south fence rails. The old test had no
-    // X bounds, creating an invisible wall that stretched across the whole map.
     const onSouthFence = Math.abs(localZ + 14) < 0.48 &&
       ((localX >= -13.25 && localX <= -6.25) || (localX >= 6.25 && localX <= 13.25));
     if (onSideFence || onNorthFence || onSouthFence) return false;
-    const insideRoom = Math.abs(localX) < 5.2 && localZ > -4.0 && localZ < 4.5;
-    const onDeck = Math.abs(localX) <= 3.65 && localZ >= -6.65 && localZ <= -4.0;
-    const onStairs = Math.abs(localX) <= 1.7 && localZ >= -9.22 && localZ < -6.65;
-    const onEntryPaver = Math.abs(localX) <= 2.15 && localZ >= -14.0 && localZ < -9.22;
-    const inDoorway = Math.abs(localX) < 1.18 && localZ > -5.0 && localZ < -3.0;
-    if (inDoorway && !cabinDoorOpen) return false;
-    if (insideRoom || onDeck || onStairs || onEntryPaver) return true;
-    const inCabinFootprint = Math.abs(localX) < 6.5 && Math.abs(localZ) < 5.1;
+
+    // The imported door is the only opening through the lodge's otherwise solid footprint.
+    if (lodgeDoorwayContains(x, z)) return cabinDoorOpen;
+
+    const insideRoom = Math.abs(localX) <= 5.1 && localZ > -1.35 && localZ < 4.5;
+    const onTerrace = Math.abs(localX) <= 4.85 && localZ >= -5.9 && localZ <= -2.45;
+    const onApproachSteps = Math.abs(localX) <= 2.8 && localZ >= -9.25 && localZ < -5.9;
+    const onEntryPaver = Math.abs(localX) <= 4.1 && localZ >= -15.0 && localZ < -9.25;
+    if (insideRoom || onTerrace || onApproachSteps || onEntryPaver) return true;
+
+    const inCabinFootprint = Math.abs(localX) < 6.8 && localZ > -6.3 && localZ < 5.2;
     if (inCabinFootprint) return false;
     return true;
   }
@@ -4476,9 +4507,14 @@
       announce("Choose a hunter name with at least two characters.", 2400);
       return;
     }
-    if (useSave) loadSave();
-    else {
-      state = { ...defaults, name, x: 0, z: 19, yaw: 0 };
+    if (useSave) {
+      loadSave();
+      // Migrate untouched first-spawn saves so the player faces the new lodge entry.
+      if (Math.abs(state.x) < 0.1 && Math.abs(state.z - 19) < 0.1 && Math.abs(state.yaw) < 0.05) {
+        state.yaw = Math.atan2(-14, 24);
+      }
+    } else {
+      state = { ...defaults, name, x: 0, z: 19, yaw: Math.atan2(-14, 24) };
       localStorage.removeItem(SAVE_KEY);
     }
     state.name = name;
@@ -4796,6 +4832,9 @@
     lodgeModelUniformScale,
     lodgeModelWorldDimensions,
     lodgeModelNodeNames,
+    lodgeInteriorFloorHeight,
+    lodgeDeckSurfaceHeight,
+    lodgeDoorWorldPosition,
     heroConiferReady,
     heroBroadleafReady,
     heroTreeModelCount,
@@ -4860,7 +4899,7 @@
       doorAngle: () => cabinDoorPivot ? cabinDoorPivot.rotation.y - cabinDoorClosedYaw : null,
       teleportIntoCabin: () => {
         if (!camera) return false;
-        camera.position.set(-14, 2.74, 43);
+        camera.position.set(-14, lodgeInteriorFloorHeight + 1.72, 43);
         camera.rotation.set(0, 0, 0);
         playerVelocity.set(0, 0, 0);
         verticalVelocity = 0;
@@ -4870,6 +4909,9 @@
       },
       canStandAt: (x, z) => canStandAt(Number(x), Number(z)),
       surfaceAt: (x, z) => walkSurfaceAt(Number(x), Number(z)),
+      doorwayPosition: () => ({ x: lodgeDoorWorldPosition.x, z: lodgeDoorWorldPosition.z }),
+      lodgeFloorHeight: () => lodgeInteriorFloorHeight,
+      lodgeDeckHeight: () => lodgeDeckSurfaceHeight,
       bearingFor: (degrees) => bearingName(Number(degrees))
     };
   }
