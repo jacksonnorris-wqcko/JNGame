@@ -2852,17 +2852,8 @@
     addPlanter(-23.3, 42.2, "West compound garden");
     addPlanter(-4.7, 44.0, "East compound garden");
 
-    // A small dry-stone edge marks the main yard without building another wall.
-    for (let i = 0; i < 8; i++) {
-      const z = 34 + i * 1.55;
-      const x = -28.2 + Math.sin(i * 0.7) * 0.45;
-      const stone = BABYLON.MeshBuilder.CreateIcoSphere("west yard boundary fieldstone", {
-        radius: 0.38 + (i % 3) * 0.07, subdivisions: 1
-      }, scene);
-      stone.position.set(x, heightAt(x, z) + 0.22, z);
-      stone.scaling.set(1.2, 0.68, 0.92);
-      stone.material = mat.stoneDark; stone.isPickable = false;
-    }
+    // Photogrammetry-scanned mossy boulder clusters are loaded after this
+    // compound is built; avoid the previous repeated low-poly stone row.
   }
 
   function buildPinecrestCompoundLife() {
