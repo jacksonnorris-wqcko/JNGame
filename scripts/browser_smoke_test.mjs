@@ -171,7 +171,9 @@ try {
       diagnostics.lodgeModelLegacyVisualStats.roof !== 0 ||
       diagnostics.lodgeModelLegacyVisualStats.sign !== 0 ||
       diagnostics.lodgeModelLegacyVisualStats.chimney !== 0 ||
-      diagnostics.lodgeModelLegacyVisualStats.porch !== 0) {
+      diagnostics.lodgeModelLegacyVisualStats.porch !== 0 ||
+      diagnostics.lodgeModelLegacyVisualStats.flag !== 0 ||
+      diagnostics.lodgeModelLegacyVisualStats.lantern !== 0) {
     throw new Error("Legacy procedural lodge pieces remain visible alongside the imported Mountain Hut: " + JSON.stringify({
       hiddenShellMeshes: diagnostics.lodgeModelHiddenLegacyMeshCount,
       hiddenPorchMeshes: diagnostics.lodgeModelHiddenLegacyPorchCount,
