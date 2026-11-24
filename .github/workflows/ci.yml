@@ -125,7 +125,7 @@ jobs:
                 cedarReport.bounds?.max?.[1] < 6.0 ||
                 !cedarScene.walk || !Array.isArray(cedarScene.walk.boxes) ||
                 cedarScene.walk.boxes.length < 15 ||
-                cedarScene.walk.route?.length < 4) {
+                !Array.isArray(cedarScene.walk.route) || cedarScene.walk.route.length < 4) {
               throw new Error("Cedarwatch source metrics or doorway-aware walk data is incomplete");
             }
             const cedarBytes = fs.readFileSync("public/assets/buildings/pinecrest-cedarwatch-cabin.glb");
