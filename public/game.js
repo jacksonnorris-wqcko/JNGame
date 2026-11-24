@@ -859,8 +859,8 @@
     const segments = 112;
     const centreX = -14;
     const centreZ = 43;
-    const radiusX = 17.8;
-    const radiusZ = 15.2;
+    const radiusX = 11.8;
+    const radiusZ = 12.5;
 
     positions.push(centreX, heightAt(centreX, centreZ) + 0.045, centreZ);
     uvs.push(0.5, 0.5);
@@ -2532,12 +2532,12 @@
 
   function loadPinecrestHeroVegetation() {
     const coniferPlacements = [
-      { x: -47, z: 43, height: 15.0 },
-      { x: 19, z: 61, height: 14.0 }
+      { x: -49, z: 36, height: 15.0 },
+      { x: 25, z: 69, height: 14.0 }
     ];
     const broadleafPlacements = [
-      { x: -46, z: 63, height: 9.0 },
-      { x: 20, z: 43, height: 9.5 }
+      { x: -55, z: 66, height: 9.0 },
+      { x: 24, z: 31, height: 9.5 }
     ];
 
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "conifer-detailed.glb", scene)
@@ -2572,8 +2572,8 @@
     // Norway spruce is a tall narrow silhouette; the oak has individually
     // modelled leaves and a broader crown so the forest is not one repeated shape.
     const sprucePlacements = [
-      { x: -44, z: 37, height: 16.5 },
-      { x: 16, z: 54, height: 15.5 }
+      { x: -39, z: 11, height: 16.0 },
+      { x: 39, z: 77, height: 15.0 }
     ];
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "norway-spruce.glb", scene)
       .then((container) => {
@@ -2590,8 +2590,8 @@
       });
 
     const oakPlacements = [
-      { x: -41, z: 65, height: 12.8 },
-      { x: 13, z: 40, height: 12.4 }
+      { x: -63, z: 87, height: 11.0 },
+      { x: 48, z: 43, height: 10.8 }
     ];
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "oak-detailed.glb", scene)
       .then((container) => {
@@ -2608,10 +2608,10 @@
       });
 
     const fernPlacements = [
-      { x: -24.8, z: 36.6, height: 1.55 },
-      { x: -25.1, z: 50.0, height: 1.45 },
-      { x: -2.6, z: 36.9, height: 1.55 },
-      { x: -2.8, z: 51.2, height: 1.45 }
+      { x: -26.0, z: 36.6, height: 0.50 },
+      { x: -26.0, z: 50.0, height: 0.50 },
+      { x: -2.0, z: 36.9, height: 0.50 },
+      { x: -2.0, z: 51.2, height: 0.50 }
     ];
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "fern-clump.glb", scene)
       .then((container) => {
@@ -2878,7 +2878,7 @@
       attempts++;
       const x = rand(-125, 125);
       const z = rand(-124, 125);
-      if (flatArea(x, z)) continue;
+      if (Math.hypot(x + 14, z - 19) < 13) continue;
       if (isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 27) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
@@ -2895,7 +2895,7 @@
       const radius = rand(30, 74);
       const x = Math.cos(angle) * radius;
       const z = 19 + Math.sin(angle) * radius;
-      if (flatArea(x, z)) continue;
+      if (Math.hypot(x + 14, z - 19) < 13) continue;
       if (isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 29) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
@@ -2907,6 +2907,7 @@
     for (let i = 0; i < 50; i++) {
       const x = rand(-115, 115), z = rand(-115, 120);
       if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) ||
+          Math.hypot(x + 14, z - 19) < 11 ||
           (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 24)) continue;
       createRock(x, z, rand(0.45, 1.25));
     }
