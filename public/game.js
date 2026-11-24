@@ -803,11 +803,11 @@
   function flatArea(x, z) {
     // The exclusion follows Pinecrest's actual footprint, not the old 44 m
     // radius centred in front of the gate that created the featureless lawn.
-    return Math.hypot((x + 14) / 20, (z - 43) / 16) < 1.12;
+    return Math.hypot((x + 14) / 20, (z - 38) / 26) < 1.12;
   }
 
   function heightAt(x, z) {
-    const normalized = Math.hypot((x + 14) / 20, (z - 43) / 16);
+    const normalized = Math.hypot((x + 14) / 20, (z - 38) / 26);
     const natural = rawTerrainHeight(x, z);
     if (normalized <= 0.70) return 0.10;
     if (normalized >= 1.16) return natural;
@@ -882,7 +882,7 @@
 
     for (let segment = 0; segment < segments; segment++) {
       const next = (segment + 1) % segments;
-      indices.push(0, 1 + segment, 1 + next);
+      indices.push(0, 1 + next, 1 + segment);
     }
     for (let ring = 1; ring < rings; ring++) {
       const innerStart = 1 + (ring - 1) * segments;
@@ -893,7 +893,7 @@
         const b = innerStart + next;
         const c = outerStart + segment;
         const d = outerStart + next;
-        indices.push(a, c, b, b, c, d);
+        indices.push(a, b, c, b, d, c);
       }
     }
 
@@ -3518,7 +3518,7 @@
         x = rand(-132, 132);
         z = rand(-132, 132);
       }
-      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z)) continue;
+      if (isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 25) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
