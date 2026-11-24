@@ -1418,14 +1418,14 @@
     const fencePost = (x, z, name) => {
       const groundY = localGroundY(x, z);
       const footing = BABYLON.MeshBuilder.CreateCylinder("compound fence stone footing",
-        { height: 0.28, diameterTop: 0.44, diameterBottom: 0.52, tessellation: 8 }, scene);
+        { height: 0.22, diameterTop: 0.36, diameterBottom: 0.43, tessellation: 10 }, scene);
       footing.parent = root;
       footing.position.set(x, groundY + 0.14, z);
       footing.rotation.y = Math.PI / 8;
       footing.material = mat.stoneDark;
       footing.isPickable = false;
       const post = BABYLON.MeshBuilder.CreateCylinder(name,
-        { height: 1.92, diameterTop: 0.235, diameterBottom: 0.34, tessellation: 10 }, scene);
+        { height: 1.92, diameterTop: 0.18, diameterBottom: 0.25, tessellation: 12 }, scene);
       post.parent = root;
       post.position.set(x, groundY + 0.96, z);
       post.rotation.y = rand(-0.025, 0.025);
@@ -1433,7 +1433,7 @@
       post.isPickable = false;
       post.receiveShadows = true;
       const cap = BABYLON.MeshBuilder.CreateCylinder("compound fence post cap",
-        { height: 0.12, diameterTop: 0.28, diameterBottom: 0.36, tessellation: 10 }, scene);
+        { height: 0.10, diameterTop: 0.22, diameterBottom: 0.28, tessellation: 12 }, scene);
       cap.parent = root;
       cap.position.set(x, groundY + 1.98, z);
       cap.material = mat.woodLight;
@@ -1441,14 +1441,14 @@
       // Dark steel connector bands hide rail joints and make the fence read as assembled hardware.
       for (const level of [0.68, 1.30]) {
         const bracket = BABYLON.MeshBuilder.CreateCylinder("compound fence steel rail bracket",
-          { height: 0.14, diameterTop: 0.37, diameterBottom: 0.37, tessellation: 10 }, scene);
+          { height: 0.105, diameterTop: 0.285, diameterBottom: 0.285, tessellation: 12 }, scene);
         bracket.parent = root;
         bracket.position.set(x, groundY + level, z);
         bracket.material = mat.black;
         bracket.isPickable = false;
-        const bolt = BABYLON.MeshBuilder.CreateSphere("compound fence brass bolt", { diameter: 0.075, segments: 10 }, scene);
+        const bolt = BABYLON.MeshBuilder.CreateSphere("compound fence brass bolt", { diameter: 0.055, segments: 10 }, scene);
         bolt.parent = root;
-        bolt.position.set(x, groundY + level, z - 0.205);
+        bolt.position.set(x, groundY + level, z - 0.164);
         bolt.material = mat.gold;
         bolt.isPickable = false;
       }
@@ -1457,7 +1457,7 @@
       const y0 = localGroundY(x, z0), y1 = localGroundY(x, z1);
       const length = Math.hypot(z1 - z0, y1 - y0);
       const rail = BABYLON.MeshBuilder.CreateCylinder(name,
-        { height: length, diameterTop: 0.16, diameterBottom: 0.21, tessellation: 12 }, scene);
+        { height: length, diameterTop: 0.115, diameterBottom: 0.15, tessellation: 12 }, scene);
       rail.parent = root;
       rail.position.set(x, (y0 + y1) / 2 + height, (z0 + z1) / 2);
       rail.rotation.x = Math.atan2(z1 - z0, y1 - y0);
@@ -1471,7 +1471,7 @@
       const dx = x1 - x0, dy = y1 - y0;
       const length = Math.hypot(dx, dy);
       const rail = BABYLON.MeshBuilder.CreateCylinder(name,
-        { height: length, diameterTop: 0.16, diameterBottom: 0.21, tessellation: 12 }, scene);
+        { height: length, diameterTop: 0.115, diameterBottom: 0.15, tessellation: 12 }, scene);
       rail.parent = root;
       rail.position.set((x0 + x1) / 2, (y0 + y1) / 2 + height, z);
       rail.rotation.z = Math.atan2(-dx, dy);
