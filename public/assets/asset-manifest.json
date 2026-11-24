@@ -257,6 +257,60 @@
       "license": "CC0 1.0 Universal",
       "source": "https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e",
       "integration": "Two high-detail hero broadleaf trees around Pinecrest compound"
+    },
+    {
+      "asset": "Mature Norway spruce tree",
+      "status": "downloaded-at-build",
+      "path": "vegetation/norway-spruce.glb",
+      "approximate_bytes": 2000000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f",
+      "integration": "Two tall spruce silhouettes frame the Pinecrest approach"
+    },
+    {
+      "asset": "Oak street tree, detailed leaves",
+      "status": "downloaded-at-build",
+      "path": "vegetation/oak-detailed.glb",
+      "approximate_bytes": 5900000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/oak-street-tree-detailed-leaves-a273fef9",
+      "integration": "Two broadleaf hero trees add a different canopy silhouette around Pinecrest"
+    },
+    {
+      "asset": "Timber-Framed House",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-timber-frame-house.glb",
+      "approximate_bytes": 2000000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://tevy.dev/models/timber-frame-house/",
+      "integration": "Candidate replacement Pinecrest hunting lodge with a walkable furnished ground-floor room"
+    },
+    {
+      "asset": "Cedarwatch Cabin",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-cedarwatch-cabin.glb",
+      "approximate_bytes": 956496,
+      "license": "CC0 1.0 Universal",
+      "source": "https://scenecrate.com/scenes/forest-cabin",
+      "integration": "Primary Pinecrest hunting lodge with cedar cladding, green shingle roof, amber windows, dressed-stone chimney, furnished interior and open 1.64 m front doorway"
+    },
+    {
+      "asset": "Photoreal Woodland Bracken Fern",
+      "status": "downloaded-at-build",
+      "path": "vegetation/woodland-bracken-fern.glb",
+      "approximate_bytes": 393625,
+      "license": "CC0 1.0 Universal",
+      "source": "https://scenecrate.com/free-3d-game-assets",
+      "integration": "Photogrammetry-scanned bracken fern with alpha-cutout fronds and embedded PBR maps"
+    },
+    {
+      "asset": "Photoreal Mossy Forest Boulders",
+      "status": "downloaded-at-build",
+      "path": "vegetation/mossy-forest-boulders.glb",
+      "approximate_bytes": 1425000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://scenecrate.com/free-3d-game-assets",
+      "integration": "Photogrammetry-scanned moss and lichen boulder cluster"
     }
   ]
 }

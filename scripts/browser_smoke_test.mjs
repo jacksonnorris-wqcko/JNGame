@@ -20,17 +20,23 @@ try {
   const visualCaptureNotes = [];
   const safeScreenshot = async (path) => {
     try {
-      await page.screenshot({
-        path,
-        fullPage: false,
-        timeout: 90000,
-        animations: "disabled",
-        scale: "css"
+      // Capture the composited scene directly through Chrome DevTools. This avoids
+      // Playwright's font/animation preflight stalling on a continuously-rendered WebGL canvas.
+      const client = await page.context().newCDPSession(page);
+      const shot = await client.send("Page.captureScreenshot", {
+        format: "jpeg",
+        quality: 82,
+        fromSurface: true,
+        captureBeyondViewport: false,
+        optimizeForSpeed: true
       });
+      const outputPath = path.replace(/\\.png$/i, ".jpg");
+      await fs.promises.writeFile(outputPath, Buffer.from(shot.data, "base64"));
+      await client.detach();
       return true;
     } catch (error) {
       visualCaptureNotes.push(path + ": " + (error && error.message ? error.message : String(error)));
-      console.warn("Wildrange visual screenshot skipped; continuing functional QA:", path, error);
+      console.warn("Wildrange DevTools visual capture skipped; continuing functional QA:", path, error);
       return false;
     }
   };
@@ -47,7 +53,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.5&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.13.0&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -81,7 +87,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.5-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.13.0-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -157,14 +163,25 @@ try {
   await page.waitForFunction(() => {
     const state = window.WildrangeDiagnostics?.();
     return state && !state.lodgeModelLoading && state.lodgeModelReady &&
-      state.lodgeModelAssetName === "pinecrest-mountain-hut.glb" &&
+      state.lodgeModelAssetName === "pinecrest-cedarwatch-cabin.glb" &&
       !state.lodgeModelUsedFallback &&
-      state.heroConiferReady && state.heroBroadleafReady && state.heroTreeModelCount === 4;
+      state.heroConiferReady && state.heroBroadleafReady &&
+      state.heroSpruceReady && state.heroOakReady && state.heroFernReady &&
+      state.heroTreeModelCount === 8 && state.heroFernCount === 4 &&
+      state.heroBoulderCount === 3 && state.heroBoulderMeshCount >= 3 &&
+      state.groundCoverClusterCount >= 5500 && state.groundCoverCardCount >= 16500 &&
+      state.yardApronReady && state.terrainVertexTinted &&
+      state.fernMaterialReady && state.gateSignWorldWidth > 0 && state.gateSignWorldWidth < 2.8 &&
+      state.lodgeDoorwayOpen && state.lodgeNavigationBoxCount >= 15 &&
+      state.lodgeAuthoredInteriorReady && state.spawnGroundHeight > 0.75;
   }, null, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
-  if (diagnostics.lodgeInteriorAdjustedMeshCount < 20) {
-    throw new Error("The Mountain Hut interior floor offset did not refresh its frozen child meshes: " + diagnostics.lodgeInteriorAdjustedMeshCount);
+  if (!diagnostics.lodgeAuthoredInteriorReady || diagnostics.lodgeNavigationBoxCount < 15) {
+    throw new Error("The authored Cedarwatch interior/navigation package did not initialise: " + JSON.stringify({
+      authoredInterior: diagnostics.lodgeAuthoredInteriorReady,
+      navigationBoxes: diagnostics.lodgeNavigationBoxCount
+    }));
   }
   if (diagnostics.lodgeModelHiddenLegacyMeshCount < 30 ||
       diagnostics.pinecrestRoofSurfaceCount !== 0 ||
@@ -182,23 +199,16 @@ try {
       remaining: diagnostics.lodgeModelLegacyVisualStats
     }));
   }
-  if (!diagnostics.lodgeModelSignReady || !diagnostics.lodgeModelSignFaceVisible) {
-    throw new Error("The new Mountain Hut-mounted Pinecrest Lodge nameplate is not visible: " + JSON.stringify({
-      ready: diagnostics.lodgeModelSignReady,
-      faceVisible: diagnostics.lodgeModelSignFaceVisible,
-      position: diagnostics.lodgeModelSignFacePosition
-    }));
-  }
   if (!diagnostics.lodgeModelReady ||
-      diagnostics.lodgeModelAssetName !== "pinecrest-mountain-hut.glb" ||
+      diagnostics.lodgeModelAssetName !== "pinecrest-cedarwatch-cabin.glb" ||
       diagnostics.lodgeModelUsedFallback ||
       diagnostics.lodgeModelMeshCount < 8 ||
-      diagnostics.lodgeModelUniformScale < 1.30 ||
+      diagnostics.lodgeModelUniformScale < 1.55 ||
       diagnostics.lodgeModelWorldDimensions.x < 17.5 ||
       diagnostics.lodgeModelWorldDimensions.z < 15.5 ||
-      diagnostics.lodgeModelWorldDimensions.y < 8.5 ||
-      diagnostics.lodgeBuildingFootprint.width < 11.6 ||
-      diagnostics.lodgeBuildingFootprint.depth < 8.3) {
+      diagnostics.lodgeModelWorldDimensions.y < 9.5 ||
+      diagnostics.lodgeBuildingFootprint.width < 9.4 ||
+      diagnostics.lodgeBuildingFootprint.depth < 7.4) {
     throw new Error("The Pinecrest lodge was not fitted using the building footprint: " + JSON.stringify({
       ready: diagnostics.lodgeModelReady,
       asset: diagnostics.lodgeModelAssetName,
@@ -212,30 +222,55 @@ try {
       nodeNames: diagnostics.lodgeModelNodeNames
     }));
   }
-  if (!diagnostics.cabinDoorUsesImportedLeaf ||
-      diagnostics.cabinDoorAxis !== "z" ||
+  if (!diagnostics.lodgeDoorwayOpen ||
+      diagnostics.lodgeDoorwayWidth < 2.5 ||
+      diagnostics.lodgeNavigationBoxCount < 15 ||
+      !diagnostics.lodgeAuthoredInteriorReady ||
       !diagnostics.lodgeLegacyDoorHidden) {
-    throw new Error("The imported local-Z hinge must replace and hide the old procedural door: " + JSON.stringify({
-      usesImportedLeaf: diagnostics.cabinDoorUsesImportedLeaf,
-      axis: diagnostics.cabinDoorAxis,
+    throw new Error("Cedarwatch's full-width open entrance and navigation data are not active: " + JSON.stringify({
+      doorwayOpen: diagnostics.lodgeDoorwayOpen,
+      doorwayWidth: diagnostics.lodgeDoorwayWidth,
+      navigationBoxes: diagnostics.lodgeNavigationBoxCount,
+      authoredInterior: diagnostics.lodgeAuthoredInteriorReady,
       oldDoorHidden: diagnostics.lodgeLegacyDoorHidden
     }));
   }
   if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
-      diagnostics.heroTreeModelCount !== 4 ||
-      diagnostics.heroTreeSourceMeshCount < 4000 ||
-      diagnostics.heroTreeMeshCount < 8 || diagnostics.heroTreeMeshCount > 40) {
-    throw new Error("The detailed hero trees did not load or were not efficiently batched: " + JSON.stringify({
+      !diagnostics.heroSpruceReady || !diagnostics.heroOakReady || !diagnostics.heroFernReady ||
+      diagnostics.heroTreeModelCount !== 8 || diagnostics.heroFernCount !== 4 ||
+      diagnostics.heroBoulderCount !== 3 || diagnostics.heroBoulderMeshCount < 3 ||
+      diagnostics.heroTreeSourceMeshCount < 5000 ||
+      diagnostics.heroTreeMeshCount < 16 || diagnostics.heroTreeMeshCount > 120 ||
+      diagnostics.groundCoverClusterCount < 5500 ||
+      diagnostics.groundCoverCardCount < 16500 ||
+      diagnostics.groundCoverVertexCount < 66000 ||
+      !diagnostics.yardApronReady || !diagnostics.terrainVertexTinted ||
+      !diagnostics.fernMaterialReady ||
+      diagnostics.gateSignWorldWidth <= 0 || diagnostics.gateSignWorldWidth >= 2.8 ||
+      diagnostics.spawnGroundHeight <= 0.75) {
+    throw new Error("Pinecrest authored vegetation, foreground cover or yard surface did not load: " + JSON.stringify({
       conifer: diagnostics.heroConiferReady,
       broadleaf: diagnostics.heroBroadleafReady,
+      spruce: diagnostics.heroSpruceReady,
+      oak: diagnostics.heroOakReady,
+      ferns: [diagnostics.heroFernReady, diagnostics.heroFernCount, diagnostics.fernMaterialReady],
+      mossyBoulders: [diagnostics.heroBoulderCount, diagnostics.heroBoulderMeshCount],
       treeInstances: diagnostics.heroTreeModelCount,
       sourceMeshes: diagnostics.heroTreeSourceMeshCount,
       renderMeshesAfterBatching: diagnostics.heroTreeMeshCount,
+      groundCoverClusters: diagnostics.groundCoverClusterCount,
+      grassCards: diagnostics.groundCoverCardCount,
+      grassVertices: diagnostics.groundCoverVertexCount,
+      yardApron: diagnostics.yardApronReady,
+      terrainVertexTinted: diagnostics.terrainVertexTinted,
+      fernMaterialReady: diagnostics.fernMaterialReady,
+      gateSignWorldWidth: diagnostics.gateSignWorldWidth,
+      spawnGroundHeight: diagnostics.spawnGroundHeight,
       failures: diagnostics.heroVegetationFailures
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.5-compound.png");
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.13.0-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 0) {
     throw new Error("The old raised lodge sign portal must be hidden after the Mountain Hut replacement: " + diagnostics.cabinSignSupportPostCount);
   }
@@ -250,7 +285,7 @@ try {
       diagnostics.pinecrestWindowFlowerBoxCount !== 0 ||
       diagnostics.pinecrestWoodshedPostCount !== 4 ||
       diagnostics.pinecrestWoodshedLogCount !== 12 ||
-      diagnostics.pinecrestFernFrondCount < 35) {
+      diagnostics.pinecrestFernFrondCount < 4) {
     throw new Error("Pinecrest still shows old cabin dressing or is missing compound details: " + JSON.stringify({
       legacyGableBeams: diagnostics.pinecrestGableBeamCount,
       legacyGutters: diagnostics.pinecrestRainGutterCount,
@@ -277,7 +312,21 @@ try {
     throw new Error("Gate sign posts must block foot traffic without closing the central entrance: " + JSON.stringify(gatePostCollision));
   }
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
-  if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
+  if (!diagnostics.cabinDoorReady || !diagnostics.lodgeDoorwayOpen ||
+      !diagnostics.lodgeAuthoredInteriorReady || diagnostics.lodgeNavigationBoxCount < 15 ||
+      !diagnostics.contractBoardReady) {
+    throw new Error("Cedarwatch open entrance, furnished interior/navigation or live contract board did not initialise: " + JSON.stringify({
+      cabinDoorReady: diagnostics.cabinDoorReady,
+      doorwayOpen: diagnostics.lodgeDoorwayOpen,
+      doorwayWidth: diagnostics.lodgeDoorwayWidth,
+      authoredInterior: diagnostics.lodgeAuthoredInteriorReady,
+      navigationBoxes: diagnostics.lodgeNavigationBoxCount,
+      contractBoardReady: diagnostics.contractBoardReady,
+      model: diagnostics.lodgeModelAssetName,
+      modelFailed: diagnostics.lodgeModelFailed,
+      modelError: diagnostics.lodgeModelError
+    }));
+  }
   if (!diagnostics.gateSignReady || !diagnostics.outpostApproachReady) {
     throw new Error("Pinecrest entrance sign or access road did not initialise: " + JSON.stringify(diagnostics));
   }
@@ -321,28 +370,14 @@ try {
   if (Math.abs(cabinFloor.playerHeight) > 0.08) {
     throw new Error("Hunter is not standing on the cabin floor: " + JSON.stringify(cabinFloor));
   }
-  await page.evaluate(() => window.WildrangeQA.setDoor(true));
-  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle() - 1.48) < 0.025, null, { timeout: 5000 });
-  const openDoorState = await page.evaluate(() => window.WildrangeDiagnostics());
-  if (Math.abs(openDoorState.cabinDoorAngle - 1.48) > 0.025 || !openDoorState.cabinDoorOpen) {
-    throw new Error("Lodge door leaf did not physically reach the open hinge angle: " + JSON.stringify(openDoorState));
-  }
-  const openDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
-  await page.evaluate(() => window.WildrangeQA.setDoor(false));
-  await page.waitForFunction(() => Math.abs(window.WildrangeQA.doorAngle()) < 0.025, null, { timeout: 5000 });
-  const closedDoorAngle = await page.evaluate(() => window.WildrangeQA.doorAngle());
   const cabinCollision = await page.evaluate(() => {
     const door = window.WildrangeQA.doorwayPosition();
     const points = window.WildrangeQA.cabinTestPoints();
     return {
-      interiorWalkableWithDoorClosed: window.WildrangeQA.canStandAt(points.interior.x, points.interior.z),
-      doorwayBlockedWithDoorClosed: !window.WildrangeQA.canStandAt(door.x, door.z),
+      interiorWalkable: window.WildrangeQA.canStandAt(points.interior.x, points.interior.z),
+      doorwayPassable: window.WildrangeQA.canStandAt(door.x, door.z),
       doorX: door.x,
       doorZ: door.z,
-      doorInteractionDistance: (() => {
-        const target = window.WildrangeQA.doorInteractionPosition();
-        return Math.hypot(target.x - door.x, target.z - door.z);
-      })(),
       deckWalkable: window.WildrangeQA.canStandAt(points.terrace.x, points.terrace.z),
       stairsWalkable: window.WildrangeQA.canStandAt(points.stairs.x, points.stairs.z),
       entryPathWalkable: window.WildrangeQA.canStandAt(points.path.x, points.path.z),
@@ -368,14 +403,13 @@ try {
     fullTurnBearing: window.WildrangeQA.bearingFor(360),
     outpostTreeIntrusions: window.WildrangeDiagnostics().outpostTreeIntrusionCount
   }));
-  if (!cabinCollision.interiorWalkableWithDoorClosed || !cabinCollision.doorwayBlockedWithDoorClosed ||
+  if (!cabinCollision.interiorWalkable || !cabinCollision.doorwayPassable ||
       !cabinCollision.deckWalkable || !cabinCollision.stairsWalkable || !cabinCollision.entryPathWalkable ||
       Math.abs(cabinCollision.interiorHeight - diagnostics.lodgeInteriorFloorHeight) > 0.03 ||
       Math.abs(cabinCollision.deckHeight - diagnostics.lodgeDeckSurfaceHeight) > 0.03 ||
-      cabinCollision.stairHeight < 0.10 ||
-      cabinCollision.stairHeight >= cabinCollision.deckHeight ||
-      Math.abs(cabinCollision.pathHeight - 0.26) > 0.02 ||
-      cabinCollision.doorInteractionDistance > 1.0) {
+      cabinCollision.stairHeight <= Math.min(cabinCollision.deckHeight, 0.10) ||
+      cabinCollision.stairHeight >= Math.max(cabinCollision.deckHeight, 0.10) ||
+      Math.abs(cabinCollision.pathHeight - 0.26) > 0.02) {
     throw new Error("Cabin floor, deck, stairs or compound path collision failed: " + JSON.stringify(cabinCollision));
   }
   if (!compoundBoundary.southRailBlocked || !compoundBoundary.southFenceExtensionClear ||
@@ -386,13 +420,11 @@ try {
       compoundBoundary.fullTurnBearing !== "N" || compoundBoundary.outpostTreeIntrusions !== 0) {
     throw new Error("Compound limits, noticeboard access, compass or tree clearance failed: " + JSON.stringify(compoundBoundary));
   }
-  await page.evaluate(() => window.WildrangeQA.setDoor(true));
-  const openDoorwayWalkable = await page.evaluate(() => {
+  const cedarwatchDoorwayClear = await page.evaluate(() => {
     const door = window.WildrangeQA.doorwayPosition();
-    return window.WildrangeQA.canStandAt(door.x, door.z);
+    return window.WildrangeDiagnostics().lodgeDoorwayOpen && window.WildrangeQA.canStandAt(door.x, door.z);
   });
-  if (!openDoorwayWalkable) throw new Error("Open Mountain Hut doorway remains blocked");
-  await page.evaluate(() => window.WildrangeQA.setDoor(false));
+  if (!cedarwatchDoorwayClear) throw new Error("Cedarwatch open front doorway is blocked");
   if (diagnostics.pbrMaterialCount < 15) throw new Error("PBR materials were not created (" + diagnostics.pbrMaterialCount + ")");
   if (diagnostics.readyTextureCount < 12) throw new Error("Too few textures finished loading (" + diagnostics.readyTextureCount + ")");
   if (!diagnostics.canvasWidth || !diagnostics.canvasHeight || !diagnostics.webglEnabled) {

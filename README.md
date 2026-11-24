@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.11.5**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Published browser build: unchanged by this review branch. **Candidate build: 0.13.0** (`art/pinecrest-world-visual-overhaul`). Base game assets are stored under `public/assets/`; the candidate adds the Cedarwatch lodge and scanned woodland assets.
 
 
 | Action | Control |
@@ -233,6 +233,45 @@ The 0.11.4 screenshot review exposed two integration faults that made the new Mo
 - Browser QA now fails if the old door remains active, the imported door is not used, the wrong hinge axis is selected, or the actual building footprint falls below the integration target.
 
 The source asset is exterior-only, so this is an integration and traversal correction rather than a claim that a fully authored interior has been added. The existing grouped Wildrange interior remains aligned to the fitted building floor.
+
+## 0.12.1 Pinecrest visual follow-up
+
+The first 0.12.0 browser capture still showed an entrance banner across the cabin, large stylised spruce in the near view, black fern fronds and meadow grass that was too fine to read as ground cover. The second pass addresses those visible issues.
+
+- Move the outpost nameplate to the left side of the gate and reduce it to a 2.52 m × 0.50 m face, supported by short cantilever brackets. The centre gate opening and lodge view are no longer covered by a wide banner.
+- Move the two Norway spruce hero models back to the forest edge and reduce their target height to 11.5–12 m.
+- Recolour imported fern geometry with a dedicated two-sided green PBR foliage material and move the four clumps into the compound's two timber planting beds.
+- Replace thin grass triangles with three crossed tapered cards per tuft. Increase the meadow to 6,200 target clusters and concentrate the first 4,700 in the player-side approach area.
+- Reduce the flattened terrain area to the actual lodge apron; the starting position now samples the surrounding natural height field instead of remaining inside a large flat oval.
+- Make the yard apron more rounded-rectangular and lighten its gravel material so it reads as a working yard rather than a dark oval stone disc.
+- Reduce the first-person weapon's screen footprint slightly to expose more of the environment.
+
+The browser smoke test now checks the side-mounted sign width, spawn terrain height, fern material readiness, grass-card count and grass vertex count, in addition to model loading and existing movement/door/compound checks.
+
+## 0.12.0 Pinecrest environment-art overhaul
+
+This coordinated visual pass addresses the flat, empty foreground and repeated tree silhouettes visible in the 0.11.5 compound screenshot.
+
+- The outpost clearing now follows the actual camp footprint and gate approach, with a graded terrain blend instead of a 44 m radius of uniformly flat ground.
+- A single irregular compacted-gravel apron defines the working yard inside the compound fence. The foreground outside the yard receives dense, spatially weighted meadow grass clusters and varied terrain vertex tint.
+- Procedural conifer boughs change from stacked spheres to tapered branch tiers, and broadleaf crowns receive a less regular silhouette.
+- Four additional authored CC0 assets add Norway spruce, detailed oak and PBR fern clumps at separated forest-edge and yard positions. Existing detailed conifer and linden assets remain in use.
+- The first-person rifle presentation is reduced slightly in screen scale to give more of the world back to the player.
+
+All new models are downloaded during CI/Pages builds and have their source and CC0 license recorded in the asset manifest and attribution file. The next validation gate checks that all eight hero trees, four fern clumps, foreground grass, gravel apron and terrain tint load in headless Chrome before this build is called visually approved.
+
+## 0.13.0 Cedarwatch lodge and woodland asset replacement — candidate
+
+This is a larger replacement pass following the 0.12.1 screenshots. It is intentionally held on the review branch pending the rendered Chrome gameplay test and visual inspection.
+
+- Replace the undersized Mountain Hut with the Cedarwatch forest cabin as the primary lodge. The candidate cabin includes its furnished interior and open front doorway.
+- Use the cabin's authored navigation boxes and route for wall/furniture collision instead of a guessed door/footprint setup.
+- Align the lodge to its authored floor datum and Pinecrest's existing gate approach.
+- Disable the old hand-built interior and overlapping legacy lodge shell; mount the Pinecrest Lodge nameplate directly to the new facade.
+- Replace the black-prone stylised fern source with photogrammetry bracken fern assets, preserving their authored materials.
+- Add scanned moss/lichen boulder clusters and remove the repeated low-poly stone edging.
+
+**Validation:** static source, asset, licence metadata and navigation checks passed on the latest candidate commit. The Playwright Chrome gameplay test and compound screenshot are still pending. This candidate has not been merged or deployed.
 
 ## Cost
 

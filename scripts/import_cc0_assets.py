@@ -111,6 +111,24 @@ BUILD_TIME_ASSETS = [
         "integration": "Primary Pinecrest Lodge architecture: stone lower level, dark timber upper level, weighted shingle roof, chimney and terrace"
     },
     {
+        "asset": "Timber-Framed House",
+        "status": "downloaded-at-build",
+        "path": "buildings/pinecrest-timber-frame-house.glb",
+        "approximate_bytes": 2000000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://tevy.dev/models/timber-frame-house/",
+        "integration": "Candidate primary Pinecrest hunting lodge: two-storey dark oak framing, stone chimney, thatched roof, lean-to woodshed and walkable furnished ground-floor room"
+    },
+    {
+        "asset": "Cedarwatch Cabin",
+        "status": "downloaded-at-build",
+        "path": "buildings/pinecrest-cedarwatch-cabin.glb",
+        "approximate_bytes": 956496,
+        "license": "CC0 1.0 Universal",
+        "source": "https://scenecrate.com/scenes/forest-cabin",
+        "integration": "Primary Pinecrest hunting lodge: cedar cladding, layered green shingles, amber windows, dressed-stone chimney, furnished interior and open 1.64 m front doorway"
+    },
+    {
         "asset": "Conifer, detailed needles",
         "status": "downloaded-at-build",
         "path": "vegetation/conifer-detailed.glb",
@@ -127,6 +145,42 @@ BUILD_TIME_ASSETS = [
         "license": "CC0 1.0 Universal",
         "source": "https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e",
         "integration": "Two high-detail hero broadleaf trees around Pinecrest compound"
+    },
+    {
+        "asset": "Mature Norway spruce tree",
+        "status": "downloaded-at-build",
+        "path": "vegetation/norway-spruce.glb",
+        "approximate_bytes": 2000000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f",
+        "integration": "Two tall spruce silhouettes frame the Pinecrest approach"
+    },
+    {
+        "asset": "Oak street tree, detailed leaves",
+        "status": "downloaded-at-build",
+        "path": "vegetation/oak-detailed.glb",
+        "approximate_bytes": 5900000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://www.innerscene.com/tools/library/3d-parts/oak-street-tree-detailed-leaves-a273fef9",
+        "integration": "Two broadleaf hero trees add a different canopy silhouette around Pinecrest"
+    },
+    {
+        "asset": "Photoreal Woodland Bracken Fern",
+        "status": "downloaded-at-build",
+        "path": "vegetation/woodland-bracken-fern.glb",
+        "approximate_bytes": 393625,
+        "license": "CC0 1.0 Universal",
+        "source": "https://scenecrate.com/free-3d-game-assets",
+        "integration": "Four photogrammetry-scanned bracken fern clumps with alpha-cutout fronds and embedded PBR maps in Pinecrest garden beds"
+    },
+    {
+        "asset": "Photoreal Mossy Forest Boulders",
+        "status": "downloaded-at-build",
+        "path": "vegetation/mossy-forest-boulders.glb",
+        "approximate_bytes": 1425000,
+        "license": "CC0 1.0 Universal",
+        "source": "https://scenecrate.com/free-3d-game-assets",
+        "integration": "Photogrammetry-scanned moss and lichen boulders replacing low-detail compound-edge stones"
     }
 ]
 
@@ -294,8 +348,12 @@ The following models are downloaded by scripts/download_licensed_3d_assets.sh fo
 
 - Log cabin 3 x 3 m, apex roof (https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac), CC0 1.0 Universal. Used as the authored Pinecrest Lodge exterior.
 - Mountain Hut by Grab3D (https://grab3d.com/models/buildings/mountain-hut/), CC0 1.0 Universal. Used as the primary Pinecrest Lodge architecture.
+- Timber-Framed House by tevy (https://tevy.dev/models/timber-frame-house/), CC0 1.0 Universal. Candidate replacement hunting lodge with furnished walkable interior, moving door/shutters, timber framing, stone chimney and thatched roof.
 - Conifer, detailed needles (https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef), CC0 1.0 Universal. Used for high-detail hero conifers.
 - Linden street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e), CC0 1.0 Universal. Used for high-detail hero broadleaf trees.
+- Mature Norway spruce tree (https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f), CC0 1.0 Universal. Used to introduce a distinct tall conifer silhouette.
+- Oak street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/oak-street-tree-detailed-leaves-a273fef9), CC0 1.0 Universal. Used for high-detail broadleaf hero trees.
+- Fern clumps (https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea), CC0 1.0 Universal. Used for PBR understorey planting around the compound.
 """,
         encoding="utf-8",
     )

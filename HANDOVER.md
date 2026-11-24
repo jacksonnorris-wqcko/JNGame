@@ -1,9 +1,9 @@
 # JNGame / Wildrange — Development Handover
 
-**Updated:** 18 November 2026  
+**Updated:** 24 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
-**Working branch:** `main`  
-**Current source build:** `0.11.4`  
+**Working branch:** `art/pinecrest-world-visual-overhaul`  
+**Current source build:** `0.13.0 candidate (review branch; browser QA pending)`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -21,6 +21,30 @@ Wildrange is a stylised first-person hunting adventure. The priority is a stable
 - `.github/workflows/pages.yml` — GitHub Pages deployment.
 
 Progress is currently stored in browser `localStorage`. There is no account system, cloud save service or multiplayer backend.
+
+## 0.13.0 Cedarwatch lodge and woodland replacement — candidate
+
+**Status:** Static validation passed on commit `5d8762719e8f60f7796f5c84903fe9992eb5c42c`. Chrome gameplay validation is still running; do not merge or call this live yet.
+
+### Lodge
+- The primary imported lodge is now `pinecrest-cedarwatch-cabin.glb`. The Mountain Hut and original log cabin remain fallback assets only.
+- The Cedarwatch package includes a furnished room and an open doorway. Its measured source bounds are approximately 11.44 m × 10.17 m × 6.26 m; runtime scale is 1.60.
+- The root is aligned to the source walk-floor datum and the existing Pinecrest entrance position.
+- The source `walk.boxes` are transformed into world-space collision rectangles, preserving wall, frame, workbench, bed/platform, firewood and tree-trunk blocking while leaving the central doorway clear.
+- The former grouped procedural interior and interior point lights are disabled when Cedarwatch loads to prevent duplicated walls/furniture.
+- The old cabin shell, porch and procedural door are suppressed; the previous Mountain Hut door hinge is no longer required for the open-door Cedarwatch variant.
+- A new brass-edged Pinecrest Lodge plaque is parented to the Cedarwatch front facade above the entrance.
+
+### Woodland and compound edge
+- The former fern asset/material override is removed. The new photogrammetry bracken GLB keeps its authored alpha/PBR material.
+- Three scanned moss/lichen boulder clusters replace the repeated low-subdivision ico-sphere boundary row.
+- The old repeated stone edging has been removed.
+
+### Candidate QA gates
+- Static JS syntax, HTML/cache version consistency, asset presence/provenance and Cedarwatch walk-data validation: passed.
+- Browser smoke test must verify Cedarwatch loads, the nameplate is readable, the doorway and furnished interior are walkable, compound signs and collision remain correct, scanned ferns/boulders load, and the scene renders without browser errors.
+- A composited compound screenshot is required for visual approval. The previous 0.13.0 run timed out while using Playwright's standard screenshot path; the current test uses Chrome DevTools capture instead.
+- PR 2 remains open against `main`. No merge or Pages deployment has been performed.
 
 ## 0.8.21 visual finish
 
@@ -216,13 +240,58 @@ The 0.11.4 screenshot review showed that the Mountain Hut appeared undersized an
 
 The Grab3D source manifest identifies this Mountain Hut as an exterior-only model, with no authored interior. This correction restores usable entrance and walkable-interior integration using the existing Wildrange interior group; it does not claim the building now has a bespoke authored interior art pass.
 
+## 0.12.1 Pinecrest art refinement
+
+The first 0.12.0 browser screenshot exposed four remaining visual problems: the wide gate nameplate obscured the lodge, the new spruce dominated the near view, imported fern source materials appeared nearly black, and the meadow's narrow triangle blades did not read as grass.
+
+### Refinements
+
+- Relocate the gate nameplate to the left of the entrance and reduce it to a 2.52 × 0.50 m face. The plaque is supported from the left gate post with two cantilever brackets; the central passage remains open.
+- Push the two Norway spruce models to the outer forest edge and reduce their target heights to 11.5 and 12 m.
+- Override the imported fern material with a dedicated two-sided green foliage PBR material, disable fern shadow casting and move the four clumps into the existing timber planter beds.
+- Replace the single-triangle blades with three crossed, tapered quads per grass cluster. The target is 6,200 clusters, with the first 4,700 concentrated in the spawn-side meadow. The card mesh uses vertex colour without directional lighting so vertical blades do not render as black silhouettes.
+- Narrow the levelled terrain blend to the lodge and gate approach. The spawn location is outside the flat interior region and should sample the natural terrain height field.
+- Change the gravel apron from an oval to a rounded-rectangular outline and lighten its PBR tint.
+- Reduce first-person rifle scale to 74% of its original attachment scale.
+
+The browser QA now has assertions for fern material readiness, side-mounted sign width, player spawn ground height, crossed grass cards and vertex count. Existing checks continue to cover all vegetation imports, compound signs, the lodge door/interior, wildlife rigs, rifle optics and jumping.
+
+## 0.12.0 Pinecrest environment-art overhaul
+
+The 0.11.5 gameplay screenshot showed a broad empty foreground, repeated rounded procedural tree silhouettes and an outpost yard that did not read as a deliberately finished space. This pass starts a coordinated art overhaul rather than adding more isolated props.
+
+### Terrain and yard composition
+
+- The old flat-area exclusion was a 44 m circle centred in front of the camp. The terrain function now blends naturally from a smaller, elliptical lodge/approach flattening area to the surrounding heightfield.
+- A fitted, irregular compacted-gravel apron defines the inside of the existing compound perimeter. Its mesh is one continuous textured surface, not a field of repeated box props.
+- Terrain vertex tint introduces broad and fine shade variation into the grass PBR surface.
+- Ground-cover distribution is weighted toward the initial play area and now produces at least 4,600 grass clusters. It still avoids the gravel apron, paths and obstruction footprints.
+- The large obsolete spawn-centred exclusion has been removed from the undergrowth distribution.
+
+### Forest and vegetation
+
+- Procedural pine whorls use tapered branch tiers rather than stacked spheres; broadleaf crown forms are subtly deformed to break up identical smooth silhouettes.
+- Existing detailed Innerscene conifer and linden assets remain.
+- Additional CC0 build-time models add two mature Norway spruce, two detailed oak trees and four photoreal PBR fern clumps. Placements are spatially separated from the existing hero trees and from the compound walkways.
+- The old sphere-frond fern assemblies are removed in favour of the imported fern clumps.
+- The hero vegetation loader batches static source meshes by material and reports readiness/failure for each new species, so additional geometry does not submit thousands of unbatched draw calls.
+
+### Presentation and QA
+
+- The first-person rifle root is scaled to 84% and repositioned to return more of the world to the lower-right viewport.
+- Ambient fill, sun intensity, fog falloff and tone mapping are adjusted for stronger outdoor shape and separation.
+- Browser QA requires all eight hero trees and four ferns to load, the gravel apron and vertex-tinted terrain to exist, and at least 4,000 foreground grass clusters to be created.
+- The asset downloader checks each new GLB's size, magic header, glTF 2.0 version and declared file length. The manifest and model attribution retain source and CC0 provenance.
+
+The new fern, Norway spruce and oak models are CC0 assets from Innerscene's 3D Parts Library; the fern clump is sourced from Poly Haven. This is a world/vegetation art pass; it does not claim the exterior-only Mountain Hut now has a bespoke authored interior.
+
 ## Validation status
 
 The source, HTML cache references, smoke-test assertions, CI assertions and Pages workflow were checked in the repository after the changes. The available GitHub commit-status response did not return status records, so do not assume the latest CI or Pages deployment has completed successfully until the Actions run is checked.
 
 ## Next development priorities
 
-1. Verify the 0.11.5 Pinecrest lodge in the deployed browser build, especially the door, full-size building silhouette and walkable entrance.
+1. Verify the 0.12.0 Pinecrest environment-art pass in a rendered browser screenshot, focusing on foreground coverage, gravel apron, varied forest silhouettes and frame pacing.
 2. Continue the wildlife art pass: verify deer and boar silhouettes, proportions, coat materials, head/ear/tail motion and animation transitions at normal gameplay distance.
 3. Continue the first-person rifle pass: improve the visible silhouette, stock and receiver materials, optic proportions, bolt cycling, reload and recoil feel.
 4. Revisit lighting, vegetation density and distant scenery only with frame-time checks so visual improvements do not reintroduce the earlier jitter.

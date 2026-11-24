@@ -117,8 +117,16 @@
   let lodgeInteriorFloorHeight = 1.02;
   let lodgeDeckSurfaceHeight = 1.335;
   let lodgeDoorWorldPosition = { x: -14, z: 38.7 };
+  let lodgeDoorwayWidth = 1.64;
+  let lodgeDoorwayOpen = false;
+  let lodgeNavigationBoxes = [];
+  let lodgeAuthoredInteriorReady = false;
   let cabinInteriorLights = [];
   let heroConiferReady = false, heroBroadleafReady = false;
+  let heroSpruceReady = false, heroOakReady = false, heroFernReady = false;
+  let heroFernCount = 0;
+  let heroFernMaterialReady = false;
+  let heroBoulderCount = 0, heroBoulderMeshCount = 0;
   let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
   let sceneInitError = "";
@@ -782,8 +790,11 @@
     mat.grassBlade = makeMaterial("Meadow grass blades", "#ffffff");
     mat.grassBlade.useVertexColors = true;
     mat.grassBlade.backFaceCulling = false;
-    mat.grassBlade.specularColor = new BABYLON.Color3(0.01, 0.018, 0.008);
+    mat.grassBlade.disableLighting = true;
+    mat.grassBlade.diffuseColor = BABYLON.Color3.White();
+    mat.grassBlade.specularColor = BABYLON.Color3.Black();
     mat.shore = makePbrSurface("Lake gravel and shore", "rock", 4, "#b9af93");
+    mat.gravel = makePbrSurface("Pinecrest compacted gravel yard", "rock", 4.2, "#c2b496");
     mat.waterRipple = makeMaterial("Lake water glints", "#c5e0db");
     mat.waterRipple.alpha = 0.16;
     mat.waterRipple.disableLighting = true;
@@ -791,23 +802,33 @@
     mat.flowerCream = makeMaterial("Meadow flowers cream", "#e7e4ca");
   }
 
-  function heightAt(x, z) {
-    if (flatArea(x, z)) return 0.1;
+  function rawTerrainHeight(x, z) {
     return Math.sin(x * 0.031) * 1.8 + Math.cos(z * 0.027) * 1.7 +
       Math.sin((x + z) * 0.016) * 2.35 + Math.cos((x - z) * 0.022) * 1.1 +
       Math.sin(z * 0.011 + x * 0.008) * 1.65;
   }
 
   function flatArea(x, z) {
-    return Math.hypot(x, z - 31) < 22;
+    // Keep scatter out of the built lodge apron, not across the whole spawn lawn.
+    return Math.hypot((x + 14) / 20, (z - 40) / 18) < 1.02;
   }
 
-  // Keep tall trees and large undergrowth out of the Pinecrest lodge and its yard.
-  // The wider clearance accounts for the tree crowns, not just their trunk positions.
+  function heightAt(x, z) {
+    const normalized = Math.hypot((x + 14) / 20, (z - 40) / 18);
+    const natural = rawTerrainHeight(x, z);
+    if (normalized <= 0.62) return 0.10;
+    if (normalized >= 1.05) return natural;
+    const t = clamp((normalized - 0.62) / 0.43, 0, 1);
+    const smooth = t * t * (3 - 2 * t);
+    return 0.10 + (natural - 0.10) * smooth;
+  }
+
+  // Keep vegetation out of the real compound apron, then let the forest resume
+  // close enough to frame the lodge rather than leaving an empty 60 m moat.
   function isPinecrestCompoundClearance(x, z) {
     const localX = x + 14;
     const localZ = z - 43;
-    return Math.abs(localX) < 31 && localZ > -29 && localZ < 29;
+    return Math.abs(localX) < 23.5 && localZ > -20 && localZ < 21;
   }
 
   function makeTerrain() {
@@ -817,18 +838,89 @@
     const positions = ground.getVerticesData(BABYLON.VertexBuffer.PositionKind);
     const indices = ground.getIndices();
     const normals = [];
+    const colors = [];
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const z = positions[i + 2];
-      positions[i + 1] = flatArea(x, z) ? 0.1 : heightAt(x, z);
+      positions[i + 1] = heightAt(x, z);
+      const broadPatch = Math.sin(x * 0.052 + z * 0.021) * Math.cos(z * 0.047 - x * 0.018);
+      const finePatch = Math.sin(x * 0.19 + z * 0.13) * Math.cos(z * 0.16);
+      const shade = clamp(0.86 + broadPatch * 0.075 + finePatch * 0.025, 0.70, 1.02);
+      colors.push(0.93 * shade, 0.97 * shade, 0.83 * shade, 1);
     }
     BABYLON.VertexData.ComputeNormals(positions, indices, normals);
     ground.updateVerticesData(BABYLON.VertexBuffer.PositionKind, positions);
     ground.updateVerticesData(BABYLON.VertexBuffer.NormalKind, normals);
+    ground.setVerticesData(BABYLON.VertexBuffer.ColorKind, colors, true, 4);
+    mat.grass.useVertexColors = true;
     ground.material = mat.grass;
     ground.isPickable = true;
     ground.receiveShadows = true;
+    ground.metadata = { pinecrestTerrain: true, vertexTinted: true };
     return ground;
+  }
+
+  function createPinecrestYardApron() {
+    const positions = [], indices = [], uvs = [];
+    const rings = 20;
+    const segments = 112;
+    const centreX = -14;
+    const centreZ = 42.5;
+    const radiusX = 12.0;
+    const radiusZ = 10.2;
+
+    positions.push(centreX, heightAt(centreX, centreZ) + 0.045, centreZ);
+    uvs.push(0.5, 0.5);
+
+    for (let ring = 1; ring <= rings; ring++) {
+      const r = ring / rings;
+      for (let segment = 0; segment < segments; segment++) {
+        const angle = segment / segments * Math.PI * 2;
+        const edgeNoise = 1 +
+          Math.sin(angle * 7 + 0.4) * 0.018 +
+          Math.cos(angle * 11 - 0.7) * 0.012 +
+          Math.sin(angle * 17 + 1.2) * 0.006;
+        const roundedRectX = Math.sign(Math.cos(angle)) * Math.pow(Math.abs(Math.cos(angle)), 0.76);
+        const roundedRectZ = Math.sign(Math.sin(angle)) * Math.pow(Math.abs(Math.sin(angle)), 0.76);
+        const x = centreX + roundedRectX * radiusX * r * edgeNoise;
+        const z = centreZ + roundedRectZ * radiusZ * r * edgeNoise;
+        positions.push(x, heightAt(x, z) + 0.045, z);
+        uvs.push(0.5 + Math.cos(angle) * r * 2.8, 0.5 + Math.sin(angle) * r * 2.8);
+      }
+    }
+
+    for (let segment = 0; segment < segments; segment++) {
+      const next = (segment + 1) % segments;
+      indices.push(0, 1 + next, 1 + segment);
+    }
+    for (let ring = 1; ring < rings; ring++) {
+      const innerStart = 1 + (ring - 1) * segments;
+      const outerStart = 1 + ring * segments;
+      for (let segment = 0; segment < segments; segment++) {
+        const next = (segment + 1) % segments;
+        const a = innerStart + segment;
+        const b = innerStart + next;
+        const c = outerStart + segment;
+        const d = outerStart + next;
+        indices.push(a, b, c, b, d, c);
+      }
+    }
+
+    const apron = new BABYLON.Mesh("Pinecrest compacted gravel clearing", scene);
+    const data = new BABYLON.VertexData();
+    const normals = [];
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    data.positions = positions;
+    data.indices = indices;
+    data.normals = normals;
+    data.uvs = uvs;
+    data.applyToMesh(apron, false);
+    apron.material = mat.gravel;
+    apron.isPickable = false;
+    apron.receiveShadows = true;
+    apron.metadata = { pinecrestYardSurface: true };
+    lights.yardApron = apron;
+    return apron;
   }
 
   function makePath(points, width, material, name) {
@@ -892,12 +984,24 @@
         [0.78, 5.15, -0.1, 1.18]
       ];
       clusters.forEach((entry, index) => {
-        const crown = BABYLON.MeshBuilder.CreateSphere("photographic broadleaf crown", {
-          diameter: entry[3] * scale * 2, segments: 20
+        const crown = BABYLON.MeshBuilder.CreateIcoSphere("photographic broadleaf crown", {
+          radius: entry[3] * scale, subdivisions: 2
         }, scene);
+        const crownPositions = crown.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+        for (let vertex = 0; vertex < crownPositions.length; vertex += 3) {
+          const px = crownPositions[vertex], py = crownPositions[vertex + 1], pz = crownPositions[vertex + 2];
+          const ripple = 1 +
+            0.075 * Math.sin(px * 2.7 + index * 1.8) * Math.cos(py * 2.2 - pz * 1.4) +
+            0.045 * Math.sin(pz * 4.1 + px * 1.3 + index);
+          crownPositions[vertex] *= ripple;
+          crownPositions[vertex + 1] *= ripple;
+          crownPositions[vertex + 2] *= ripple;
+        }
+        crown.updateVerticesData(BABYLON.VertexBuffer.PositionKind, crownPositions);
+        crown.refreshBoundingInfo();
         crown.parent = root;
         crown.position.set(entry[0] * scale, entry[1] * scale, entry[2] * scale);
-        crown.scaling.set(rand(0.82, 1.18), rand(0.78, 1.08), rand(0.86, 1.16));
+        crown.scaling.set(rand(0.88, 1.14), rand(0.82, 1.06), rand(0.86, 1.12));
         crown.rotation.set(rand(-0.12, 0.12), rand(0, Math.PI * 2), rand(-0.12, 0.12));
         crown.material = [mat.leaf1, mat.leaf2, mat.leaf3][index % 3];
         crown.isPickable = false;
@@ -910,13 +1014,20 @@
         { y: 6.22, r: 1.30, h: 1.55 }, { y: 7.02, r: 0.92, h: 1.35 }
       ];
       whorls.forEach((whorl, index) => {
-        const crown = BABYLON.MeshBuilder.CreateSphere("pine needle bough cluster", {
-          diameter: whorl.r * scale * 2, segments: 18
+        const crown = BABYLON.MeshBuilder.CreateCylinder("pine needle bough cluster", {
+          height: whorl.h * scale,
+          diameterTop: 0.09 * scale,
+          diameterBottom: whorl.r * scale * 2,
+          tessellation: 14
         }, scene);
         crown.parent = root;
-        crown.position.set(rand(-0.15, 0.15) * scale, whorl.y * scale, rand(-0.15, 0.15) * scale);
-        crown.scaling.set(rand(0.9, 1.14), (whorl.h / whorl.r) * rand(0.94, 1.1), rand(0.9, 1.12));
-        crown.rotation.y = rand(0, Math.PI * 2);
+        crown.position.set(
+          rand(-0.12, 0.12) * scale,
+          whorl.y * scale,
+          rand(-0.12, 0.12) * scale
+        );
+        crown.scaling.set(rand(0.92, 1.10), 1, rand(0.92, 1.10));
+        crown.rotation.set(rand(-0.025, 0.025), rand(0, Math.PI * 2), rand(-0.025, 0.025));
         crown.material = [mat.pine1, mat.pine2, mat.pine3, mat.pine2][index % 4];
         crown.isPickable = false;
         crown.receiveShadows = false;
@@ -1391,8 +1502,8 @@
     const gateGround = localGroundY(0, -14);
     box("Pinecrest entry gate lintel", { width: 6.7, height: 0.24, depth: 0.26 },
       new BABYLON.Vector3(0, gateGround + 3.15, -14), mat.woodLight, root);
-    box("Pinecrest entry gate sign", { width: 4.1, height: 0.9, depth: 0.18 },
-      new BABYLON.Vector3(0, gateGround + 2.55, -14), mat.sign, root);
+    box("Pinecrest entry gate sign", { width: 2.7, height: 0.70, depth: 0.18 },
+      new BABYLON.Vector3(-4.0, gateGround + 2.60, -14), mat.sign, root);
 
     // Two ground-bearing posts support the sign lintel and carry the sign's load.
     // Stone plinths, post caps, iron straps and knee braces make the structure read as built.
@@ -1428,15 +1539,22 @@
       obstacles.push({ x: root.position.x + postX, z: root.position.z - 14, radius: 0.30 });
     }
     // A timber edge frame and corner fixings finish the sign board itself.
-    for (const y of [gateGround + 2.12, gateGround + 2.98]) {
+    for (const y of [gateGround + 2.25, gateGround + 2.95]) {
       box("Pinecrest gate sign frame rail",
-        { width: 4.24, height: 0.10, depth: 0.12 },
-        new BABYLON.Vector3(0, y, -14.205), mat.woodLight, root);
+        { width: 2.82, height: 0.10, depth: 0.12 },
+        new BABYLON.Vector3(-4.0, y, -14.205), mat.woodLight, root);
     }
-    for (const x of [-2.07, 2.07]) {
+    for (const x of [-5.41, -2.59]) {
       box("Pinecrest gate sign frame stile",
-        { width: 0.10, height: 0.92, depth: 0.12 },
-        new BABYLON.Vector3(x, gateGround + 2.55, -14.205), mat.woodLight, root);
+        { width: 0.10, height: 0.72, depth: 0.12 },
+        new BABYLON.Vector3(x, gateGround + 2.60, -14.205), mat.woodLight, root);
+    }
+    // Short cantilever brackets carry the plaque from the left gate support.
+    for (const y of [gateGround + 2.39, gateGround + 2.81]) {
+      const bracket = box("Pinecrest gate sign cantilever bracket",
+        { width: 0.50, height: 0.10, depth: 0.15 },
+        new BABYLON.Vector3(-2.60, y, -14.22), mat.black, root);
+      bracket.isPickable = false;
     }
 
     for (const x of [-5.7, 5.7]) {
@@ -1454,15 +1572,15 @@
     }
     // Gate nameplate faces are deliberately offset in front of the wood plaque.
     gateSignFrontMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign front",
-      { width: 3.82, height: 0.68, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+      { width: 2.52, height: 0.50, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
     gateSignFrontMesh.parent = root;
-    gateSignFrontMesh.position.set(0, gateGround + 2.55, -14.165);
+    gateSignFrontMesh.position.set(-4.0, gateGround + 2.60, -14.165);
     gateSignFrontMesh.rotation.y = Math.PI;
     gateSignFrontMesh.isPickable = false;
     gateSignBackMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign back",
-      { width: 3.82, height: 0.68, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+      { width: 2.52, height: 0.50, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
     gateSignBackMesh.parent = root;
-    gateSignBackMesh.position.set(0, gateGround + 2.55, -13.835);
+    gateSignBackMesh.position.set(-4.0, gateGround + 2.60, -13.835);
     gateSignBackMesh.isPickable = false;
     const drawGateSign = (texture, mirror) => {
       const ctx = texture.getContext();
@@ -1471,8 +1589,8 @@
       ctx.strokeStyle = "#c8ad70"; ctx.lineWidth = 12; ctx.strokeRect(18, 18, 988, 220);
       ctx.strokeStyle = "#7d704f"; ctx.lineWidth = 3; ctx.strokeRect(34, 34, 956, 188);
       ctx.textAlign = "center"; ctx.fillStyle = "#f1e3bd";
-      ctx.font = "bold 78px Georgia"; ctx.fillText("PINECREST OUTPOST", 512, 112);
-      ctx.font = "29px Georgia"; ctx.fillStyle = "#c9c0a7";
+      ctx.font = "bold 58px Georgia"; ctx.fillText("PINECREST OUTPOST", 512, 112);
+      ctx.font = "21px Georgia"; ctx.fillStyle = "#c9c0a7";
       ctx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 177);
       texture.update(true);
       return makeReadableSignMaterial(mirror ? "Pinecrest gate sign front material" : "Pinecrest gate sign rear material", texture, mirror);
@@ -1483,7 +1601,7 @@
     gateSignBackMaterial = drawGateSign(gateSignBackTexture, false);
     gateSignFrontMesh.material = gateSignFrontMaterial;
     gateSignBackMesh.material = gateSignBackMaterial;
-    for (const x of [-1.92, 1.92]) for (const y of [gateGround + 2.27, gateGround + 2.83]) {
+    for (const x of [-5.08, -2.92]) for (const y of [gateGround + 2.40, gateGround + 2.80]) {
       const fixing = BABYLON.MeshBuilder.CreateCylinder("gate sign brass fixing", { height: 0.035, diameter: 0.095, tessellation: 12 }, scene);
       fixing.parent = root; fixing.rotation.x = Math.PI / 2; fixing.position.set(x, y, -14.19);
       fixing.material = mat.gold; fixing.isPickable = false;
@@ -2112,6 +2230,92 @@
     };
   }
 
+  function createCedarwatchNameplate(importedRoot, uniformScale) {
+    if (!importedRoot || !uniformScale || uniformScale <= 0) return null;
+    const signWidth = 2.55;
+    const signHeight = 0.48;
+    const localDepth = 0.085 / uniformScale;
+    // The Cedarwatch front wall and open doorway are authored on local +Z.
+    // Mount the nameplate above the door, not on a freestanding post or a legacy wall.
+    const localPosition = new BABYLON.Vector3(0, 2.62, 2.43);
+
+    lodgeModelSignBackingMesh = BABYLON.MeshBuilder.CreateBox(
+      "Pinecrest Cedarwatch lodge sign backing",
+      { width: signWidth / uniformScale, height: signHeight / uniformScale, depth: localDepth },
+      scene
+    );
+    lodgeModelSignBackingMesh.parent = importedRoot;
+    lodgeModelSignBackingMesh.position.copyFrom(localPosition);
+    lodgeModelSignBackingMesh.material = mat.bark;
+    lodgeModelSignBackingMesh.receiveShadows = true;
+    lodgeModelSignBackingMesh.isPickable = false;
+
+    lodgeModelSignTexture = new BABYLON.DynamicTexture(
+      "Pinecrest Cedarwatch nameplate texture",
+      { width: 1024, height: 256 },
+      scene,
+      true
+    );
+    const ctx = lodgeModelSignTexture.getContext();
+    ctx.fillStyle = "#20342a";
+    ctx.fillRect(0, 0, 1024, 256);
+    ctx.strokeStyle = "#c9ad74";
+    ctx.lineWidth = 12;
+    ctx.strokeRect(16, 16, 992, 224);
+    ctx.strokeStyle = "#6f684d";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(34, 34, 956, 188);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f2e6c9";
+    ctx.font = "bold 82px Georgia";
+    ctx.fillText("PINECREST LODGE", 512, 105);
+    ctx.fillStyle = "#c8b98f";
+    ctx.font = "28px Georgia";
+    ctx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 181);
+    lodgeModelSignTexture.update(true);
+
+    const signMaterial = makeReadableSignMaterial(
+      "Pinecrest Cedarwatch nameplate material",
+      lodgeModelSignTexture,
+      true
+    );
+    lodgeModelSignFaceMesh = BABYLON.MeshBuilder.CreatePlane(
+      "Pinecrest Cedarwatch lodge sign face",
+      {
+        width: (signWidth - 0.14) / uniformScale,
+        height: (signHeight - 0.12) / uniformScale,
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE
+      },
+      scene
+    );
+    lodgeModelSignFaceMesh.parent = importedRoot;
+    lodgeModelSignFaceMesh.position.set(
+      localPosition.x,
+      localPosition.y,
+      localPosition.z + (localDepth / 2) + (0.012 / uniformScale)
+    );
+    lodgeModelSignFaceMesh.material = signMaterial;
+    lodgeModelSignFaceMesh.isPickable = false;
+
+    for (const side of [-1, 1]) {
+      const trim = BABYLON.MeshBuilder.CreateBox(
+        "Pinecrest Cedarwatch sign brass edge",
+        { width: 0.035 / uniformScale, height: (signHeight - 0.06) / uniformScale, depth: 0.025 / uniformScale },
+        scene
+      );
+      trim.parent = importedRoot;
+      trim.position.set(
+        localPosition.x + side * ((signWidth / 2 - 0.035) / uniformScale),
+        localPosition.y,
+        localPosition.z + (localDepth / 2) + (0.025 / uniformScale)
+      );
+      trim.material = mat.gold;
+      trim.isPickable = false;
+    }
+    return { width: signWidth, height: signHeight, position: localPosition.asArray() };
+  }
+
   function loadPinecrestLodgeModel(lodgeRoot) {
     lodgeModelLoading = true;
 
@@ -2120,18 +2324,25 @@
       try {
         try {
           container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
-            "./assets/buildings/", "pinecrest-mountain-hut.glb", scene
+            "./assets/buildings/", "pinecrest-cedarwatch-cabin.glb", scene
           );
-          lodgeModelAssetName = "pinecrest-mountain-hut.glb";
-        } catch (primaryError) {
-          // Keep the previous, fully-tested log cabin as a safe fallback if the
-          // larger architectural asset is unavailable on a local or cached build.
-          console.warn("Mountain Hut model unavailable; using the original log cabin:", primaryError);
-          container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
-            "./assets/buildings/", "pinecrest-lodge.glb", scene
-          );
-          lodgeModelAssetName = "pinecrest-lodge.glb";
-          lodgeModelUsedFallback = true;
+          lodgeModelAssetName = "pinecrest-cedarwatch-cabin.glb";
+        } catch (cedarError) {
+          console.warn("Cedarwatch Cabin unavailable; trying the Mountain Hut fallback:", cedarError);
+          try {
+            container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
+              "./assets/buildings/", "pinecrest-mountain-hut.glb", scene
+            );
+            lodgeModelAssetName = "pinecrest-mountain-hut.glb";
+            lodgeModelUsedFallback = true;
+          } catch (mountainError) {
+            console.warn("Mountain Hut unavailable; using the original lodge fallback:", mountainError);
+            container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
+              "./assets/buildings/", "pinecrest-lodge.glb", scene
+            );
+            lodgeModelAssetName = "pinecrest-lodge.glb";
+            lodgeModelUsedFallback = true;
+          }
         }
 
         lodgeModelContainer = container;
@@ -2152,10 +2363,14 @@
 
         // GLB instantiation prefixes every node name. Match the authored hinge
         // by suffix, otherwise the old procedural door remains in front of the hut.
-        const importedDoorPivot = !lodgeModelUsedFallback
-          ? importedNodes.find((node) => String(node.name || "").toLowerCase().endsWith("mountain-hut_door_l"))
-          : null;
-        if (!lodgeModelUsedFallback && !importedDoorPivot) {
+        const usesCedarwatch = lodgeModelAssetName === "pinecrest-cedarwatch-cabin.glb";
+        const usesMountainHut = lodgeModelAssetName === "pinecrest-mountain-hut.glb";
+        const importedDoorPivot = usesCedarwatch
+          ? null
+          : usesMountainHut
+            ? importedNodes.find((node) => String(node.name || "").toLowerCase().endsWith("mountain-hut_door_l"))
+            : null;
+        if (usesMountainHut && !importedDoorPivot) {
           throw new Error("Mountain Hut imported without its required mountain-hut_door_l hinge node");
         }
 
@@ -2171,9 +2386,11 @@
         // is 9 x 6.5 m. Fit that building to Pinecrest's old 11.8 x 8.6 m datum.
         // This deliberately does not fit the decorative objects into the cabin
         // footprint, which was shrinking the usable building by about one third.
-        const scale = lodgeModelUsedFallback
-          ? Math.min(12.2 / sourceSize.x, 10.9 / sourceSize.z, 7.0 / sourceSize.y)
-          : Math.min(11.8 / 9.0, 8.6 / 6.5);
+        const scale = usesCedarwatch
+          ? 1.60
+          : lodgeModelUsedFallback
+            ? Math.min(12.2 / sourceSize.x, 10.9 / sourceSize.z, 7.0 / sourceSize.y)
+            : Math.min(11.8 / 9.0, 8.6 / 6.5);
         importedRoot.scaling.setAll(scale);
         importedRoot.computeWorldMatrix(true);
 
@@ -2181,10 +2398,68 @@
         if (!scaledBounds) throw new Error("The scaled lodge has no renderable geometry");
         const size = scaledBounds.max.subtract(scaledBounds.min);
 
+        if (usesCedarwatch) {
+          const response = await fetch("./assets/buildings/pinecrest-cedarwatch-scene.json", { cache: "force-cache" });
+          if (!response.ok) throw new Error("Cedarwatch navigation data unavailable: HTTP " + response.status);
+          const cedarScene = await response.json();
+          if (!cedarScene.walk || !Array.isArray(cedarScene.walk.boxes) || cedarScene.walk.boxes.length < 15) {
+            throw new Error("Cedarwatch navigation data is incomplete");
+          }
+
+          const targetDoorCentre = new BABYLON.Vector3(
+            lodgeRoot.position.x,
+            0,
+            lodgeRoot.position.z - 4.12
+          );
+          // The supplied navigation map places the centre of its open doorway at local (0, 0, +2.4).
+          importedRoot.position.set(
+            targetDoorCentre.x,
+            lodgeRoot.position.y - Number(cedarScene.walk.floor_y || 0) * scale,
+            targetDoorCentre.z + 2.4 * scale
+          );
+          importedRoot.computeWorldMatrix(true);
+
+          lodgeDoorWorldPosition = { x: targetDoorCentre.x, z: targetDoorCentre.z };
+          lodgeDoorwayWidth = 1.64 * scale;
+          lodgeBuildingCentre = {
+            x: importedRoot.position.x,
+            z: importedRoot.position.z
+          };
+          lodgeBuildingFootprint = { width: 6.0 * scale, depth: 4.8 * scale };
+          lodgeInteriorFloorHeight = lodgeRoot.position.y + Number(cedarScene.walk.floor_y || 0) * scale;
+          lodgeDeckSurfaceHeight = lodgeInteriorFloorHeight;
+          lodgeDoorwayOpen = true;
+          cabinDoorOpen = true;
+          cabinDoorUsesImportedLeaf = false;
+          cabinDoorAxis = "open";
+          cabinDoorPivot?.setEnabled(false);
+          lodgeLegacyDoorHidden = true;
+          cabinDoorPivot = null;
+
+          lodgeNavigationBoxes = cedarScene.walk.boxes.map((boxData) => ({
+            name: boxData.name || "Cedarwatch collision",
+            minX: importedRoot.position.x - Number(boxData.max[0]) * scale,
+            maxX: importedRoot.position.x - Number(boxData.min[0]) * scale,
+            minZ: importedRoot.position.z - Number(boxData.max[2]) * scale,
+            maxZ: importedRoot.position.z - Number(boxData.min[2]) * scale,
+            minY: importedRoot.position.y + Number(boxData.min[1]) * scale,
+            maxY: importedRoot.position.y + Number(boxData.max[1]) * scale
+          }));
+
+          // The imported GLB already contains its furnished ground-floor room.
+          // Disable the previous hand-built interior so furniture and walls are not duplicated.
+          if (lodgeInteriorRoot) lodgeInteriorRoot.setEnabled(false);
+          cabinInteriorLights.forEach((light) => light.setEnabled(false));
+          lodgeAuthoredInteriorReady = true;
+          lights.lodgeInteriorAdjustedMeshCount = 0;
+          createCedarwatchNameplate(importedRoot, scale);
+
+          const cabinInteractionIndex = interactables.findIndex((item) => item.action === "cabin");
+          if (cabinInteractionIndex >= 0) interactables.splice(cabinInteractionIndex, 1);
+        }
+
         if (importedDoorPivot) {
-          // Align the actual door opening with the old Pinecrest entry position.
-          // Using the door's centre avoids shifting the whole house because of
-          // the hut's attached terrace and decorative scenery.
+          // Align the actual authored door pivot with the Pinecrest entrance.
           const sourceDoorBounds = getImportedHierarchyBounds([importedDoorPivot]);
           if (!sourceDoorBounds) throw new Error("Mountain Hut hinge has no door geometry");
           const sourceDoorCentre = sourceDoorBounds.min.add(sourceDoorBounds.max).scale(0.5);
@@ -2208,6 +2483,8 @@
             z: fittedDoorCentre.z
           };
 
+          lodgeDoorwayWidth = Math.max(1.64, (fittedDoorBounds.max.x - fittedDoorBounds.min.x) * 1.25);
+          lodgeDoorwayOpen = false;
           lodgeBuildingFootprint = {
             width: 9.0 * scale,
             depth: 6.5 * scale
@@ -2228,6 +2505,7 @@
           cabinDoorPivot.rotationQuaternion = null;
           cabinDoorAxis = "z";
           cabinDoorClosedYaw = Number(cabinDoorPivot.rotation.z) || 0;
+          cabinDoorOpen = false;
           cabinDoorUsesImportedLeaf = true;
 
           const doorInteraction = interactables.find((item) => item.action === "cabin");
@@ -2282,10 +2560,12 @@
           y: Number(size.y.toFixed(3)),
           z: Number(size.z.toFixed(3))
         };
-        const sourceFloorY = lodgeModelUsedFallback ? 0.12 : 0.55;
-        lodgeInteriorFloorHeight = sourceFloorY * scale;
-        lodgeDeckSurfaceHeight = sourceFloorY * scale;
-        if (lodgeInteriorRoot) {
+        if (!usesCedarwatch) {
+          const sourceFloorY = lodgeModelUsedFallback ? 0.12 : 0.55;
+          lodgeInteriorFloorHeight = sourceFloorY * scale;
+          lodgeDeckSurfaceHeight = sourceFloorY * scale;
+        }
+        if (lodgeInteriorRoot && !lodgeAuthoredInteriorReady) {
           const interiorOffset = lodgeInteriorFloorHeight - 1.04;
           lodgeInteriorRoot.position.set(
             lodgeBuildingCentre.x - lodgeRoot.position.x,
@@ -2401,34 +2681,83 @@
     );
     wrapper.computeWorldMatrix(true);
 
-    // Replace any low-detail procedural tree occupying this hero-tree footprint.
-    for (const node of scene.transformNodes) {
-      if (node === wrapper || node.name !== "forest-tree-root" || !node.isEnabled()) continue;
-      if (Math.hypot(node.position.x - x, node.position.z - z) < 6.2) node.setEnabled(false);
+    // Replace low-detail procedural trees only for full-size canopy assets.
+    // Ferns are ground plants and must not suppress a nearby tree trunk.
+    if (label !== "fern") {
+      for (const node of scene.transformNodes) {
+        if (node === wrapper || node.name !== "forest-tree-root" || !node.isEnabled()) continue;
+        if (Math.hypot(node.position.x - x, node.position.z - z) < 8.5) node.setEnabled(false);
+      }
     }
 
     for (const mesh of compactMeshes) {
       if (!mesh || mesh.isDisposed()) continue;
       mesh.isPickable = false;
-      mesh.receiveShadows = true;
+      // The scanned bracken uses alpha-cutout leaves and its own baked PBR maps.
+      // Preserve those authored materials; only opt it out of the shadow pass.
+      mesh.receiveShadows = label !== "fern";
+      if (label === "fern" && mesh.material?.getActiveTextures) {
+        heroFernMaterialReady = heroFernMaterialReady ||
+          mesh.material.getActiveTextures().some((texture) => texture && texture.isReady());
+      }
       mesh.metadata = { ...(mesh.metadata || {}), pinecrestHeroVegetation: label };
-      if (lights.shadows && !mesh.material?.needAlphaBlending?.()) {
+      if (label !== "fern" && lights.shadows && !mesh.material?.needAlphaBlending?.()) {
         try { lights.shadows.addShadowCaster(mesh, false); } catch (error) { /* leaf geometry may skip shadowing */ }
       }
       heroTreeMeshCount++;
     }
-    obstacles.push({ x, z, radius: label === "conifer" ? 3.5 : 3.0 });
-    heroTreeModelCount++;
+    if (label === "fern") {
+      heroFernCount++;
+    } else {
+      obstacles.push({ x, z, radius: (label === "conifer" || label === "spruce") ? 3.8 : 3.2 });
+      heroTreeModelCount++;
+    }
+  }
+
+  function instantiatePinecrestBoulder(container, x, z, targetHeight, instanceIndex) {
+    const entries = container.instantiateModelsToScene(
+      (name) => "PINECREST_MOSSY_BOULDER_" + instanceIndex + "__" + name,
+      false
+    );
+    const wrapper = new BABYLON.TransformNode("Pinecrest scanned moss boulder " + instanceIndex, scene);
+    entries.rootNodes.forEach((node) => { node.parent = wrapper; });
+    wrapper.rotationQuaternion = null;
+    wrapper.computeWorldMatrix(true);
+    const sourceBounds = getImportedHierarchyBounds([wrapper]);
+    if (!sourceBounds) throw new Error("Mossy boulder asset contained no renderable geometry");
+    const size = sourceBounds.max.subtract(sourceBounds.min);
+    const scale = targetHeight / Math.max(0.01, size.y);
+    const centre = sourceBounds.min.add(sourceBounds.max).scale(0.5);
+    wrapper.rotation.y = rand(0, Math.PI * 2);
+    wrapper.scaling.setAll(scale);
+    wrapper.position.set(
+      x - centre.x * scale,
+      heightAt(x, z) - sourceBounds.min.y * scale,
+      z - centre.z * scale
+    );
+    wrapper.computeWorldMatrix(true);
+    const meshes = wrapper.getChildMeshes(false);
+    for (const mesh of meshes) {
+      mesh.isPickable = false;
+      mesh.receiveShadows = true;
+      mesh.metadata = { ...(mesh.metadata || {}), pinecrestScannedMossBoulder: true };
+      if (lights.shadows) {
+        try { lights.shadows.addShadowCaster(mesh, false); } catch (error) { /* high-detail rock may skip shadows */ }
+      }
+      heroBoulderMeshCount++;
+    }
+    heroBoulderCount++;
+    obstacles.push({ x, z, radius: Math.max(0.8, size.x * scale * 0.42) });
   }
 
   function loadPinecrestHeroVegetation() {
     const coniferPlacements = [
-      { x: -47, z: 43, height: 15.0 },
-      { x: 19, z: 61, height: 14.0 }
+      { x: -49, z: 36, height: 15.0 },
+      { x: 25, z: 69, height: 14.0 }
     ];
     const broadleafPlacements = [
-      { x: -46, z: 63, height: 9.0 },
-      { x: 20, z: 43, height: 9.5 }
+      { x: -55, z: 66, height: 9.0 },
+      { x: 24, z: 31, height: 9.5 }
     ];
 
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "conifer-detailed.glb", scene)
@@ -2457,6 +2786,83 @@
         heroVegetationFailures.push("broadleaf: " + message);
         modelLoadFailures.push("broadleaf: " + message);
         console.error("Pinecrest detailed broadleaf trees unavailable; retaining procedural forest:", error);
+      });
+
+    // Give the foreground and camp approach distinct canopy species. The
+    // Norway spruce is a tall narrow silhouette; the oak has individually
+    // modelled leaves and a broader crown so the forest is not one repeated shape.
+    const sprucePlacements = [
+      { x: -78, z: 104, height: 11.5 },
+      { x: 78, z: 116, height: 12.0 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "norway-spruce.glb", scene)
+      .then((container) => {
+        sprucePlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "spruce", point.x, point.z, point.height, index + 1)
+        );
+        heroSpruceReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("spruce: " + message);
+        modelLoadFailures.push("spruce: " + message);
+        console.error("Pinecrest Norway spruce assets unavailable:", error);
+      });
+
+    const oakPlacements = [
+      { x: -63, z: 87, height: 11.0 },
+      { x: 48, z: 43, height: 10.8 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "oak-detailed.glb", scene)
+      .then((container) => {
+        oakPlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "oak", point.x, point.z, point.height, index + 1)
+        );
+        heroOakReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("oak: " + message);
+        modelLoadFailures.push("oak: " + message);
+        console.error("Pinecrest detailed oak assets unavailable:", error);
+      });
+
+    const fernPlacements = [
+      { x: -24.15, z: 42.15, height: 0.30 },
+      { x: -22.55, z: 42.15, height: 0.30 },
+      { x: -5.45, z: 44.05, height: 0.30 },
+      { x: -3.85, z: 44.05, height: 0.30 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "woodland-bracken-fern.glb", scene)
+      .then((container) => {
+        fernPlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "fern", point.x, point.z, point.height, index + 1)
+        );
+        heroFernReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("fern: " + message);
+        modelLoadFailures.push("fern: " + message);
+        console.error("Pinecrest photogrammetry bracken ferns unavailable:", error);
+      });
+
+    const boulderPlacements = [
+      { x: -28.5, z: 36.8, height: 0.48 },
+      { x: -28.8, z: 47.2, height: 0.46 },
+      { x: 1.0, z: 46.6, height: 0.48 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "mossy-forest-boulders.glb", scene)
+      .then((container) => {
+        boulderPlacements.forEach((point, index) =>
+          instantiatePinecrestBoulder(container, point.x, point.z, point.height, index + 1)
+        );
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("mossy boulders: " + message);
+        modelLoadFailures.push("mossy boulders: " + message);
+        console.error("Pinecrest mossy boulder scans unavailable:", error);
       });
   }
 
@@ -2533,17 +2939,8 @@
     addPlanter(-23.3, 42.2, "West compound garden");
     addPlanter(-4.7, 44.0, "East compound garden");
 
-    // A small dry-stone edge marks the main yard without building another wall.
-    for (let i = 0; i < 8; i++) {
-      const z = 34 + i * 1.55;
-      const x = -28.2 + Math.sin(i * 0.7) * 0.45;
-      const stone = BABYLON.MeshBuilder.CreateIcoSphere("west yard boundary fieldstone", {
-        radius: 0.38 + (i % 3) * 0.07, subdivisions: 1
-      }, scene);
-      stone.position.set(x, heightAt(x, z) + 0.22, z);
-      stone.scaling.set(1.2, 0.68, 0.92);
-      stone.material = mat.stoneDark; stone.isPickable = false;
-    }
+    // Photogrammetry-scanned mossy boulder clusters are loaded after this
+    // compound is built; avoid the previous repeated low-poly stone row.
   }
 
   function buildPinecrestCompoundLife() {
@@ -2673,37 +3070,7 @@
     shedLight.intensity = 0.18;
     shedLight.range = 7;
 
-    // Low native fern groups and flowering edges soften the hard fence lines.
-    const addFern = (x, z, scale, label) => {
-      const groundY = heightAt(x, z);
-      for (let frond = 0; frond < 7; frond++) {
-        const angle = frond / 7 * Math.PI * 2;
-        const leaf = BABYLON.MeshBuilder.CreateSphere(label + " fern frond",
-          { diameter: 0.52, segments: 8 }, scene);
-        leaf.position.set(
-          x + Math.cos(angle) * 0.22 * scale,
-          groundY + 0.28 * scale,
-          z + Math.sin(angle) * 0.22 * scale
-        );
-        leaf.scaling.set(0.24 * scale, 0.84 * scale, 0.16 * scale);
-        leaf.rotation.z = Math.cos(angle) * -0.30;
-        leaf.rotation.x = Math.sin(angle) * 0.30;
-        leaf.rotation.y = angle;
-        leaf.material = frond % 3 === 0 ? mat.leaf3 : mat.leaf2;
-        leaf.isPickable = false;
-      }
-      const centre = BABYLON.MeshBuilder.CreateSphere(label + " fern crown",
-        { diameter: 0.30 * scale, segments: 8 }, scene);
-      centre.position.set(x, groundY + 0.16 * scale, z);
-      centre.scaling.y = 0.62;
-      centre.material = mat.leaf1;
-      centre.isPickable = false;
-    };
-    addFern(-25.0, 37.2, 1.00, "Pinecrest west entrance");
-    addFern(-24.8, 49.6, 0.92, "Pinecrest west fence");
-    addFern(-2.15, 36.3, 0.92, "Pinecrest east entrance");
-    addFern(-2.40, 52.0, 1.02, "Pinecrest east fence");
-    addFern(-8.2, 51.4, 0.86, "Pinecrest northern garden");
+    // Authored fern clumps are loaded as CC0 GLB assets after compound construction.
 
     // Hand-set fieldstones edge the main entry pavers so the path sits in the yard
     // rather than appearing as a ribbon laid on top of the grass.
@@ -2740,9 +3107,8 @@
       attempts++;
       const x = rand(-125, 125);
       const z = rand(-124, 125);
-      if (flatArea(x, z)) continue;
+      if (Math.hypot(x + 14, z - 19) < 13) continue;
       if (isPinecrestCompoundClearance(x, z)) continue;
-      if (Math.hypot(x, z - 31) < 21) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 27) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 7 && z > 25 && z < 108) continue;
@@ -2758,7 +3124,7 @@
       const radius = rand(30, 74);
       const x = Math.cos(angle) * radius;
       const z = 19 + Math.sin(angle) * radius;
-      if (flatArea(x, z)) continue;
+      if (Math.hypot(x + 14, z - 19) < 13) continue;
       if (isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 29) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
@@ -2770,6 +3136,7 @@
     for (let i = 0; i < 50; i++) {
       const x = rand(-115, 115), z = rand(-115, 120);
       if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) ||
+          Math.hypot(x + 14, z - 19) < 11 ||
           (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 24)) continue;
       createRock(x, z, rand(0.45, 1.25));
     }
@@ -2778,12 +3145,12 @@
 
   function setupLighting() {
     const hemi = new BABYLON.HemisphericLight("sky-fill", new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.intensity = 0.62;
+    hemi.intensity = 0.52;
     hemi.groundColor = hex("#465541");
     hemi.diffuse = hex("#e5e8d6");
     const sun = new BABYLON.DirectionalLight("morning-sun", new BABYLON.Vector3(-0.38, -1, 0.24), scene);
     sun.position = new BABYLON.Vector3(65, 105, -70);
-    sun.intensity = 1.0;
+    sun.intensity = 1.08;
     sun.diffuse = hex("#ffe1b2");
     sun.specular = hex("#fff0d3");
     lights.hemi = hemi;
@@ -2805,7 +3172,8 @@
   function createWeapon() {
     weaponRoot = new BABYLON.TransformNode("Wildrange scoped marksman rifle", scene);
     weaponRoot.parent = camera;
-    weaponRoot.position.set(0.34, -0.34, 0.76);
+    weaponRoot.position.set(0.42, -0.48, 0.80);
+    weaponRoot.scaling.setAll(0.74);
     weaponRoot.rotation.set(0, 0, 0);
 
     // Small visual effect only; both rifle silhouettes and optic hardware are imported GLB meshes.
@@ -3353,8 +3721,8 @@
       pipeline.bloomWeight = 0.045;
       pipeline.bloomKernel = 48;
       pipeline.imageProcessingEnabled = true;
-      pipeline.imageProcessing.exposure = 0.94;
-      pipeline.imageProcessing.contrast = 1.10;
+      pipeline.imageProcessing.exposure = 1.0;
+      pipeline.imageProcessing.contrast = 1.16;
       pipeline.imageProcessing.toneMappingEnabled = true;
       pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
       lights.pipeline = pipeline;
@@ -3368,32 +3736,64 @@
   function createGroundCover() {
     const positions = [], indices = [], colors = [];
     let placed = 0, attempts = 0;
-    while (placed < 1480 && attempts < 5200) {
+    const targetClusters = 6200;
+    while (placed < targetClusters && attempts < 26000) {
       attempts++;
-      const x = rand(-132, 132), z = rand(-132, 132);
-      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      let x, z;
+      if (placed < 4700) {
+        const angle = rand(0, Math.PI * 2);
+        const radius = Math.sqrt(rand(0, 1)) * 58;
+        x = -14 + Math.cos(angle) * radius;
+        z = 19 + Math.sin(angle) * radius;
+      } else {
+        x = rand(-132, 132);
+        z = rand(-132, 132);
+      }
+      if (isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 25) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
       if (obstacles.some((item) => Math.hypot(x - item.x, z - item.z) < item.radius + 1.6)) continue;
-      const y = heightAt(x, z) + 0.06;
-      const shade = rand(0.82, 1.13);
-      for (let blade = 0; blade < 4; blade++) {
-        const angle = rand(0, Math.PI * 2);
-        const half = rand(0.03, 0.082);
-        const height = rand(0.28, 0.72);
-        const lean = rand(0.025, 0.16);
-        const sideX = Math.cos(angle) * half, sideZ = Math.sin(angle) * half;
-        const tipX = x + Math.cos(angle + 0.9) * lean;
-        const tipZ = z + Math.sin(angle + 0.9) * lean;
+
+      const y = heightAt(x, z) + 0.045;
+      const shade = rand(0.82, 1.16);
+      for (let blade = 0; blade < 3; blade++) {
+        const angle = rand(0, Math.PI * 2) + blade * Math.PI / 3;
+        const half = rand(0.055, 0.105);
+        const height = rand(0.38, 0.88);
+        const lean = rand(0.035, 0.16);
+        const sideX = Math.cos(angle) * half;
+        const sideZ = Math.sin(angle) * half;
+        const leanAngle = angle + rand(-0.55, 0.55);
+        const tipX = x + Math.cos(leanAngle) * lean;
+        const tipZ = z + Math.sin(leanAngle) * lean;
+        const tipHalf = half * 0.10;
+        const tipSideX = Math.cos(angle) * tipHalf;
+        const tipSideZ = Math.sin(angle) * tipHalf;
         const base = positions.length / 3;
-        positions.push(x - sideX, y, z - sideZ, x + sideX, y, z + sideZ, tipX, y + height, tipZ);
-        const green = clamp(0.42 * shade + rand(-0.035, 0.035), 0.32, 0.58);
-        for (let v = 0; v < 3; v++) colors.push(0.27 * shade, green, 0.13 * shade, 1);
-        indices.push(base, base + 1, base + 2);
+        positions.push(
+          x - sideX, y, z - sideZ,
+          x + sideX, y, z + sideZ,
+          tipX + tipSideX, y + height, tipZ + tipSideZ,
+          tipX - tipSideX, y + height, tipZ - tipSideZ
+        );
+        const rootGreen = clamp(0.25 * shade + rand(-0.025, 0.025), 0.18, 0.36);
+        const tipGreen = clamp(0.43 * shade + rand(-0.035, 0.035), 0.30, 0.58);
+        const rootRed = clamp(0.14 * shade + rand(-0.018, 0.018), 0.09, 0.22);
+        const tipRed = clamp(0.20 * shade + rand(-0.02, 0.02), 0.13, 0.29);
+        const rootBlue = clamp(0.075 * shade, 0.04, 0.12);
+        const tipBlue = clamp(0.115 * shade, 0.07, 0.16);
+        colors.push(
+          rootRed, rootGreen, rootBlue, 1,
+          rootRed * 1.06, rootGreen * 1.04, rootBlue, 1,
+          tipRed, tipGreen, tipBlue, 1,
+          tipRed * 0.92, tipGreen * 0.96, tipBlue, 1
+        );
+        indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
       }
       placed++;
     }
+
     const grass = new BABYLON.Mesh("Pinecrest meadow grass", scene);
     const vertexData = new BABYLON.VertexData();
     const normals = [];
@@ -3407,7 +3807,11 @@
     grass.isPickable = false;
     grass.receiveShadows = false;
     grass.hasVertexAlpha = false;
+    grass.metadata = { grassClusters: placed, crossedCardsPerClump: 3 };
     lights.grassMesh = grass;
+    lights.grassClusterCount = placed;
+    lights.grassCardCount = placed * 3;
+    lights.grassVertexCount = grass.getTotalVertices();
   }
 
   function createBush(x, z, scale) {
@@ -3428,10 +3832,10 @@
 
   function scatterUndergrowth() {
     let placed = 0, attempts = 0;
-    while (placed < 34 && attempts < 280) {
+    while (placed < 58 && attempts < 620) {
       attempts++;
       const x = rand(-120, 120), z = rand(-120, 120);
-      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 26) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.5 && z > 25 && z < 108) continue;
@@ -3560,13 +3964,14 @@
     scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color4(0.67, 0.79, 0.82, 1);
     scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    scene.fogDensity = 0.0021;
+    scene.fogDensity = 0.00175;
     scene.fogColor = hex("#b5c5ae");
     scene.collisionsEnabled = false;
     createMaterials();
     setupLighting();
     createSkyDome();
     makeTerrain();
+    createPinecrestYardApron();
     createDistantRidgeBands();
     buildTrail();
     createPinecrestLake();
@@ -3796,8 +4201,8 @@
   }
 
   function lodgeDoorwayContains(x, z) {
-    return Math.abs(x - lodgeDoorWorldPosition.x) < 0.82 &&
-      Math.abs(z - lodgeDoorWorldPosition.z) < 0.62;
+    return Math.abs(x - lodgeDoorWorldPosition.x) < lodgeDoorwayWidth / 2 + 0.06 &&
+      Math.abs(z - lodgeDoorWorldPosition.z) < 0.72;
   }
 
   function lodgeInteriorContains(x, z) {
@@ -3853,7 +4258,10 @@
     if (onSideFence || onNorthFence || onSouthFence) return false;
 
     // The imported door is the only opening through the lodge's solid footprint.
-    if (lodgeDoorwayContains(x, z)) return cabinDoorOpen;
+    if (lodgeDoorwayContains(x, z)) return lodgeDoorwayOpen || cabinDoorOpen;
+    for (const collision of lodgeNavigationBoxes) {
+      if (x > collision.minX && x < collision.maxX && z > collision.minZ && z < collision.maxZ) return false;
+    }
 
     const insideRoom = lodgeInteriorContains(x, z);
     const onTerrace = lodgeTerraceContains(x, z);
@@ -5103,9 +5511,25 @@
     lodgeDoorWorldPosition,
     heroConiferReady,
     heroBroadleafReady,
+    heroSpruceReady,
+    heroOakReady,
+    heroFernReady,
+    heroFernCount,
     heroTreeModelCount,
     heroTreeMeshCount,
     heroTreeSourceMeshCount,
+    groundCoverClusterCount: Number(lights.grassClusterCount) || 0,
+    groundCoverCardCount: Number(lights.grassCardCount) || 0,
+    groundCoverVertexCount: Number(lights.grassVertexCount) || 0,
+    yardApronReady: Boolean(lights.yardApron && !lights.yardApron.isDisposed()),
+    terrainVertexTinted: Boolean(scene && scene.getMeshByName("Pinecrest terrain")?.metadata?.vertexTinted),
+    spawnGroundHeight: Number(heightAt(-14, 19).toFixed(3)),
+    fernMaterialReady: Boolean(heroFernReady && heroFernMaterialReady),
+    heroBoulderCount,
+    heroBoulderMeshCount,
+    gateSignWorldWidth: gateSignFrontMesh
+      ? Number((gateSignFrontMesh.getBoundingInfo().boundingBox.extendSizeWorld.x * 2).toFixed(2))
+      : 0,
     heroVegetationFailures: heroVegetationFailures.slice(),
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) =>
@@ -5127,7 +5551,7 @@
       mesh.name === "Pinecrest window flower box body" && mesh.isEnabled() && mesh.isVisible).length : 0,
     pinecrestWoodshedPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest firewood shelter structural post").length : 0,
     pinecrestWoodshedLogCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest woodshed split firewood").length : 0,
-    pinecrestFernFrondCount: scene ? scene.meshes.filter((mesh) => /Pinecrest .* fern frond/.test(mesh.name)).length : 0,
+    pinecrestFernFrondCount: heroFernCount,
     outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),
     harvestSignReady: Boolean(harvestSignTexture && harvestSignTexture.isReady()),
     cabinSignFaceVisible: isReadableSignFace(lodgeModelSignFaceMesh),
@@ -5158,7 +5582,12 @@
     mergedScenerySourceMeshCount,
     aiming,
     cabinDoorOpen,
-    cabinDoorReady: Boolean(cabinDoorPivot),
+    // Cedarwatch uses a permanently open authored doorway rather than a swinging leaf.
+    cabinDoorReady: lodgeDoorwayOpen || Boolean(cabinDoorPivot),
+    lodgeDoorwayOpen,
+    lodgeDoorwayWidth: Number(lodgeDoorwayWidth.toFixed(2)),
+    lodgeNavigationBoxCount: lodgeNavigationBoxes.length,
+    lodgeAuthoredInteriorReady,
     contractBoardReady: Boolean(contractBoardTexture && contractBoardBackTexture),
     scopeZoom: scopeMagnifications[scopeZoomIndex],
     scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")
