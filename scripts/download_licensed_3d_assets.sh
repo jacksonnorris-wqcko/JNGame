@@ -139,6 +139,24 @@ for path in sys.argv[1:]:
         report_path = os.path.join(os.path.dirname(path), report_name)
         report = __import__("json").load(open(report_path, encoding="utf-8"))
         print("Photogrammetry asset report:", os.path.basename(path), report.get("bounds"), report.get("variants", {}).get("standard"))
+    if json_bytes and os.path.basename(path) == "pinecrest-cedarwatch-cabin.glb":
+        document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
+        materials = document.get("materials", [])
+        images = document.get("images", [])
+        meshes = document.get("meshes", [])
+        print("Cedarwatch GLB node hierarchy:")
+        for index, node in enumerate(document.get("nodes", [])):
+            mesh_index = node.get("mesh")
+            mesh_name = meshes[mesh_index].get("name", "") if isinstance(mesh_index, int) and mesh_index < len(meshes) else ""
+            print("CEDAR_NODE", index, node.get("name", ""), "mesh=", mesh_name,
+                  "translation=", node.get("translation"), "children=", node.get("children"))
+        print("Cedarwatch GLB materials:")
+        for index, material in enumerate(materials):
+            pbr = material.get("pbrMetallicRoughness", {})
+            print("CEDAR_MATERIAL", index, material.get("name", ""),
+                  "baseColor=", pbr.get("baseColorFactor"), "baseColorTexture=", pbr.get("baseColorTexture"),
+                  "normalTexture=", material.get("normalTexture"), "alphaMode=", material.get("alphaMode"))
+        print("Cedarwatch GLB images:", [image.get("name", image.get("uri", "")) for image in images])
     if json_bytes and os.path.basename(path) == "pinecrest-timber-frame-house.glb":
         document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
         print("Timber lodge GLB nodes:", ", ".join(node.get("name", "") for node in document.get("nodes", []) if node.get("name")))
