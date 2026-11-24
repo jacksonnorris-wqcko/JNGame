@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.12.1**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Published browser build: unchanged by this review branch. **Candidate build: 0.13.0** (`art/pinecrest-world-visual-overhaul`). Base game assets are stored under `public/assets/`; the candidate adds the Cedarwatch lodge and scanned woodland assets.
 
 
 | Action | Control |
@@ -259,6 +259,19 @@ This coordinated visual pass addresses the flat, empty foreground and repeated t
 - The first-person rifle presentation is reduced slightly in screen scale to give more of the world back to the player.
 
 All new models are downloaded during CI/Pages builds and have their source and CC0 license recorded in the asset manifest and attribution file. The next validation gate checks that all eight hero trees, four fern clumps, foreground grass, gravel apron and terrain tint load in headless Chrome before this build is called visually approved.
+
+## 0.13.0 Cedarwatch lodge and woodland asset replacement — candidate
+
+This is a larger replacement pass following the 0.12.1 screenshots. It is intentionally held on the review branch pending the rendered Chrome gameplay test and visual inspection.
+
+- Replace the undersized Mountain Hut with the Cedarwatch forest cabin as the primary lodge. The candidate cabin includes its furnished interior and open front doorway.
+- Use the cabin's authored navigation boxes and route for wall/furniture collision instead of a guessed door/footprint setup.
+- Align the lodge to its authored floor datum and Pinecrest's existing gate approach.
+- Disable the old hand-built interior and overlapping legacy lodge shell; mount the Pinecrest Lodge nameplate directly to the new facade.
+- Replace the black-prone stylised fern source with photogrammetry bracken fern assets, preserving their authored materials.
+- Add scanned moss/lichen boulder clusters and remove the repeated low-poly stone edging.
+
+**Validation:** static source, asset, licence metadata and navigation checks passed on the latest candidate commit. The Playwright Chrome gameplay test and compound screenshot are still pending. This candidate has not been merged or deployed.
 
 ## Cost
 
