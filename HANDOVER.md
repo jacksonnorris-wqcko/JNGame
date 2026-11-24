@@ -232,7 +232,7 @@ The first 0.12.0 browser screenshot exposed four remaining visual problems: the 
 
 The browser QA now has assertions for fern material readiness, side-mounted sign width, player spawn ground height, crossed grass cards and vertex count. Existing checks continue to cover all vegetation imports, compound signs, the lodge door/interior, wildlife rigs, rifle optics and jumping.
 
-## 0.12.1 Pinecrest art refinement
+## 0.12.0 Pinecrest environment-art overhaul
 
 The 0.11.5 gameplay screenshot showed a broad empty foreground, repeated rounded procedural tree silhouettes and an outpost yard that did not read as a deliberately finished space. This pass starts a coordinated art overhaul rather than adding more isolated props.
 
