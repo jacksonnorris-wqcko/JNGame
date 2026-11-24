@@ -55,21 +55,15 @@ try {
 
   // Keep the player at the established gate spawn, looking directly toward the lodge.
   await page.evaluate(() => {
-    const camera = window.WildrangeQA;
     const state = window.WildrangeDiagnostics();
-    if (!state || !camera) throw new Error("Wildrange QA diagnostics did not initialise");
-    camera.teleportIntoCabin();
-    const diag = window.WildrangeDiagnostics();
-    if (!diag.lodgeDoorwayOpen || !diag.lodgeAuthoredInteriorReady) {
-      throw new Error("Cedarwatch entry/interior was not ready for capture");
-    }
-    // Return to the gate camera after proving the lodge's interior is loaded.
     const scene = window.BABYLON.EngineStore.LastCreatedScene;
     const player = scene && scene.activeCamera;
-    if (player) {
-      player.position.set(-14, state.spawnGroundHeight + 1.72, 19);
-      player.rotation.set(0, 0, 0);
+    if (!state || !player || !state.lodgeDoorwayOpen || !state.lodgeAuthoredInteriorReady) {
+      throw new Error("Cedarwatch entry/interior was not ready for capture");
     }
+    // Stable gate-spawn view toward the lodge; no debug camera or hidden angle.
+    player.position.set(-14, state.spawnGroundHeight + 1.72, 19);
+    player.rotation.set(0, 0, 0);
   });
   await page.waitForTimeout(1800);
 
@@ -79,7 +73,8 @@ try {
   await fs.promises.mkdir("artifacts", { recursive: true });
   const client = await page.context().newCDPSession(page);
   const shot = await client.send("Page.captureScreenshot", {
-    format: "png",
+    format: "jpeg",
+    quality: 90,
     fromSurface: true,
     captureBeyondViewport: false,
     optimizeForSpeed: true
