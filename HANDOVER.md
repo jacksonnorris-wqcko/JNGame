@@ -216,13 +216,42 @@ The 0.11.4 screenshot review showed that the Mountain Hut appeared undersized an
 
 The Grab3D source manifest identifies this Mountain Hut as an exterior-only model, with no authored interior. This correction restores usable entrance and walkable-interior integration using the existing Wildrange interior group; it does not claim the building now has a bespoke authored interior art pass.
 
+## 0.12.0 Pinecrest environment-art overhaul
+
+The 0.11.5 gameplay screenshot showed a broad empty foreground, repeated rounded procedural tree silhouettes and an outpost yard that did not read as a deliberately finished space. This pass starts a coordinated art overhaul rather than adding more isolated props.
+
+### Terrain and yard composition
+
+- The old flat-area exclusion was a 44 m circle centred in front of the camp. The terrain function now blends naturally from a smaller, elliptical lodge/approach flattening area to the surrounding heightfield.
+- A fitted, irregular compacted-gravel apron defines the inside of the existing compound perimeter. Its mesh is one continuous textured surface, not a field of repeated box props.
+- Terrain vertex tint introduces broad and fine shade variation into the grass PBR surface.
+- Ground-cover distribution is weighted toward the initial play area and now produces at least 4,600 grass clusters. It still avoids the gravel apron, paths and obstruction footprints.
+- The large obsolete spawn-centred exclusion has been removed from the undergrowth distribution.
+
+### Forest and vegetation
+
+- Procedural pine whorls use tapered branch tiers rather than stacked spheres; broadleaf crown forms are subtly deformed to break up identical smooth silhouettes.
+- Existing detailed Innerscene conifer and linden assets remain.
+- Additional CC0 build-time models add two mature Norway spruce, two detailed oak trees and four photoreal PBR fern clumps. Placements are spatially separated from the existing hero trees and from the compound walkways.
+- The old sphere-frond fern assemblies are removed in favour of the imported fern clumps.
+- The hero vegetation loader batches static source meshes by material and reports readiness/failure for each new species, so additional geometry does not submit thousands of unbatched draw calls.
+
+### Presentation and QA
+
+- The first-person rifle root is scaled to 84% and repositioned to return more of the world to the lower-right viewport.
+- Ambient fill, sun intensity, fog falloff and tone mapping are adjusted for stronger outdoor shape and separation.
+- Browser QA requires all eight hero trees and four ferns to load, the gravel apron and vertex-tinted terrain to exist, and at least 4,000 foreground grass clusters to be created.
+- The asset downloader checks each new GLB's size, magic header, glTF 2.0 version and declared file length. The manifest and model attribution retain source and CC0 provenance.
+
+The new fern, Norway spruce and oak models are CC0 assets from Innerscene's 3D Parts Library; the fern clump is sourced from Poly Haven. This is a world/vegetation art pass; it does not claim the exterior-only Mountain Hut now has a bespoke authored interior.
+
 ## Validation status
 
 The source, HTML cache references, smoke-test assertions, CI assertions and Pages workflow were checked in the repository after the changes. The available GitHub commit-status response did not return status records, so do not assume the latest CI or Pages deployment has completed successfully until the Actions run is checked.
 
 ## Next development priorities
 
-1. Verify the 0.11.5 Pinecrest lodge in the deployed browser build, especially the door, full-size building silhouette and walkable entrance.
+1. Verify the 0.12.0 Pinecrest environment-art pass in a rendered browser screenshot, focusing on foreground coverage, gravel apron, varied forest silhouettes and frame pacing.
 2. Continue the wildlife art pass: verify deer and boar silhouettes, proportions, coat materials, head/ear/tail motion and animation transitions at normal gameplay distance.
 3. Continue the first-person rifle pass: improve the visible silhouette, stock and receiver materials, optic proportions, bolt cycling, reload and recoil feel.
 4. Revisit lighting, vegetation density and distant scenery only with frame-time checks so visual improvements do not reintroduce the earlier jitter.
