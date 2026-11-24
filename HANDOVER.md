@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.11.1`  
+**Current source build:** `0.11.2`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -139,7 +139,7 @@ The primary lodge asset is now Grab3D's Mountain Hut (CC0 1.0 Universal) rather 
 
 The build script downloads the model from Grab3D's direct GLB endpoint and validates file size, glTF magic, version 2 and declared file length. CI checks the primary asset path and its CC0 provenance. Browser QA requires the Mountain Hut to load without fallback and verifies its final dimensions and uniform scaling before capturing the compound screenshot.
 
-## 0.11.1 Mountain Hut entrance and interior alignment
+## 0.11.2 Mountain Hut entrance and interior alignment
 
 This follow-up makes the existing player and lodge interaction systems follow the real imported model transforms instead of the previous hand-built cabin coordinates.
 
@@ -156,6 +156,7 @@ This follow-up makes the existing player and lodge interaction systems follow th
 - `lodgeDoorwayContains()` is shared by the closed-door collision and the open doorway walk-through.
 - `walkSurfaceAt()` and `canStandAt()` now use the imported interior floor and terrace heights, with the approach steps interpolating up to the terrace. The old cabin's 1.335 m deck assumption is removed for the Mountain Hut.
 - The test teleport into the lodge is placed at the calculated interior floor height.
+- Because the static world is frozen before asynchronous GLBs finish loading, the interior group's descendant meshes are explicitly unfrozen and recomputed after the floor offset is applied. The browser test requires at least 20 adjusted interior meshes through `lodgeInteriorAdjustedMeshCount`.
 
 ### First view
 
