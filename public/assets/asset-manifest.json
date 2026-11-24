@@ -277,15 +277,6 @@
       "integration": "Two broadleaf hero trees add a different canopy silhouette around Pinecrest"
     },
     {
-      "asset": "Fern clumps",
-      "status": "downloaded-at-build",
-      "path": "vegetation/fern-clump.glb",
-      "approximate_bytes": 3200000,
-      "license": "CC0 1.0 Universal",
-      "source": "https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea",
-      "integration": "Four PBR fern clumps soften the Pinecrest fence and garden edges"
-    },
-    {
       "asset": "Timber-Framed House",
       "status": "downloaded-at-build",
       "path": "buildings/pinecrest-timber-frame-house.glb",
@@ -302,6 +293,24 @@
       "license": "CC0 1.0 Universal",
       "source": "https://scenecrate.com/scenes/forest-cabin",
       "integration": "Primary Pinecrest hunting lodge with cedar cladding, green shingle roof, amber windows, dressed-stone chimney, furnished interior and open 1.64 m front doorway"
+    },
+    {
+      "asset": "Photoreal Woodland Bracken Fern",
+      "status": "downloaded-at-build",
+      "path": "vegetation/woodland-bracken-fern.glb",
+      "approximate_bytes": 393625,
+      "license": "CC0 1.0 Universal",
+      "source": "https://scenecrate.com/free-3d-game-assets",
+      "integration": "Photogrammetry-scanned bracken fern with alpha-cutout fronds and embedded PBR maps"
+    },
+    {
+      "asset": "Photoreal Mossy Forest Boulders",
+      "status": "downloaded-at-build",
+      "path": "vegetation/mossy-forest-boulders.glb",
+      "approximate_bytes": 1425000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://scenecrate.com/free-3d-game-assets",
+      "integration": "Photogrammetry-scanned moss and lichen boulder cluster"
     }
   ]
 }
