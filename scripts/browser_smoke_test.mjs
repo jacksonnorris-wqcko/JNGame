@@ -117,28 +117,22 @@ try {
     throw new Error("New-hunter camera should start facing Pinecrest Lodge: " + startingCameraYaw);
   }
   const startupDiagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
-  if (startupDiagnostics.pinecrestRoofSurfaceCount !== 2 ||
-      !startupDiagnostics.pinecrestRoofShingleMaterialReady ||
-      startupDiagnostics.pinecrestLogEndgrainCount !== 94 ||
+  if (!startupDiagnostics.pinecrestRoofShingleMaterialReady ||
       startupDiagnostics.compoundShadowCasterCount < 100 ||
       startupDiagnostics.compoundShadowMapSize !== 1536 ||
       startupDiagnostics.compoundFencePostCount !== 31 ||
       startupDiagnostics.compoundFenceRailCount !== 48) {
-    throw new Error("Pinecrest high-fidelity material and shadow systems are not ready: " + JSON.stringify({
-      roofSurfaces: startupDiagnostics.pinecrestRoofSurfaceCount,
+    throw new Error("Pinecrest materials, shadows or compound fencing are not ready: " + JSON.stringify({
       roofMaterial: startupDiagnostics.pinecrestRoofShingleMaterialReady,
-      logEndgrain: startupDiagnostics.pinecrestLogEndgrainCount,
       shadowCasters: startupDiagnostics.compoundShadowCasterCount,
       shadowMapSize: startupDiagnostics.compoundShadowMapSize,
       fencePosts: startupDiagnostics.compoundFencePostCount,
       fenceRails: startupDiagnostics.compoundFenceRailCount
     }));
   }
-  if (startupDiagnostics.cabinSignSupportPostCount !== 2 ||
-      startupDiagnostics.gateStructuralPostCount !== 2 ||
+  if (startupDiagnostics.gateStructuralPostCount !== 2 ||
       startupDiagnostics.pinecrestWoodshedPostCount !== 4) {
     throw new Error("Scene initialisation duplicated or omitted compound assemblies: " + JSON.stringify({
-      cabinSignPosts: startupDiagnostics.cabinSignSupportPostCount,
       gatePosts: startupDiagnostics.gateStructuralPostCount,
       woodshedPosts: startupDiagnostics.pinecrestWoodshedPostCount
     }));
@@ -167,6 +161,8 @@ try {
     throw new Error("The Mountain Hut interior floor offset did not refresh its frozen child meshes: " + diagnostics.lodgeInteriorAdjustedMeshCount);
   }
   if (diagnostics.lodgeModelHiddenLegacyMeshCount < 30 ||
+      diagnostics.pinecrestRoofSurfaceCount !== 0 ||
+      diagnostics.pinecrestLogEndgrainCount !== 0 ||
       diagnostics.lodgeModelLegacyVisualStats.visible !== 0 ||
       diagnostics.lodgeModelLegacyVisualStats.roof !== 0 ||
       diagnostics.lodgeModelLegacyVisualStats.sign !== 0 ||
