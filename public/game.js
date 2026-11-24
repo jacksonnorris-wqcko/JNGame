@@ -119,6 +119,8 @@
   let lodgeDoorWorldPosition = { x: -14, z: 38.7 };
   let cabinInteriorLights = [];
   let heroConiferReady = false, heroBroadleafReady = false;
+  let heroSpruceReady = false, heroOakReady = false, heroFernReady = false;
+  let heroFernCount = 0;
   let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
   let sceneInitError = "";
@@ -784,6 +786,7 @@
     mat.grassBlade.backFaceCulling = false;
     mat.grassBlade.specularColor = new BABYLON.Color3(0.01, 0.018, 0.008);
     mat.shore = makePbrSurface("Lake gravel and shore", "rock", 4, "#b9af93");
+    mat.gravel = makePbrSurface("Pinecrest compacted gravel yard", "rock", 5.5, "#a49d87");
     mat.waterRipple = makeMaterial("Lake water glints", "#c5e0db");
     mat.waterRipple.alpha = 0.16;
     mat.waterRipple.disableLighting = true;
@@ -791,23 +794,34 @@
     mat.flowerCream = makeMaterial("Meadow flowers cream", "#e7e4ca");
   }
 
-  function heightAt(x, z) {
-    if (flatArea(x, z)) return 0.1;
+  function rawTerrainHeight(x, z) {
     return Math.sin(x * 0.031) * 1.8 + Math.cos(z * 0.027) * 1.7 +
       Math.sin((x + z) * 0.016) * 2.35 + Math.cos((x - z) * 0.022) * 1.1 +
       Math.sin(z * 0.011 + x * 0.008) * 1.65;
   }
 
   function flatArea(x, z) {
-    return Math.hypot(x, z - 31) < 22;
+    // The exclusion follows Pinecrest's actual footprint, not the old 44 m
+    // radius centred in front of the gate that created the featureless lawn.
+    return Math.hypot((x + 14) / 20, (z - 43) / 16) < 1.12;
   }
 
-  // Keep tall trees and large undergrowth out of the Pinecrest lodge and its yard.
-  // The wider clearance accounts for the tree crowns, not just their trunk positions.
+  function heightAt(x, z) {
+    const normalized = Math.hypot((x + 14) / 20, (z - 43) / 16);
+    const natural = rawTerrainHeight(x, z);
+    if (normalized <= 0.70) return 0.10;
+    if (normalized >= 1.16) return natural;
+    const t = clamp((normalized - 0.70) / 0.46, 0, 1);
+    const smooth = t * t * (3 - 2 * t);
+    return 0.10 + (natural - 0.10) * smooth;
+  }
+
+  // Keep vegetation out of the real compound apron, then let the forest resume
+  // close enough to frame the lodge rather than leaving an empty 60 m moat.
   function isPinecrestCompoundClearance(x, z) {
     const localX = x + 14;
     const localZ = z - 43;
-    return Math.abs(localX) < 31 && localZ > -29 && localZ < 29;
+    return Math.abs(localX) < 23.5 && localZ > -20 && localZ < 21;
   }
 
   function makeTerrain() {
@@ -817,18 +831,87 @@
     const positions = ground.getVerticesData(BABYLON.VertexBuffer.PositionKind);
     const indices = ground.getIndices();
     const normals = [];
+    const colors = [];
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const z = positions[i + 2];
-      positions[i + 1] = flatArea(x, z) ? 0.1 : heightAt(x, z);
+      positions[i + 1] = heightAt(x, z);
+      const broadPatch = Math.sin(x * 0.052 + z * 0.021) * Math.cos(z * 0.047 - x * 0.018);
+      const finePatch = Math.sin(x * 0.19 + z * 0.13) * Math.cos(z * 0.16);
+      const shade = clamp(0.86 + broadPatch * 0.075 + finePatch * 0.025, 0.70, 1.02);
+      colors.push(0.93 * shade, 0.97 * shade, 0.83 * shade, 1);
     }
     BABYLON.VertexData.ComputeNormals(positions, indices, normals);
     ground.updateVerticesData(BABYLON.VertexBuffer.PositionKind, positions);
     ground.updateVerticesData(BABYLON.VertexBuffer.NormalKind, normals);
+    ground.setVerticesData(BABYLON.VertexBuffer.ColorKind, colors, true, 4);
+    mat.grass.useVertexColors = true;
     ground.material = mat.grass;
     ground.isPickable = true;
     ground.receiveShadows = true;
+    ground.metadata = { pinecrestTerrain: true, vertexTinted: true };
     return ground;
+  }
+
+  function createPinecrestYardApron() {
+    const positions = [], indices = [], uvs = [];
+    const rings = 20;
+    const segments = 112;
+    const centreX = -14;
+    const centreZ = 43;
+    const radiusX = 17.8;
+    const radiusZ = 15.2;
+
+    positions.push(centreX, heightAt(centreX, centreZ) + 0.045, centreZ);
+    uvs.push(0.5, 0.5);
+
+    for (let ring = 1; ring <= rings; ring++) {
+      const r = ring / rings;
+      for (let segment = 0; segment < segments; segment++) {
+        const angle = segment / segments * Math.PI * 2;
+        const edgeNoise = 1 +
+          Math.sin(angle * 7 + 0.4) * 0.018 +
+          Math.cos(angle * 11 - 0.7) * 0.012 +
+          Math.sin(angle * 17 + 1.2) * 0.006;
+        const x = centreX + Math.cos(angle) * radiusX * r * edgeNoise;
+        const z = centreZ + Math.sin(angle) * radiusZ * r * edgeNoise;
+        positions.push(x, heightAt(x, z) + 0.045, z);
+        uvs.push(0.5 + Math.cos(angle) * r * 2.8, 0.5 + Math.sin(angle) * r * 2.8);
+      }
+    }
+
+    for (let segment = 0; segment < segments; segment++) {
+      const next = (segment + 1) % segments;
+      indices.push(0, 1 + segment, 1 + next);
+    }
+    for (let ring = 1; ring < rings; ring++) {
+      const innerStart = 1 + (ring - 1) * segments;
+      const outerStart = 1 + ring * segments;
+      for (let segment = 0; segment < segments; segment++) {
+        const next = (segment + 1) % segments;
+        const a = innerStart + segment;
+        const b = innerStart + next;
+        const c = outerStart + segment;
+        const d = outerStart + next;
+        indices.push(a, c, b, b, c, d);
+      }
+    }
+
+    const apron = new BABYLON.Mesh("Pinecrest compacted gravel clearing", scene);
+    const data = new BABYLON.VertexData();
+    const normals = [];
+    BABYLON.VertexData.ComputeNormals(positions, indices, normals);
+    data.positions = positions;
+    data.indices = indices;
+    data.normals = normals;
+    data.uvs = uvs;
+    data.applyToMesh(apron, false);
+    apron.material = mat.gravel;
+    apron.isPickable = false;
+    apron.receiveShadows = true;
+    apron.metadata = { pinecrestYardSurface: true };
+    lights.yardApron = apron;
+    return apron;
   }
 
   function makePath(points, width, material, name) {
