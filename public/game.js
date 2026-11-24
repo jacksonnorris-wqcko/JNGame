@@ -2503,10 +2503,13 @@
     );
     wrapper.computeWorldMatrix(true);
 
-    // Replace any low-detail procedural tree occupying this hero-tree footprint.
-    for (const node of scene.transformNodes) {
-      if (node === wrapper || node.name !== "forest-tree-root" || !node.isEnabled()) continue;
-      if (Math.hypot(node.position.x - x, node.position.z - z) < 6.2) node.setEnabled(false);
+    // Replace low-detail procedural trees only for full-size canopy assets.
+    // Ferns are ground plants and must not suppress a nearby tree trunk.
+    if (label !== "fern") {
+      for (const node of scene.transformNodes) {
+        if (node === wrapper || node.name !== "forest-tree-root" || !node.isEnabled()) continue;
+        if (Math.hypot(node.position.x - x, node.position.z - z) < 8.5) node.setEnabled(false);
+      }
     }
 
     for (const mesh of compactMeshes) {
@@ -2519,8 +2522,12 @@
       }
       heroTreeMeshCount++;
     }
-    obstacles.push({ x, z, radius: label === "conifer" ? 3.5 : 3.0 });
-    heroTreeModelCount++;
+    if (label === "fern") {
+      heroFernCount++;
+    } else {
+      obstacles.push({ x, z, radius: (label === "conifer" || label === "spruce") ? 3.8 : 3.2 });
+      heroTreeModelCount++;
+    }
   }
 
   function loadPinecrestHeroVegetation() {
@@ -2559,6 +2566,65 @@
         heroVegetationFailures.push("broadleaf: " + message);
         modelLoadFailures.push("broadleaf: " + message);
         console.error("Pinecrest detailed broadleaf trees unavailable; retaining procedural forest:", error);
+      });
+
+    // Give the foreground and camp approach distinct canopy species. The
+    // Norway spruce is a tall narrow silhouette; the oak has individually
+    // modelled leaves and a broader crown so the forest is not one repeated shape.
+    const sprucePlacements = [
+      { x: -44, z: 37, height: 16.5 },
+      { x: 16, z: 54, height: 15.5 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "norway-spruce.glb", scene)
+      .then((container) => {
+        sprucePlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "spruce", point.x, point.z, point.height, index + 1)
+        );
+        heroSpruceReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("spruce: " + message);
+        modelLoadFailures.push("spruce: " + message);
+        console.error("Pinecrest Norway spruce assets unavailable:", error);
+      });
+
+    const oakPlacements = [
+      { x: -41, z: 65, height: 12.8 },
+      { x: 13, z: 40, height: 12.4 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "oak-detailed.glb", scene)
+      .then((container) => {
+        oakPlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "oak", point.x, point.z, point.height, index + 1)
+        );
+        heroOakReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("oak: " + message);
+        modelLoadFailures.push("oak: " + message);
+        console.error("Pinecrest detailed oak assets unavailable:", error);
+      });
+
+    const fernPlacements = [
+      { x: -24.8, z: 36.6, height: 1.55 },
+      { x: -25.1, z: 50.0, height: 1.45 },
+      { x: -2.6, z: 36.9, height: 1.55 },
+      { x: -2.8, z: 51.2, height: 1.45 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "fern-clump.glb", scene)
+      .then((container) => {
+        fernPlacements.forEach((point, index) =>
+          instantiateHeroTree(container, "fern", point.x, point.z, point.height, index + 1)
+        );
+        heroFernReady = true;
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("fern: " + message);
+        modelLoadFailures.push("fern: " + message);
+        console.error("Pinecrest fern-clump assets unavailable:", error);
       });
   }
 
@@ -2775,37 +2841,7 @@
     shedLight.intensity = 0.18;
     shedLight.range = 7;
 
-    // Low native fern groups and flowering edges soften the hard fence lines.
-    const addFern = (x, z, scale, label) => {
-      const groundY = heightAt(x, z);
-      for (let frond = 0; frond < 7; frond++) {
-        const angle = frond / 7 * Math.PI * 2;
-        const leaf = BABYLON.MeshBuilder.CreateSphere(label + " fern frond",
-          { diameter: 0.52, segments: 8 }, scene);
-        leaf.position.set(
-          x + Math.cos(angle) * 0.22 * scale,
-          groundY + 0.28 * scale,
-          z + Math.sin(angle) * 0.22 * scale
-        );
-        leaf.scaling.set(0.24 * scale, 0.84 * scale, 0.16 * scale);
-        leaf.rotation.z = Math.cos(angle) * -0.30;
-        leaf.rotation.x = Math.sin(angle) * 0.30;
-        leaf.rotation.y = angle;
-        leaf.material = frond % 3 === 0 ? mat.leaf3 : mat.leaf2;
-        leaf.isPickable = false;
-      }
-      const centre = BABYLON.MeshBuilder.CreateSphere(label + " fern crown",
-        { diameter: 0.30 * scale, segments: 8 }, scene);
-      centre.position.set(x, groundY + 0.16 * scale, z);
-      centre.scaling.y = 0.62;
-      centre.material = mat.leaf1;
-      centre.isPickable = false;
-    };
-    addFern(-25.0, 37.2, 1.00, "Pinecrest west entrance");
-    addFern(-24.8, 49.6, 0.92, "Pinecrest west fence");
-    addFern(-2.15, 36.3, 0.92, "Pinecrest east entrance");
-    addFern(-2.40, 52.0, 1.02, "Pinecrest east fence");
-    addFern(-8.2, 51.4, 0.86, "Pinecrest northern garden");
+    // Authored fern clumps are loaded as CC0 GLB assets after compound construction.
 
     // Hand-set fieldstones edge the main entry pavers so the path sits in the yard
     // rather than appearing as a ribbon laid on top of the grass.
@@ -3550,7 +3586,7 @@
     while (placed < 58 && attempts < 620) {
       attempts++;
       const x = rand(-120, 120), z = rand(-120, 120);
-      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 26) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.5 && z > 25 && z < 108) continue;
@@ -5223,9 +5259,16 @@
     lodgeDoorWorldPosition,
     heroConiferReady,
     heroBroadleafReady,
+    heroSpruceReady,
+    heroOakReady,
+    heroFernReady,
+    heroFernCount,
     heroTreeModelCount,
     heroTreeMeshCount,
     heroTreeSourceMeshCount,
+    groundCoverClusterCount: Number(lights.grassClusterCount) || 0,
+    yardApronReady: Boolean(lights.yardApron && !lights.yardApron.isDisposed()),
+    terrainVertexTinted: Boolean(scene && scene.getMeshByName("Pinecrest terrain")?.metadata?.vertexTinted),
     heroVegetationFailures: heroVegetationFailures.slice(),
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) =>
@@ -5247,7 +5290,7 @@
       mesh.name === "Pinecrest window flower box body" && mesh.isEnabled() && mesh.isVisible).length : 0,
     pinecrestWoodshedPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest firewood shelter structural post").length : 0,
     pinecrestWoodshedLogCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest woodshed split firewood").length : 0,
-    pinecrestFernFrondCount: scene ? scene.meshes.filter((mesh) => /Pinecrest .* fern frond/.test(mesh.name)).length : 0,
+    pinecrestFernFrondCount: heroFernCount,
     outfitterSignReady: Boolean(outfitterSignTexture && outfitterSignTexture.isReady()),
     harvestSignReady: Boolean(harvestSignTexture && harvestSignTexture.isReady()),
     cabinSignFaceVisible: isReadableSignFace(lodgeModelSignFaceMesh),
