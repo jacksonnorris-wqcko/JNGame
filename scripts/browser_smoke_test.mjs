@@ -47,7 +47,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.12.0&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.12.1&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -81,7 +81,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.12.0-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.12.1-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -162,7 +162,10 @@ try {
       state.heroConiferReady && state.heroBroadleafReady &&
       state.heroSpruceReady && state.heroOakReady && state.heroFernReady &&
       state.heroTreeModelCount === 8 && state.heroFernCount === 4 &&
-      state.groundCoverClusterCount >= 4000 && state.yardApronReady && state.terrainVertexTinted;
+      state.groundCoverClusterCount >= 5500 && state.groundCoverCardCount >= 16500 &&
+      state.yardApronReady && state.terrainVertexTinted &&
+      state.fernMaterialReady && state.gateSignWorldWidth > 0 && state.gateSignWorldWidth < 2.8 &&
+      state.spawnGroundHeight > 0.75;
   }, null, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
@@ -229,8 +232,13 @@ try {
       diagnostics.heroTreeModelCount !== 8 || diagnostics.heroFernCount !== 4 ||
       diagnostics.heroTreeSourceMeshCount < 5000 ||
       diagnostics.heroTreeMeshCount < 16 || diagnostics.heroTreeMeshCount > 120 ||
-      diagnostics.groundCoverClusterCount < 4000 ||
-      !diagnostics.yardApronReady || !diagnostics.terrainVertexTinted) {
+      diagnostics.groundCoverClusterCount < 5500 ||
+      diagnostics.groundCoverCardCount < 16500 ||
+      diagnostics.groundCoverVertexCount < 66000 ||
+      !diagnostics.yardApronReady || !diagnostics.terrainVertexTinted ||
+      !diagnostics.fernMaterialReady ||
+      diagnostics.gateSignWorldWidth <= 0 || diagnostics.gateSignWorldWidth >= 2.8 ||
+      diagnostics.spawnGroundHeight <= 0.75) {
     throw new Error("Pinecrest authored vegetation, foreground cover or yard surface did not load: " + JSON.stringify({
       conifer: diagnostics.heroConiferReady,
       broadleaf: diagnostics.heroBroadleafReady,
@@ -241,13 +249,18 @@ try {
       sourceMeshes: diagnostics.heroTreeSourceMeshCount,
       renderMeshesAfterBatching: diagnostics.heroTreeMeshCount,
       groundCoverClusters: diagnostics.groundCoverClusterCount,
+      grassCards: diagnostics.groundCoverCardCount,
+      grassVertices: diagnostics.groundCoverVertexCount,
       yardApron: diagnostics.yardApronReady,
       terrainVertexTinted: diagnostics.terrainVertexTinted,
+      fernMaterialReady: diagnostics.fernMaterialReady,
+      gateSignWorldWidth: diagnostics.gateSignWorldWidth,
+      spawnGroundHeight: diagnostics.spawnGroundHeight,
       failures: diagnostics.heroVegetationFailures
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.12.0-compound.png");
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.12.1-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 0) {
     throw new Error("The old raised lodge sign portal must be hidden after the Mountain Hut replacement: " + diagnostics.cabinSignSupportPostCount);
   }
