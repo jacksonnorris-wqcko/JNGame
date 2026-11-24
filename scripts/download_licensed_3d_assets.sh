@@ -97,6 +97,15 @@ for path in sys.argv[1:]:
         print("Timber lodge GLB nodes:", ", ".join(node.get("name", "") for node in document.get("nodes", []) if node.get("name")))
         print("Timber lodge GLB animations:", ", ".join(animation.get("name", "") for animation in document.get("animations", [])))
         print("Timber lodge GLB mesh/material counts:", len(document.get("meshes", [])), len(document.get("materials", [])))
+        position_bounds = [
+            accessor for accessor in document.get("accessors", [])
+            if accessor.get("type") == "VEC3" and accessor.get("min") and accessor.get("max")
+        ]
+        if position_bounds:
+            mins = [min(accessor["min"][axis] for accessor in position_bounds) for axis in range(3)]
+            maxs = [max(accessor["max"][axis] for accessor in position_bounds) for axis in range(3)]
+            print("Timber lodge raw position accessor bounds:", mins, maxs)
+            print("Timber lodge raw position accessor size:", [round(maxs[axis] - mins[axis], 3) for axis in range(3)])
         for node in document.get("nodes", []):
             if node.get("name") in {"timber-frame-house", "door", "door_iron", "door_wood", "shutter_1", "shutter_2"}:
                 print("Timber lodge node transform:", node.get("name"), "translation=", node.get("translation"), "rotation=", node.get("rotation"), "scale=", node.get("scale"), "children=", node.get("children"))
