@@ -737,6 +737,11 @@
     mat.leaf1 = makeFoliageMaterial("Broadleaf foliage dark", "#254b2f", "broadleaf");
     mat.leaf2 = makeFoliageMaterial("Broadleaf foliage mid", "#35633a", "broadleaf");
     mat.leaf3 = makeFoliageMaterial("Broadleaf foliage light", "#4c7943", "broadleaf");
+    mat.fern = makeFoliageMaterial("Pinecrest fern fronds", "#397044", "broadleaf");
+    mat.fern.backFaceCulling = false;
+    mat.fern.twoSidedLighting = true;
+    mat.fern.environmentIntensity = 0.28;
+    mat.fern.directIntensity = 0.9;
     mat.stone = makePbrSurface("Mossy fieldstone", "rock", 2.6, "#c9c7b2");
     mat.stoneDark = makePbrSurface("Shaded fieldstone", "rock", 2.1, "#8d9486");
     mat.mountain1 = makeMaterial("Distant forest mountain", "#526a5e", 0.98);
@@ -784,9 +789,11 @@
     mat.grassBlade = makeMaterial("Meadow grass blades", "#ffffff");
     mat.grassBlade.useVertexColors = true;
     mat.grassBlade.backFaceCulling = false;
-    mat.grassBlade.specularColor = new BABYLON.Color3(0.01, 0.018, 0.008);
+    mat.grassBlade.disableLighting = true;
+    mat.grassBlade.diffuseColor = BABYLON.Color3.White();
+    mat.grassBlade.specularColor = BABYLON.Color3.Black();
     mat.shore = makePbrSurface("Lake gravel and shore", "rock", 4, "#b9af93");
-    mat.gravel = makePbrSurface("Pinecrest compacted gravel yard", "rock", 5.5, "#a49d87");
+    mat.gravel = makePbrSurface("Pinecrest compacted gravel yard", "rock", 4.2, "#c2b496");
     mat.waterRipple = makeMaterial("Lake water glints", "#c5e0db");
     mat.waterRipple.alpha = 0.16;
     mat.waterRipple.disableLighting = true;
@@ -801,17 +808,16 @@
   }
 
   function flatArea(x, z) {
-    // The exclusion follows Pinecrest's actual footprint, not the old 44 m
-    // radius centred in front of the gate that created the featureless lawn.
-    return Math.hypot((x + 14) / 20, (z - 38) / 26) < 1.12;
+    // Keep scatter out of the built lodge apron, not across the whole spawn lawn.
+    return Math.hypot((x + 14) / 20, (z - 40) / 18) < 1.02;
   }
 
   function heightAt(x, z) {
-    const normalized = Math.hypot((x + 14) / 20, (z - 38) / 26);
+    const normalized = Math.hypot((x + 14) / 20, (z - 40) / 18);
     const natural = rawTerrainHeight(x, z);
-    if (normalized <= 0.70) return 0.10;
-    if (normalized >= 1.16) return natural;
-    const t = clamp((normalized - 0.70) / 0.46, 0, 1);
+    if (normalized <= 0.62) return 0.10;
+    if (normalized >= 1.05) return natural;
+    const t = clamp((normalized - 0.62) / 0.43, 0, 1);
     const smooth = t * t * (3 - 2 * t);
     return 0.10 + (natural - 0.10) * smooth;
   }
@@ -858,9 +864,9 @@
     const rings = 20;
     const segments = 112;
     const centreX = -14;
-    const centreZ = 43;
-    const radiusX = 11.8;
-    const radiusZ = 12.5;
+    const centreZ = 42.5;
+    const radiusX = 12.0;
+    const radiusZ = 10.2;
 
     positions.push(centreX, heightAt(centreX, centreZ) + 0.045, centreZ);
     uvs.push(0.5, 0.5);
@@ -873,8 +879,10 @@
           Math.sin(angle * 7 + 0.4) * 0.018 +
           Math.cos(angle * 11 - 0.7) * 0.012 +
           Math.sin(angle * 17 + 1.2) * 0.006;
-        const x = centreX + Math.cos(angle) * radiusX * r * edgeNoise;
-        const z = centreZ + Math.sin(angle) * radiusZ * r * edgeNoise;
+        const roundedRectX = Math.sign(Math.cos(angle)) * Math.pow(Math.abs(Math.cos(angle)), 0.76);
+        const roundedRectZ = Math.sign(Math.sin(angle)) * Math.pow(Math.abs(Math.sin(angle)), 0.76);
+        const x = centreX + roundedRectX * radiusX * r * edgeNoise;
+        const z = centreZ + roundedRectZ * radiusZ * r * edgeNoise;
         positions.push(x, heightAt(x, z) + 0.045, z);
         uvs.push(0.5 + Math.cos(angle) * r * 2.8, 0.5 + Math.sin(angle) * r * 2.8);
       }
@@ -1493,8 +1501,8 @@
     const gateGround = localGroundY(0, -14);
     box("Pinecrest entry gate lintel", { width: 6.7, height: 0.24, depth: 0.26 },
       new BABYLON.Vector3(0, gateGround + 3.15, -14), mat.woodLight, root);
-    box("Pinecrest entry gate sign", { width: 4.1, height: 0.9, depth: 0.18 },
-      new BABYLON.Vector3(0, gateGround + 2.55, -14), mat.sign, root);
+    box("Pinecrest entry gate sign", { width: 2.7, height: 0.70, depth: 0.18 },
+      new BABYLON.Vector3(-4.0, gateGround + 2.60, -14), mat.sign, root);
 
     // Two ground-bearing posts support the sign lintel and carry the sign's load.
     // Stone plinths, post caps, iron straps and knee braces make the structure read as built.
@@ -1530,15 +1538,22 @@
       obstacles.push({ x: root.position.x + postX, z: root.position.z - 14, radius: 0.30 });
     }
     // A timber edge frame and corner fixings finish the sign board itself.
-    for (const y of [gateGround + 2.12, gateGround + 2.98]) {
+    for (const y of [gateGround + 2.25, gateGround + 2.95]) {
       box("Pinecrest gate sign frame rail",
-        { width: 4.24, height: 0.10, depth: 0.12 },
-        new BABYLON.Vector3(0, y, -14.205), mat.woodLight, root);
+        { width: 2.82, height: 0.10, depth: 0.12 },
+        new BABYLON.Vector3(-4.0, y, -14.205), mat.woodLight, root);
     }
-    for (const x of [-2.07, 2.07]) {
+    for (const x of [-5.41, -2.59]) {
       box("Pinecrest gate sign frame stile",
-        { width: 0.10, height: 0.92, depth: 0.12 },
-        new BABYLON.Vector3(x, gateGround + 2.55, -14.205), mat.woodLight, root);
+        { width: 0.10, height: 0.72, depth: 0.12 },
+        new BABYLON.Vector3(x, gateGround + 2.60, -14.205), mat.woodLight, root);
+    }
+    // Short cantilever brackets carry the plaque from the left gate support.
+    for (const y of [gateGround + 2.39, gateGround + 2.81]) {
+      const bracket = box("Pinecrest gate sign cantilever bracket",
+        { width: 0.50, height: 0.10, depth: 0.15 },
+        new BABYLON.Vector3(-2.60, y, -14.22), mat.black, root);
+      bracket.isPickable = false;
     }
 
     for (const x of [-5.7, 5.7]) {
@@ -1556,15 +1571,15 @@
     }
     // Gate nameplate faces are deliberately offset in front of the wood plaque.
     gateSignFrontMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign front",
-      { width: 3.82, height: 0.68, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+      { width: 2.52, height: 0.50, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
     gateSignFrontMesh.parent = root;
-    gateSignFrontMesh.position.set(0, gateGround + 2.55, -14.165);
+    gateSignFrontMesh.position.set(-4.0, gateGround + 2.60, -14.165);
     gateSignFrontMesh.rotation.y = Math.PI;
     gateSignFrontMesh.isPickable = false;
     gateSignBackMesh = BABYLON.MeshBuilder.CreatePlane("Pinecrest gate sign back",
-      { width: 3.82, height: 0.68, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
+      { width: 2.52, height: 0.50, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene);
     gateSignBackMesh.parent = root;
-    gateSignBackMesh.position.set(0, gateGround + 2.55, -13.835);
+    gateSignBackMesh.position.set(-4.0, gateGround + 2.60, -13.835);
     gateSignBackMesh.isPickable = false;
     const drawGateSign = (texture, mirror) => {
       const ctx = texture.getContext();
@@ -1573,8 +1588,8 @@
       ctx.strokeStyle = "#c8ad70"; ctx.lineWidth = 12; ctx.strokeRect(18, 18, 988, 220);
       ctx.strokeStyle = "#7d704f"; ctx.lineWidth = 3; ctx.strokeRect(34, 34, 956, 188);
       ctx.textAlign = "center"; ctx.fillStyle = "#f1e3bd";
-      ctx.font = "bold 78px Georgia"; ctx.fillText("PINECREST OUTPOST", 512, 112);
-      ctx.font = "29px Georgia"; ctx.fillStyle = "#c9c0a7";
+      ctx.font = "bold 58px Georgia"; ctx.fillText("PINECREST OUTPOST", 512, 112);
+      ctx.font = "21px Georgia"; ctx.fillStyle = "#c9c0a7";
       ctx.fillText("RANGER STATION  ·  PINECREST VALLEY", 512, 177);
       texture.update(true);
       return makeReadableSignMaterial(mirror ? "Pinecrest gate sign front material" : "Pinecrest gate sign rear material", texture, mirror);
@@ -1585,7 +1600,7 @@
     gateSignBackMaterial = drawGateSign(gateSignBackTexture, false);
     gateSignFrontMesh.material = gateSignFrontMaterial;
     gateSignBackMesh.material = gateSignBackMaterial;
-    for (const x of [-1.92, 1.92]) for (const y of [gateGround + 2.27, gateGround + 2.83]) {
+    for (const x of [-5.08, -2.92]) for (const y of [gateGround + 2.40, gateGround + 2.80]) {
       const fixing = BABYLON.MeshBuilder.CreateCylinder("gate sign brass fixing", { height: 0.035, diameter: 0.095, tessellation: 12 }, scene);
       fixing.parent = root; fixing.rotation.x = Math.PI / 2; fixing.position.set(x, y, -14.19);
       fixing.material = mat.gold; fixing.isPickable = false;
@@ -2515,9 +2530,10 @@
     for (const mesh of compactMeshes) {
       if (!mesh || mesh.isDisposed()) continue;
       mesh.isPickable = false;
-      mesh.receiveShadows = true;
+      mesh.receiveShadows = label !== "fern";
+      if (label === "fern") mesh.material = mat.fern;
       mesh.metadata = { ...(mesh.metadata || {}), pinecrestHeroVegetation: label };
-      if (lights.shadows && !mesh.material?.needAlphaBlending?.()) {
+      if (label !== "fern" && lights.shadows && !mesh.material?.needAlphaBlending?.()) {
         try { lights.shadows.addShadowCaster(mesh, false); } catch (error) { /* leaf geometry may skip shadowing */ }
       }
       heroTreeMeshCount++;
@@ -2572,8 +2588,8 @@
     // Norway spruce is a tall narrow silhouette; the oak has individually
     // modelled leaves and a broader crown so the forest is not one repeated shape.
     const sprucePlacements = [
-      { x: -39, z: 11, height: 16.0 },
-      { x: 39, z: 77, height: 15.0 }
+      { x: -78, z: 104, height: 11.5 },
+      { x: 78, z: 116, height: 12.0 }
     ];
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "norway-spruce.glb", scene)
       .then((container) => {
@@ -2608,10 +2624,10 @@
       });
 
     const fernPlacements = [
-      { x: -26.0, z: 36.6, height: 0.50 },
-      { x: -26.0, z: 50.0, height: 0.50 },
-      { x: -2.0, z: 36.9, height: 0.50 },
-      { x: -2.0, z: 51.2, height: 0.50 }
+      { x: -23.55, z: 42.05, height: 0.68 },
+      { x: -22.85, z: 42.35, height: 0.62 },
+      { x: -5.05, z: 43.85, height: 0.65 },
+      { x: -4.35, z: 44.15, height: 0.68 }
     ];
     BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "fern-clump.glb", scene)
       .then((container) => {
@@ -2943,8 +2959,8 @@
   function createWeapon() {
     weaponRoot = new BABYLON.TransformNode("Wildrange scoped marksman rifle", scene);
     weaponRoot.parent = camera;
-    weaponRoot.position.set(0.40, -0.42, 0.78);
-    weaponRoot.scaling.setAll(0.84);
+    weaponRoot.position.set(0.42, -0.48, 0.80);
+    weaponRoot.scaling.setAll(0.74);
     weaponRoot.rotation.set(0, 0, 0);
 
     // Small visual effect only; both rifle silhouettes and optic hardware are imported GLB meshes.
@@ -3507,12 +3523,13 @@
   function createGroundCover() {
     const positions = [], indices = [], colors = [];
     let placed = 0, attempts = 0;
-    while (placed < 4600 && attempts < 18000) {
+    const targetClusters = 6200;
+    while (placed < targetClusters && attempts < 26000) {
       attempts++;
       let x, z;
-      if (placed < 3200) {
+      if (placed < 4700) {
         const angle = rand(0, Math.PI * 2);
-        const radius = Math.sqrt(rand(0, 1)) * 92;
+        const radius = Math.sqrt(rand(0, 1)) * 58;
         x = -14 + Math.cos(angle) * radius;
         z = 19 + Math.sin(angle) * radius;
       } else {
@@ -3524,31 +3541,46 @@
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
       if (obstacles.some((item) => Math.hypot(x - item.x, z - item.z) < item.radius + 1.6)) continue;
-      const y = heightAt(x, z) + 0.055;
-      const shade = rand(0.78, 1.16);
-      const blades = 5 + (rand(0, 1) > 0.58 ? 1 : 0);
-      for (let blade = 0; blade < blades; blade++) {
-        const angle = rand(0, Math.PI * 2);
-        const half = rand(0.035, 0.095);
-        const height = rand(0.26, 0.78);
-        const lean = rand(0.035, 0.18);
-        const sideX = Math.cos(angle) * half, sideZ = Math.sin(angle) * half;
-        const tipX = x + Math.cos(angle + 0.9) * lean;
-        const tipZ = z + Math.sin(angle + 0.9) * lean;
+
+      const y = heightAt(x, z) + 0.045;
+      const shade = rand(0.82, 1.16);
+      for (let blade = 0; blade < 3; blade++) {
+        const angle = rand(0, Math.PI * 2) + blade * Math.PI / 3;
+        const half = rand(0.055, 0.105);
+        const height = rand(0.38, 0.88);
+        const lean = rand(0.035, 0.16);
+        const sideX = Math.cos(angle) * half;
+        const sideZ = Math.sin(angle) * half;
+        const leanAngle = angle + rand(-0.55, 0.55);
+        const tipX = x + Math.cos(leanAngle) * lean;
+        const tipZ = z + Math.sin(leanAngle) * lean;
+        const tipHalf = half * 0.10;
+        const tipSideX = Math.cos(angle) * tipHalf;
+        const tipSideZ = Math.sin(angle) * tipHalf;
         const base = positions.length / 3;
         positions.push(
           x - sideX, y, z - sideZ,
           x + sideX, y, z + sideZ,
-          tipX, y + height, tipZ
+          tipX + tipSideX, y + height, tipZ + tipSideZ,
+          tipX - tipSideX, y + height, tipZ - tipSideZ
         );
-        const green = clamp(0.39 * shade + rand(-0.045, 0.045), 0.28, 0.60);
-        const red = clamp(0.22 * shade + rand(-0.025, 0.025), 0.16, 0.32);
-        const blue = clamp(0.105 * shade + rand(-0.018, 0.018), 0.06, 0.16);
-        for (let v = 0; v < 3; v++) colors.push(red, green, blue, 1);
-        indices.push(base, base + 1, base + 2);
+        const rootGreen = clamp(0.25 * shade + rand(-0.025, 0.025), 0.18, 0.36);
+        const tipGreen = clamp(0.43 * shade + rand(-0.035, 0.035), 0.30, 0.58);
+        const rootRed = clamp(0.14 * shade + rand(-0.018, 0.018), 0.09, 0.22);
+        const tipRed = clamp(0.20 * shade + rand(-0.02, 0.02), 0.13, 0.29);
+        const rootBlue = clamp(0.075 * shade, 0.04, 0.12);
+        const tipBlue = clamp(0.115 * shade, 0.07, 0.16);
+        colors.push(
+          rootRed, rootGreen, rootBlue, 1,
+          rootRed * 1.06, rootGreen * 1.04, rootBlue, 1,
+          tipRed, tipGreen, tipBlue, 1,
+          tipRed * 0.92, tipGreen * 0.96, tipBlue, 1
+        );
+        indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
       }
       placed++;
     }
+
     const grass = new BABYLON.Mesh("Pinecrest meadow grass", scene);
     const vertexData = new BABYLON.VertexData();
     const normals = [];
@@ -3562,8 +3594,11 @@
     grass.isPickable = false;
     grass.receiveShadows = false;
     grass.hasVertexAlpha = false;
+    grass.metadata = { grassClusters: placed, crossedCardsPerClump: 3 };
     lights.grassMesh = grass;
     lights.grassClusterCount = placed;
+    lights.grassCardCount = placed * 3;
+    lights.grassVertexCount = grass.getTotalVertices();
   }
 
   function createBush(x, z, scale) {
@@ -5268,8 +5303,15 @@
     heroTreeMeshCount,
     heroTreeSourceMeshCount,
     groundCoverClusterCount: Number(lights.grassClusterCount) || 0,
+    groundCoverCardCount: Number(lights.grassCardCount) || 0,
+    groundCoverVertexCount: Number(lights.grassVertexCount) || 0,
     yardApronReady: Boolean(lights.yardApron && !lights.yardApron.isDisposed()),
     terrainVertexTinted: Boolean(scene && scene.getMeshByName("Pinecrest terrain")?.metadata?.vertexTinted),
+    spawnGroundHeight: Number(heightAt(-14, 19).toFixed(3)),
+    fernMaterialReady: Boolean(mat.fern && mat.fern.albedoTexture && mat.fern.albedoTexture.isReady()),
+    gateSignWorldWidth: gateSignFrontMesh
+      ? Number((gateSignFrontMesh.getBoundingInfo().boundingBox.extendSizeWorld.x * 2).toFixed(2))
+      : 0,
     heroVegetationFailures: heroVegetationFailures.slice(),
     gateStructuralPostCount: scene ? scene.meshes.filter((mesh) => mesh.name === "Pinecrest gate structural timber support post").length : 0,
     cabinFrontWallBackingCount: scene ? scene.meshes.filter((mesh) =>
