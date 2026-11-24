@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.11.3**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.11.4**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -215,6 +215,12 @@ The 0.11.3 pass corrects the visibility rules:
 - Adds browser diagnostics for any legacy lodge roof, sign, chimney, porch, flag or lantern mesh that remains enabled. The smoke test requires all these visible-legacy counts to be zero.
 
 This is a targeted correction to the mixed-asset failure shown in the 24 November screenshot. It does not yet claim that the rest of the compound has reached final art quality; it makes the main lodge read as one building rather than two overlapping sets of geometry.
+
+## 0.11.4 first-person approach framing
+
+The 24 November screenshot also showed the hunter standing to the right of the south gate opening and looking diagonally across the foreground fence. The first spawn is now centred on the gate passage at `x=-14, z=19`, facing straight into Pinecrest at yaw 0. Untouched saves at the old spawn `x=0, z=19` are migrated into the same gate-centred position; saves where the hunter has moved are left alone.
+
+Browser QA now checks the exact spawn position and heading. This is a presentation change only; the gate opening, fence layout and collision positions are unchanged.
 
 ## Cost
 
