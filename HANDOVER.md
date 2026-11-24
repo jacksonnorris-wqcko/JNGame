@@ -199,13 +199,30 @@ The supplied screenshot showed the hunter standing to the right of the south gat
 - `WildrangeQA.cameraPosition()` exposes spawn X/Z for browser verification.
 - Playwright asserts X=-14, Z=19 and yaw=0.
 
+## 0.11.5 Pinecrest lodge scale, door and traversal correction
+
+The 0.11.4 screenshot review showed that the Mountain Hut appeared undersized and the previous large procedural door was still visible. Source inspection found that `instantiateModelsToScene()` prefixes imported names, so the exact-name lookup for `mountain-hut_door_l` never matched. The code also animated the imported door on Y even though the asset manifest specifies a local-Z hinge.
+
+### Corrections
+
+- Match the imported hinge by its prefixed-name suffix and fail the primary-model integration if that required node is missing.
+- Disable the old procedural door hierarchy when the imported hinge is installed.
+- Animate, report and test the imported leaf on local Z; retain Y only for the legacy fallback door.
+- Scale against the asset's documented 9 × 6.5 m ground-floor dimensions, targeting an 11.8 × 8.6 m footprint instead of fitting its complete decorative scene bounds into the old cabin footprint.
+- Align the authored doorway with the old Pinecrest entrance datum and compute the building centre/footprint from the fitted door and scale.
+- Reposition the retained interior group to the fitted building centre and floor height.
+- Replace old fixed room/deck/step collision coordinates with calculations from the actual door position and building footprint.
+- Extend browser QA to check the real building footprint, old-door suppression, imported hinge selection/axis, door open/close, interior walkability, terrace, steps and approach path.
+
+The Grab3D source manifest identifies this Mountain Hut as an exterior-only model, with no authored interior. This correction restores usable entrance and walkable-interior integration using the existing Wildrange interior group; it does not claim the building now has a bespoke authored interior art pass.
+
 ## Validation status
 
 The source, HTML cache references, smoke-test assertions, CI assertions and Pages workflow were checked in the repository after the changes. The available GitHub commit-status response did not return status records, so do not assume the latest CI or Pages deployment has completed successfully until the Actions run is checked.
 
 ## Next development priorities
 
-1. Open the deployed 0.8.21 build and compare the cabin wall, gate sign and porch against the supplied screenshot.
+1. Verify the 0.11.5 Pinecrest lodge in the deployed browser build, especially the door, full-size building silhouette and walkable entrance.
 2. Continue the wildlife art pass: verify deer and boar silhouettes, proportions, coat materials, head/ear/tail motion and animation transitions at normal gameplay distance.
 3. Continue the first-person rifle pass: improve the visible silhouette, stock and receiver materials, optic proportions, bolt cycling, reload and recoil feel.
 4. Revisit lighting, vegetation density and distant scenery only with frame-time checks so visual improvements do not reintroduce the earlier jitter.

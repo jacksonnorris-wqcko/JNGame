@@ -70,7 +70,9 @@
   let playerVelocity = new BABYLON.Vector3(0, 0, 0);
   let cabinDoorPivot = null;
   let cabinDoorClosedYaw = 0;
+  let cabinDoorAxis = "y";
   let cabinDoorUsesImportedLeaf = false;
+  let lodgeLegacyDoorHidden = false;
   let cabinDoorOpen = false;
   let cabinDoorUpdateCount = 0;
   let contractBoardTexture = null;
@@ -104,6 +106,8 @@
   let lodgeModelAssetName = "", lodgeModelUsedFallback = false;
   let lodgeModelUniformScale = 0;
   let lodgeModelWorldDimensions = { x: 0, y: 0, z: 0 };
+  let lodgeBuildingFootprint = { width: 12.1, depth: 9.1 };
+  let lodgeBuildingCentre = { x: -14, z: 43 };
   let lodgeModelNodeNames = [];
   let lodgeModelHiddenLegacyMeshCount = 0;
   let lodgeModelHiddenLegacyPorchCount = 0;
@@ -2139,56 +2143,113 @@
         entries.rootNodes.forEach((node) => { node.parent = importedRoot; });
         importedRoot.rotationQuaternion = null;
 
-        // The authored architectural assets face +Z; rotate the arrival facade
-        // toward the Pinecrest access path at -Z.
+        // Face the authored front toward the compound approach.
         importedRoot.rotation.y = Math.PI;
-        importedRoot.computeWorldMatrix(true);
-        const bounds = getImportedHierarchyBounds(entries.rootNodes);
-        if (!bounds) throw new Error("The lodge GLB contained no renderable mesh geometry");
-        const size = bounds.max.subtract(bounds.min);
-        if (size.x <= 0 || size.y <= 0 || size.z <= 0) throw new Error("The lodge GLB has invalid dimensions");
-
-        // Fit uniformly inside the existing compound footprint. The old 3 x 3 m
-        // cabin was stretched by different X/Y/Z scales, which flattened its
-        // architecture. The new hut keeps its authored proportions and is sized
-        // to occupy the lodge foundation, yard and approach without distortion.
-        const scale = lodgeModelUsedFallback
-          ? Math.min(12.2 / size.x, 10.9 / size.z, 7.0 / size.y)
-          : Math.min(12.65 / size.x, 10.95 / size.z, 6.95 / size.y);
-        importedRoot.scaling.setAll(scale);
-        const centre = bounds.min.add(bounds.max).scale(0.5);
-        importedRoot.position.set(
-          lodgeRoot.position.x - centre.x * scale,
-          lodgeRoot.position.y - bounds.min.y * scale,
-          lodgeRoot.position.z - centre.z * scale
-        );
         importedRoot.computeWorldMatrix(true);
 
         const importedNodes = entries.rootNodes.flatMap((node) => [node, ...node.getDescendants(false)]);
         lodgeModelNodeNames = importedNodes.map((node) => String(node.name || "")).filter(Boolean).slice(0, 160);
 
-        // Prefer the authored Mountain Hut door leaf when its hinge node is present.
-        // The previous hand-built door is hidden as a single hierarchy so the
-        // entrance has one real leaf, one set of hinges and one interactive pivot.
+        // GLB instantiation prefixes every node name. Match the authored hinge
+        // by suffix, otherwise the old procedural door remains in front of the hut.
         const importedDoorPivot = !lodgeModelUsedFallback
-          ? importedNodes.find((node) => String(node.name || "").toLowerCase() === "mountain-hut_door_l")
+          ? importedNodes.find((node) => String(node.name || "").toLowerCase().endsWith("mountain-hut_door_l"))
           : null;
+        if (!lodgeModelUsedFallback && !importedDoorPivot) {
+          throw new Error("Mountain Hut imported without its required mountain-hut_door_l hinge node");
+        }
+
+        const sourceBounds = getImportedHierarchyBounds(entries.rootNodes);
+        if (!sourceBounds) throw new Error("The lodge GLB contained no renderable mesh geometry");
+        const sourceSize = sourceBounds.max.subtract(sourceBounds.min);
+        if (sourceSize.x <= 0 || sourceSize.y <= 0 || sourceSize.z <= 0) {
+          throw new Error("The lodge GLB has invalid dimensions");
+        }
+
+        // The model's complete 13.76 x 12.15 m scene includes the terrace,
+        // trough, firewood, rocks and fir tree. Its actual ground-floor building
+        // is 9 x 6.5 m. Fit that building to Pinecrest's old 11.8 x 8.6 m datum.
+        // This deliberately does not fit the decorative objects into the cabin
+        // footprint, which was shrinking the usable building by about one third.
+        const scale = lodgeModelUsedFallback
+          ? Math.min(12.2 / sourceSize.x, 10.9 / sourceSize.z, 7.0 / sourceSize.y)
+          : Math.min(11.8 / 9.0, 8.6 / 6.5);
+        importedRoot.scaling.setAll(scale);
+        importedRoot.computeWorldMatrix(true);
+
+        const scaledBounds = getImportedHierarchyBounds(entries.rootNodes);
+        if (!scaledBounds) throw new Error("The scaled lodge has no renderable geometry");
+        const size = scaledBounds.max.subtract(scaledBounds.min);
+
         if (importedDoorPivot) {
-          if (cabinDoorPivot && cabinDoorPivot !== importedDoorPivot) cabinDoorPivot.setEnabled(false);
+          // Align the actual door opening with the old Pinecrest entry position.
+          // Using the door's centre avoids shifting the whole house because of
+          // the hut's attached terrace and decorative scenery.
+          const sourceDoorBounds = getImportedHierarchyBounds([importedDoorPivot]);
+          if (!sourceDoorBounds) throw new Error("Mountain Hut hinge has no door geometry");
+          const sourceDoorCentre = sourceDoorBounds.min.add(sourceDoorBounds.max).scale(0.5);
+          const targetDoorCentre = new BABYLON.Vector3(
+            lodgeRoot.position.x,
+            0,
+            lodgeRoot.position.z - 4.12
+          );
+          importedRoot.position.set(
+            targetDoorCentre.x - sourceDoorCentre.x,
+            lodgeRoot.position.y - scaledBounds.min.y,
+            targetDoorCentre.z - sourceDoorCentre.z
+          );
+          importedRoot.computeWorldMatrix(true);
+
+          const fittedDoorBounds = getImportedHierarchyBounds([importedDoorPivot]);
+          if (!fittedDoorBounds) throw new Error("Mountain Hut door bounds vanished after positioning");
+          const fittedDoorCentre = fittedDoorBounds.min.add(fittedDoorBounds.max).scale(0.5);
+          lodgeDoorWorldPosition = {
+            x: fittedDoorCentre.x,
+            z: fittedDoorCentre.z
+          };
+
+          lodgeBuildingFootprint = {
+            width: 9.0 * scale,
+            depth: 6.5 * scale
+          };
+          lodgeBuildingCentre = {
+            x: fittedDoorCentre.x,
+            z: fittedDoorCentre.z + lodgeBuildingFootprint.depth / 2
+          };
+
+          const legacyDoorPivot = cabinDoorPivot;
+          if (legacyDoorPivot && legacyDoorPivot !== importedDoorPivot) {
+            legacyDoorPivot.setEnabled(false);
+            lodgeLegacyDoorHidden = !legacyDoorPivot.isEnabled();
+          }
+
           cabinDoorPivot = importedDoorPivot;
+          cabinDoorPivot.setEnabled(true);
           cabinDoorPivot.rotationQuaternion = null;
-          cabinDoorClosedYaw = Number(cabinDoorPivot.rotation.y) || 0;
-          cabinDoorPivot.computeWorldMatrix(true);
-          const doorPosition = cabinDoorPivot.getAbsolutePosition();
-          lodgeDoorWorldPosition = { x: doorPosition.x, z: doorPosition.z };
+          cabinDoorAxis = "z";
+          cabinDoorClosedYaw = Number(cabinDoorPivot.rotation.z) || 0;
+          cabinDoorUsesImportedLeaf = true;
+
           const doorInteraction = interactables.find((item) => item.action === "cabin");
           if (doorInteraction) {
-            doorInteraction.x = doorPosition.x;
-            doorInteraction.z = doorPosition.z - 0.85;
+            doorInteraction.x = fittedDoorCentre.x;
+            doorInteraction.z = fittedDoorCentre.z - 0.85;
           }
-          cabinDoorUsesImportedLeaf = true;
           createMountainHutNameplate(importedRoot, importedDoorPivot, scale);
+        } else {
+          // Only the legacy fallback uses the old procedural door and centre fit.
+          const centre = scaledBounds.min.add(scaledBounds.max).scale(0.5);
+          importedRoot.position.set(
+            lodgeRoot.position.x - centre.x,
+            lodgeRoot.position.y - scaledBounds.min.y,
+            lodgeRoot.position.z - centre.z
+          );
+          lodgeBuildingFootprint = { width: 12.2, depth: 10.9 };
+          lodgeBuildingCentre = { x: lodgeRoot.position.x, z: lodgeRoot.position.z };
+          cabinDoorAxis = "y";
+          cabinDoorUsesImportedLeaf = false;
         }
+
         for (const node of importedNodes) {
           const nodeName = String(node.name || "").toLowerCase();
           if (/^(door|door_leaf|doorleaf|door_panel|doorpanel)(\.\d+)?$/.test(nodeName) ||
@@ -2217,16 +2278,20 @@
         lodgeModelMeshCount = meshCount;
         lodgeModelUniformScale = scale;
         lodgeModelWorldDimensions = {
-          x: Number((size.x * scale).toFixed(3)),
-          y: Number((size.y * scale).toFixed(3)),
-          z: Number((size.z * scale).toFixed(3))
+          x: Number(size.x.toFixed(3)),
+          y: Number(size.y.toFixed(3)),
+          z: Number(size.z.toFixed(3))
         };
         const sourceFloorY = lodgeModelUsedFallback ? 0.12 : 0.55;
         lodgeInteriorFloorHeight = sourceFloorY * scale;
         lodgeDeckSurfaceHeight = sourceFloorY * scale;
         if (lodgeInteriorRoot) {
           const interiorOffset = lodgeInteriorFloorHeight - 1.04;
-          lodgeInteriorRoot.position.y = interiorOffset;
+          lodgeInteriorRoot.position.set(
+            lodgeBuildingCentre.x - lodgeRoot.position.x,
+            interiorOffset,
+            lodgeBuildingCentre.z - lodgeRoot.position.z
+          );
           lodgeInteriorRoot.computeWorldMatrix(true);
           let adjustedInteriorMeshCount = 0;
           // createScene freezes static meshes before asynchronous GLBs finish
@@ -3731,23 +3796,45 @@
   }
 
   function lodgeDoorwayContains(x, z) {
-    return Math.abs(x - lodgeDoorWorldPosition.x) < 0.78 &&
-      Math.abs(z - lodgeDoorWorldPosition.z) < 0.72;
+    return Math.abs(x - lodgeDoorWorldPosition.x) < 0.82 &&
+      Math.abs(z - lodgeDoorWorldPosition.z) < 0.62;
+  }
+
+  function lodgeInteriorContains(x, z) {
+    const halfWidth = lodgeBuildingFootprint.width / 2;
+    return Math.abs(x - lodgeBuildingCentre.x) <= halfWidth - 0.42 &&
+      z > lodgeDoorWorldPosition.z + 0.62 &&
+      z < lodgeDoorWorldPosition.z + lodgeBuildingFootprint.depth - 0.42;
+  }
+
+  function lodgeTerraceContains(x, z) {
+    return Math.abs(x - lodgeBuildingCentre.x) <= lodgeBuildingFootprint.width / 2 - 0.35 &&
+      z >= lodgeDoorWorldPosition.z - 2.45 &&
+      z < lodgeDoorWorldPosition.z - 0.48;
+  }
+
+  function lodgeStepsContains(x, z) {
+    return Math.abs(x - lodgeBuildingCentre.x) <= 2.8 &&
+      z >= lodgeDoorWorldPosition.z - 5.8 &&
+      z < lodgeDoorWorldPosition.z - 2.45;
+  }
+
+  function lodgeEntryPathContains(x, z) {
+    return Math.abs(x - lodgeBuildingCentre.x) <= 4.1 &&
+      z >= 29.0 &&
+      z < lodgeDoorWorldPosition.z - 5.8;
   }
 
   function walkSurfaceAt(x, z) {
-    const localX = x + 14;
-    const localZ = z - 43;
-    const insideRoom = Math.abs(localX) <= 5.1 && localZ > -1.35 && localZ < 4.5;
-    const onTerrace = Math.abs(localX) <= 4.85 && localZ >= -5.9 && localZ <= -2.45;
-    const onApproachSteps = Math.abs(localX) <= 2.8 && localZ >= -9.25 && localZ < -5.9;
-    if (insideRoom) return lodgeInteriorFloorHeight;
-    if (lodgeDoorwayContains(x, z) || onTerrace) return lodgeDeckSurfaceHeight;
-    if (onApproachSteps) {
-      const rise = clamp((localZ + 9.25) / 3.35, 0, 1);
+    if (lodgeInteriorContains(x, z)) return lodgeInteriorFloorHeight;
+    if (lodgeDoorwayContains(x, z) || lodgeTerraceContains(x, z)) return lodgeDeckSurfaceHeight;
+    if (lodgeStepsContains(x, z)) {
+      const stepStart = lodgeDoorWorldPosition.z - 5.8;
+      const stepEnd = lodgeDoorWorldPosition.z - 2.45;
+      const rise = clamp((z - stepStart) / (stepEnd - stepStart), 0, 1);
       return 0.1 + rise * (lodgeDeckSurfaceHeight - 0.1);
     }
-    if (Math.abs(localX) <= 4.1 && localZ >= -15.0 && localZ < -9.25) return 0.26;
+    if (lodgeEntryPathContains(x, z)) return 0.26;
     return heightAt(x, z);
   }
 
@@ -3765,16 +3852,19 @@
       ((localX >= -13.25 && localX <= -6.25) || (localX >= 6.25 && localX <= 13.25));
     if (onSideFence || onNorthFence || onSouthFence) return false;
 
-    // The imported door is the only opening through the lodge's otherwise solid footprint.
+    // The imported door is the only opening through the lodge's solid footprint.
     if (lodgeDoorwayContains(x, z)) return cabinDoorOpen;
 
-    const insideRoom = Math.abs(localX) <= 5.1 && localZ > -1.35 && localZ < 4.5;
-    const onTerrace = Math.abs(localX) <= 4.85 && localZ >= -5.9 && localZ <= -2.45;
-    const onApproachSteps = Math.abs(localX) <= 2.8 && localZ >= -9.25 && localZ < -5.9;
-    const onEntryPaver = Math.abs(localX) <= 4.1 && localZ >= -15.0 && localZ < -9.25;
+    const insideRoom = lodgeInteriorContains(x, z);
+    const onTerrace = lodgeTerraceContains(x, z);
+    const onApproachSteps = lodgeStepsContains(x, z);
+    const onEntryPaver = lodgeEntryPathContains(x, z);
     if (insideRoom || onTerrace || onApproachSteps || onEntryPaver) return true;
 
-    const inCabinFootprint = Math.abs(localX) < 6.8 && localZ > -6.3 && localZ < 5.2;
+    const inCabinFootprint =
+      Math.abs(x - lodgeBuildingCentre.x) < lodgeBuildingFootprint.width / 2 + 0.25 &&
+      z > lodgeDoorWorldPosition.z - 0.30 &&
+      z < lodgeDoorWorldPosition.z + lodgeBuildingFootprint.depth + 0.25;
     if (inCabinFootprint) return false;
     return true;
   }
@@ -4168,7 +4258,7 @@
     // Apply the hinge transform immediately; the scene render loop refreshes its world matrix.
     if (cabinDoorPivot) {
       cabinDoorPivot.rotationQuaternion = null;
-      cabinDoorPivot.rotation.y = cabinDoorClosedYaw + (cabinDoorOpen ? 1.48 : 0);
+      cabinDoorPivot.rotation[cabinDoorAxis] = cabinDoorClosedYaw + (cabinDoorOpen ? 1.48 : 0);
       cabinDoorPivot.computeWorldMatrix(true);
       cabinDoorPivot.getChildMeshes().forEach((mesh) => mesh.computeWorldMatrix(true));
     }
@@ -4181,11 +4271,15 @@
     if (!cabinDoorPivot) return;
     cabinDoorUpdateCount++;
     const target = cabinDoorClosedYaw + (cabinDoorOpen ? 1.48 : 0);
-    const difference = target - cabinDoorPivot.rotation.y;
+    const current = cabinDoorPivot.rotation[cabinDoorAxis];
+    const difference = target - current;
     const maxStep = Math.max(0, dt) * 3.2;
-    cabinDoorPivot.rotation.y += Math.max(-maxStep, Math.min(maxStep, difference));
-    if (Math.abs(target - cabinDoorPivot.rotation.y) < 0.001) cabinDoorPivot.rotation.y = target;
+    cabinDoorPivot.rotation[cabinDoorAxis] += Math.max(-maxStep, Math.min(maxStep, difference));
+    if (Math.abs(target - cabinDoorPivot.rotation[cabinDoorAxis]) < 0.001) {
+      cabinDoorPivot.rotation[cabinDoorAxis] = target;
+    }
     cabinDoorPivot.computeWorldMatrix(true);
+    cabinDoorPivot.getChildMeshes().forEach((mesh) => mesh.computeWorldMatrix(true));
   }
 
   function updateInteraction() {
@@ -4958,8 +5052,10 @@
     jumpCount,
     playerGrounded,
     playerHeight: camera ? camera.position.y - walkSurfaceAt(camera.position.x, camera.position.z) - (crouched ? 1.12 : 1.72) : 0,
-    cabinDoorAngle: cabinDoorPivot ? Number((cabinDoorPivot.rotation.y - cabinDoorClosedYaw).toFixed(3)) : null,
+    cabinDoorAngle: cabinDoorPivot ? Number((cabinDoorPivot.rotation[cabinDoorAxis] - cabinDoorClosedYaw).toFixed(3)) : null,
+    cabinDoorAxis,
     cabinDoorUsesImportedLeaf,
+    lodgeLegacyDoorHidden,
     cabinDoorUpdateCount,
     boardTextureUScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.uScale : null,
     boardTextureVScale: contractBoardMaterial && contractBoardMaterial.diffuseTexture ? contractBoardMaterial.diffuseTexture.vScale : null,
@@ -4998,6 +5094,8 @@
     lodgeModelUsedFallback,
     lodgeModelUniformScale,
     lodgeModelWorldDimensions,
+    lodgeBuildingFootprint,
+    lodgeBuildingCentre,
     lodgeModelNodeNames,
     lodgeInteriorFloorHeight,
     lodgeDeckSurfaceHeight,
@@ -5070,10 +5168,14 @@
   if (new URLSearchParams(window.location.search).has("qa")) {
     window.WildrangeQA = {
       setDoor: (open) => setCabinDoor(Boolean(open)),
-      doorAngle: () => cabinDoorPivot ? cabinDoorPivot.rotation.y - cabinDoorClosedYaw : null,
+      doorAngle: () => cabinDoorPivot ? cabinDoorPivot.rotation[cabinDoorAxis] - cabinDoorClosedYaw : null,
       teleportIntoCabin: () => {
         if (!camera) return false;
-        camera.position.set(-14, lodgeInteriorFloorHeight + 1.72, 43);
+        camera.position.set(
+          lodgeBuildingCentre.x,
+          lodgeInteriorFloorHeight + 1.72,
+          lodgeDoorWorldPosition.z + lodgeBuildingFootprint.depth * 0.55
+        );
         camera.rotation.set(0, 0, 0);
         playerVelocity.set(0, 0, 0);
         verticalVelocity = 0;
@@ -5081,6 +5183,24 @@
         updateInteraction();
         return true;
       },
+      cabinTestPoints: () => ({
+        interior: {
+          x: lodgeBuildingCentre.x,
+          z: lodgeDoorWorldPosition.z + lodgeBuildingFootprint.depth * 0.55
+        },
+        terrace: {
+          x: lodgeBuildingCentre.x,
+          z: lodgeDoorWorldPosition.z - 1.25
+        },
+        stairs: {
+          x: lodgeBuildingCentre.x,
+          z: lodgeDoorWorldPosition.z - 4.0
+        },
+        path: {
+          x: lodgeBuildingCentre.x,
+          z: lodgeDoorWorldPosition.z - 7.7
+        }
+      }),
       canStandAt: (x, z) => canStandAt(Number(x), Number(z)),
       surfaceAt: (x, z) => walkSurfaceAt(Number(x), Number(z)),
       doorwayPosition: () => ({ x: lodgeDoorWorldPosition.x, z: lodgeDoorWorldPosition.z }),

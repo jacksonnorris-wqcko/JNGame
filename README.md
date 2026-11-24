@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.11.4**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.11.5**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -221,6 +221,18 @@ This is a targeted correction to the mixed-asset failure shown in the 24 Novembe
 The 24 November screenshot also showed the hunter standing to the right of the south gate opening and looking diagonally across the foreground fence. The first spawn is now centred on the gate passage at `x=-14, z=19`, facing straight into Pinecrest at yaw 0. Untouched saves at the old spawn `x=0, z=19` are migrated into the same gate-centred position; saves where the hunter has moved are left alone.
 
 Browser QA now checks the exact spawn position and heading. This is a presentation change only; the gate opening, fence layout and collision positions are unchanged.
+
+## 0.11.5 Pinecrest cabin integration correction
+
+The 0.11.4 screenshot review exposed two integration faults that made the new Mountain Hut look much smaller than the original lodge and left the old oversized door visible.
+
+- The GLB loader prefixes imported node names. Door lookup now matches the imported `mountain-hut_door_l` by suffix, then disables the old procedural door hierarchy before the authored door is made interactive.
+- The Mountain Hut's hinge is animated on its documented local Z axis, not the Y axis.
+- The model is scaled against its documented 9 × 6.5 m ground-floor footprint, targeting an approximately 11.8 × 8.5 m lodge. The terrace, trough, fir tree and decorative scene bounds no longer determine the building scale.
+- The imported doorway is aligned to Pinecrest's existing entry position. The interior group, collision footprint, terrace, stair transition and entry-path checks now follow the fitted building and door positions.
+- Browser QA now fails if the old door remains active, the imported door is not used, the wrong hinge axis is selected, or the actual building footprint falls below the integration target.
+
+The source asset is exterior-only, so this is an integration and traversal correction rather than a claim that a fully authored interior has been added. The existing grouped Wildrange interior remains aligned to the fitted building floor.
 
 ## Cost
 
