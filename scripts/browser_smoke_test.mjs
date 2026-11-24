@@ -162,6 +162,7 @@ try {
       state.heroConiferReady && state.heroBroadleafReady &&
       state.heroSpruceReady && state.heroOakReady && state.heroFernReady &&
       state.heroTreeModelCount === 8 && state.heroFernCount === 4 &&
+      state.heroBoulderCount === 3 && state.heroBoulderMeshCount >= 3 &&
       state.groundCoverClusterCount >= 5500 && state.groundCoverCardCount >= 16500 &&
       state.yardApronReady && state.terrainVertexTinted &&
       state.fernMaterialReady && state.gateSignWorldWidth > 0 && state.gateSignWorldWidth < 2.8 &&
@@ -231,6 +232,7 @@ try {
   if (!diagnostics.heroConiferReady || !diagnostics.heroBroadleafReady ||
       !diagnostics.heroSpruceReady || !diagnostics.heroOakReady || !diagnostics.heroFernReady ||
       diagnostics.heroTreeModelCount !== 8 || diagnostics.heroFernCount !== 4 ||
+      diagnostics.heroBoulderCount !== 3 || diagnostics.heroBoulderMeshCount < 3 ||
       diagnostics.heroTreeSourceMeshCount < 5000 ||
       diagnostics.heroTreeMeshCount < 16 || diagnostics.heroTreeMeshCount > 120 ||
       diagnostics.groundCoverClusterCount < 5500 ||
@@ -245,7 +247,8 @@ try {
       broadleaf: diagnostics.heroBroadleafReady,
       spruce: diagnostics.heroSpruceReady,
       oak: diagnostics.heroOakReady,
-      ferns: [diagnostics.heroFernReady, diagnostics.heroFernCount],
+      ferns: [diagnostics.heroFernReady, diagnostics.heroFernCount, diagnostics.fernMaterialReady],
+      mossyBoulders: [diagnostics.heroBoulderCount, diagnostics.heroBoulderMeshCount],
       treeInstances: diagnostics.heroTreeModelCount,
       sourceMeshes: diagnostics.heroTreeSourceMeshCount,
       renderMeshesAfterBatching: diagnostics.heroTreeMeshCount,
