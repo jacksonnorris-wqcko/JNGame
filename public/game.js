@@ -117,6 +117,10 @@
   let lodgeInteriorFloorHeight = 1.02;
   let lodgeDeckSurfaceHeight = 1.335;
   let lodgeDoorWorldPosition = { x: -14, z: 38.7 };
+  let lodgeDoorwayWidth = 1.64;
+  let lodgeDoorwayOpen = false;
+  let lodgeNavigationBoxes = [];
+  let lodgeAuthoredInteriorReady = false;
   let cabinInteriorLights = [];
   let heroConiferReady = false, heroBroadleafReady = false;
   let heroSpruceReady = false, heroOakReady = false, heroFernReady = false;
@@ -2237,18 +2241,25 @@
       try {
         try {
           container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
-            "./assets/buildings/", "pinecrest-mountain-hut.glb", scene
+            "./assets/buildings/", "pinecrest-cedarwatch-cabin.glb", scene
           );
-          lodgeModelAssetName = "pinecrest-mountain-hut.glb";
-        } catch (primaryError) {
-          // Keep the previous, fully-tested log cabin as a safe fallback if the
-          // larger architectural asset is unavailable on a local or cached build.
-          console.warn("Mountain Hut model unavailable; using the original log cabin:", primaryError);
-          container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
-            "./assets/buildings/", "pinecrest-lodge.glb", scene
-          );
-          lodgeModelAssetName = "pinecrest-lodge.glb";
-          lodgeModelUsedFallback = true;
+          lodgeModelAssetName = "pinecrest-cedarwatch-cabin.glb";
+        } catch (cedarError) {
+          console.warn("Cedarwatch Cabin unavailable; trying the Mountain Hut fallback:", cedarError);
+          try {
+            container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
+              "./assets/buildings/", "pinecrest-mountain-hut.glb", scene
+            );
+            lodgeModelAssetName = "pinecrest-mountain-hut.glb";
+            lodgeModelUsedFallback = true;
+          } catch (mountainError) {
+            console.warn("Mountain Hut unavailable; using the original lodge fallback:", mountainError);
+            container = await BABYLON.SceneLoader.LoadAssetContainerAsync(
+              "./assets/buildings/", "pinecrest-lodge.glb", scene
+            );
+            lodgeModelAssetName = "pinecrest-lodge.glb";
+            lodgeModelUsedFallback = true;
+          }
         }
 
         lodgeModelContainer = container;
@@ -2269,10 +2280,14 @@
 
         // GLB instantiation prefixes every node name. Match the authored hinge
         // by suffix, otherwise the old procedural door remains in front of the hut.
-        const importedDoorPivot = !lodgeModelUsedFallback
-          ? importedNodes.find((node) => String(node.name || "").toLowerCase().endsWith("mountain-hut_door_l"))
-          : null;
-        if (!lodgeModelUsedFallback && !importedDoorPivot) {
+        const usesCedarwatch = lodgeModelAssetName === "pinecrest-cedarwatch-cabin.glb";
+        const usesMountainHut = lodgeModelAssetName === "pinecrest-mountain-hut.glb";
+        const importedDoorPivot = usesCedarwatch
+          ? null
+          : usesMountainHut
+            ? importedNodes.find((node) => String(node.name || "").toLowerCase().endsWith("mountain-hut_door_l"))
+            : null;
+        if (usesMountainHut && !importedDoorPivot) {
           throw new Error("Mountain Hut imported without its required mountain-hut_door_l hinge node");
         }
 
@@ -2288,9 +2303,11 @@
         // is 9 x 6.5 m. Fit that building to Pinecrest's old 11.8 x 8.6 m datum.
         // This deliberately does not fit the decorative objects into the cabin
         // footprint, which was shrinking the usable building by about one third.
-        const scale = lodgeModelUsedFallback
-          ? Math.min(12.2 / sourceSize.x, 10.9 / sourceSize.z, 7.0 / sourceSize.y)
-          : Math.min(11.8 / 9.0, 8.6 / 6.5);
+        const scale = usesCedarwatch
+          ? 1.60
+          : lodgeModelUsedFallback
+            ? Math.min(12.2 / sourceSize.x, 10.9 / sourceSize.z, 7.0 / sourceSize.y)
+            : Math.min(11.8 / 9.0, 8.6 / 6.5);
         importedRoot.scaling.setAll(scale);
         importedRoot.computeWorldMatrix(true);
 
@@ -2298,10 +2315,67 @@
         if (!scaledBounds) throw new Error("The scaled lodge has no renderable geometry");
         const size = scaledBounds.max.subtract(scaledBounds.min);
 
+        if (usesCedarwatch) {
+          const response = await fetch("./assets/buildings/pinecrest-cedarwatch-scene.json", { cache: "force-cache" });
+          if (!response.ok) throw new Error("Cedarwatch navigation data unavailable: HTTP " + response.status);
+          const cedarScene = await response.json();
+          if (!cedarScene.walk || !Array.isArray(cedarScene.walk.boxes) || cedarScene.walk.boxes.length < 15) {
+            throw new Error("Cedarwatch navigation data is incomplete");
+          }
+
+          const targetDoorCentre = new BABYLON.Vector3(
+            lodgeRoot.position.x,
+            0,
+            lodgeRoot.position.z - 4.12
+          );
+          // The supplied navigation map places the centre of its open doorway at local (0, 0, +2.4).
+          importedRoot.position.set(
+            targetDoorCentre.x,
+            lodgeRoot.position.y - scaledBounds.min.y,
+            targetDoorCentre.z + 2.4 * scale
+          );
+          importedRoot.computeWorldMatrix(true);
+
+          lodgeDoorWorldPosition = { x: targetDoorCentre.x, z: targetDoorCentre.z };
+          lodgeDoorwayWidth = 1.64 * scale;
+          lodgeBuildingCentre = {
+            x: importedRoot.position.x,
+            z: importedRoot.position.z
+          };
+          lodgeBuildingFootprint = { width: 6.0 * scale, depth: 4.8 * scale };
+          lodgeInteriorFloorHeight = importedRoot.position.y + Number(cedarScene.walk.floor_y || 0) * scale;
+          lodgeDeckSurfaceHeight = lodgeInteriorFloorHeight;
+          lodgeDoorwayOpen = true;
+          cabinDoorOpen = true;
+          cabinDoorUsesImportedLeaf = false;
+          cabinDoorAxis = "open";
+          cabinDoorPivot?.setEnabled(false);
+          lodgeLegacyDoorHidden = true;
+          cabinDoorPivot = null;
+
+          lodgeNavigationBoxes = cedarScene.walk.boxes.map((boxData) => ({
+            name: boxData.name || "Cedarwatch collision",
+            minX: importedRoot.position.x - Number(boxData.max[0]) * scale,
+            maxX: importedRoot.position.x - Number(boxData.min[0]) * scale,
+            minZ: importedRoot.position.z - Number(boxData.max[2]) * scale,
+            maxZ: importedRoot.position.z - Number(boxData.min[2]) * scale,
+            minY: importedRoot.position.y + Number(boxData.min[1]) * scale,
+            maxY: importedRoot.position.y + Number(boxData.max[1]) * scale
+          }));
+
+          // The imported GLB already contains its furnished ground-floor room.
+          // Disable the previous hand-built interior so furniture and walls are not duplicated.
+          if (lodgeInteriorRoot) lodgeInteriorRoot.setEnabled(false);
+          cabinInteriorLights.forEach((light) => light.setEnabled(false));
+          lodgeAuthoredInteriorReady = true;
+          lights.lodgeInteriorAdjustedMeshCount = 0;
+
+          const cabinInteractionIndex = interactables.findIndex((item) => item.action === "cabin");
+          if (cabinInteractionIndex >= 0) interactables.splice(cabinInteractionIndex, 1);
+        }
+
         if (importedDoorPivot) {
-          // Align the actual door opening with the old Pinecrest entry position.
-          // Using the door's centre avoids shifting the whole house because of
-          // the hut's attached terrace and decorative scenery.
+          // Align the actual authored door pivot with the Pinecrest entrance.
           const sourceDoorBounds = getImportedHierarchyBounds([importedDoorPivot]);
           if (!sourceDoorBounds) throw new Error("Mountain Hut hinge has no door geometry");
           const sourceDoorCentre = sourceDoorBounds.min.add(sourceDoorBounds.max).scale(0.5);
@@ -2325,6 +2399,8 @@
             z: fittedDoorCentre.z
           };
 
+          lodgeDoorwayWidth = Math.max(1.64, (fittedDoorBounds.max.x - fittedDoorBounds.min.x) * 1.25);
+          lodgeDoorwayOpen = false;
           lodgeBuildingFootprint = {
             width: 9.0 * scale,
             depth: 6.5 * scale
@@ -2345,6 +2421,7 @@
           cabinDoorPivot.rotationQuaternion = null;
           cabinDoorAxis = "z";
           cabinDoorClosedYaw = Number(cabinDoorPivot.rotation.z) || 0;
+          cabinDoorOpen = false;
           cabinDoorUsesImportedLeaf = true;
 
           const doorInteraction = interactables.find((item) => item.action === "cabin");
@@ -2399,10 +2476,12 @@
           y: Number(size.y.toFixed(3)),
           z: Number(size.z.toFixed(3))
         };
-        const sourceFloorY = lodgeModelUsedFallback ? 0.12 : 0.55;
-        lodgeInteriorFloorHeight = sourceFloorY * scale;
-        lodgeDeckSurfaceHeight = sourceFloorY * scale;
-        if (lodgeInteriorRoot) {
+        if (!usesCedarwatch) {
+          const sourceFloorY = lodgeModelUsedFallback ? 0.12 : 0.55;
+          lodgeInteriorFloorHeight = sourceFloorY * scale;
+          lodgeDeckSurfaceHeight = sourceFloorY * scale;
+        }
+        if (lodgeInteriorRoot && !lodgeAuthoredInteriorReady) {
           const interiorOffset = lodgeInteriorFloorHeight - 1.04;
           lodgeInteriorRoot.position.set(
             lodgeBuildingCentre.x - lodgeRoot.position.x,
@@ -3988,8 +4067,8 @@
   }
 
   function lodgeDoorwayContains(x, z) {
-    return Math.abs(x - lodgeDoorWorldPosition.x) < 0.82 &&
-      Math.abs(z - lodgeDoorWorldPosition.z) < 0.62;
+    return Math.abs(x - lodgeDoorWorldPosition.x) < lodgeDoorwayWidth / 2 + 0.06 &&
+      Math.abs(z - lodgeDoorWorldPosition.z) < 0.72;
   }
 
   function lodgeInteriorContains(x, z) {
@@ -4045,7 +4124,10 @@
     if (onSideFence || onNorthFence || onSouthFence) return false;
 
     // The imported door is the only opening through the lodge's solid footprint.
-    if (lodgeDoorwayContains(x, z)) return cabinDoorOpen;
+    if (lodgeDoorwayContains(x, z)) return lodgeDoorwayOpen || cabinDoorOpen;
+    for (const collision of lodgeNavigationBoxes) {
+      if (x > collision.minX && x < collision.maxX && z > collision.minZ && z < collision.maxZ) return false;
+    }
 
     const insideRoom = lodgeInteriorContains(x, z);
     const onTerrace = lodgeTerraceContains(x, z);
@@ -5365,6 +5447,10 @@
     aiming,
     cabinDoorOpen,
     cabinDoorReady: Boolean(cabinDoorPivot),
+    lodgeDoorwayOpen,
+    lodgeDoorwayWidth: Number(lodgeDoorwayWidth.toFixed(2)),
+    lodgeNavigationBoxCount: lodgeNavigationBoxes.length,
+    lodgeAuthoredInteriorReady,
     contractBoardReady: Boolean(contractBoardTexture && contractBoardBackTexture),
     scopeZoom: scopeMagnifications[scopeZoomIndex],
     scopeVisible: Boolean($("scope-overlay") && $("game-shell").classList.contains("aiming") && window.getComputedStyle($("scope-overlay")).display !== "none")
