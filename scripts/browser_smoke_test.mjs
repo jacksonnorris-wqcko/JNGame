@@ -47,7 +47,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.1&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.2&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -81,7 +81,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.1-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.2-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -163,6 +163,9 @@ try {
   }, null, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (diagnostics.lodgeInteriorAdjustedMeshCount < 20) {
+    throw new Error("The Mountain Hut interior floor offset did not refresh its frozen child meshes: " + diagnostics.lodgeInteriorAdjustedMeshCount);
+  }
   if (!diagnostics.lodgeModelReady ||
       diagnostics.lodgeModelAssetName !== "pinecrest-mountain-hut.glb" ||
       diagnostics.lodgeModelUsedFallback ||
@@ -197,7 +200,7 @@ try {
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.1-compound.png");
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.2-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 2) {
     throw new Error("Pinecrest Lodge plaque must have two visible structural timber uprights: " + diagnostics.cabinSignSupportPostCount);
   }
