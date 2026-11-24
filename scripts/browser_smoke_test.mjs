@@ -47,7 +47,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.2&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.3&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -81,7 +81,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.2-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.3-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -166,6 +166,25 @@ try {
   if (diagnostics.lodgeInteriorAdjustedMeshCount < 20) {
     throw new Error("The Mountain Hut interior floor offset did not refresh its frozen child meshes: " + diagnostics.lodgeInteriorAdjustedMeshCount);
   }
+  if (diagnostics.lodgeModelHiddenLegacyMeshCount < 30 ||
+      diagnostics.lodgeModelLegacyVisualStats.visible !== 0 ||
+      diagnostics.lodgeModelLegacyVisualStats.roof !== 0 ||
+      diagnostics.lodgeModelLegacyVisualStats.sign !== 0 ||
+      diagnostics.lodgeModelLegacyVisualStats.chimney !== 0 ||
+      diagnostics.lodgeModelLegacyVisualStats.porch !== 0) {
+    throw new Error("Legacy procedural lodge pieces remain visible alongside the imported Mountain Hut: " + JSON.stringify({
+      hiddenShellMeshes: diagnostics.lodgeModelHiddenLegacyMeshCount,
+      hiddenPorchMeshes: diagnostics.lodgeModelHiddenLegacyPorchCount,
+      remaining: diagnostics.lodgeModelLegacyVisualStats
+    }));
+  }
+  if (!diagnostics.lodgeModelSignReady || !diagnostics.lodgeModelSignFaceVisible) {
+    throw new Error("The new Mountain Hut-mounted Pinecrest Lodge nameplate is not visible: " + JSON.stringify({
+      ready: diagnostics.lodgeModelSignReady,
+      faceVisible: diagnostics.lodgeModelSignFaceVisible,
+      position: diagnostics.lodgeModelSignFacePosition
+    }));
+  }
   if (!diagnostics.lodgeModelReady ||
       diagnostics.lodgeModelAssetName !== "pinecrest-mountain-hut.glb" ||
       diagnostics.lodgeModelUsedFallback ||
@@ -200,23 +219,26 @@ try {
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.2-compound.png");
-  if (diagnostics.cabinSignSupportPostCount !== 2) {
-    throw new Error("Pinecrest Lodge plaque must have two visible structural timber uprights: " + diagnostics.cabinSignSupportPostCount);
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.3-compound.png");
+  if (diagnostics.cabinSignSupportPostCount !== 0) {
+    throw new Error("The old raised lodge sign portal must be hidden after the Mountain Hut replacement: " + diagnostics.cabinSignSupportPostCount);
   }
   if (diagnostics.gateStructuralPostCount !== 2) {
     throw new Error("Pinecrest gate sign must be carried by two grounded structural timber posts: " + diagnostics.gateStructuralPostCount);
   }
-  if (diagnostics.cabinFrontWallBackingCount !== 2) {
-    throw new Error("Pinecrest lodge front log courses must have two opaque wall backing panels: " + diagnostics.cabinFrontWallBackingCount);
+  if (diagnostics.cabinFrontWallBackingCount !== 0) {
+    throw new Error("Legacy log-cabin wall backing must not remain visible through the Mountain Hut: " + diagnostics.cabinFrontWallBackingCount);
   }
-  if (diagnostics.pinecrestGableBeamCount !== 4 || diagnostics.pinecrestRainGutterCount !== 3 ||
-      diagnostics.pinecrestWindowFlowerBoxCount !== 2 || diagnostics.pinecrestWoodshedPostCount !== 4 ||
-      diagnostics.pinecrestWoodshedLogCount !== 12 || diagnostics.pinecrestFernFrondCount < 35) {
-    throw new Error("Pinecrest compound visual dressing is incomplete: " + JSON.stringify({
-      gableBeams: diagnostics.pinecrestGableBeamCount,
-      gutters: diagnostics.pinecrestRainGutterCount,
-      windowBoxes: diagnostics.pinecrestWindowFlowerBoxCount,
+  if (diagnostics.pinecrestGableBeamCount !== 0 ||
+      diagnostics.pinecrestRainGutterCount !== 0 ||
+      diagnostics.pinecrestWindowFlowerBoxCount !== 0 ||
+      diagnostics.pinecrestWoodshedPostCount !== 4 ||
+      diagnostics.pinecrestWoodshedLogCount !== 12 ||
+      diagnostics.pinecrestFernFrondCount < 35) {
+    throw new Error("Pinecrest still shows old cabin dressing or is missing compound details: " + JSON.stringify({
+      legacyGableBeams: diagnostics.pinecrestGableBeamCount,
+      legacyGutters: diagnostics.pinecrestRainGutterCount,
+      legacyWindowBoxes: diagnostics.pinecrestWindowFlowerBoxCount,
       woodshedPosts: diagnostics.pinecrestWoodshedPostCount,
       woodshedLogs: diagnostics.pinecrestWoodshedLogCount,
       fernFronds: diagnostics.pinecrestFernFrondCount
