@@ -284,6 +284,15 @@
       "license": "CC0 1.0 Universal",
       "source": "https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea",
       "integration": "Four PBR fern clumps soften the Pinecrest fence and garden edges"
+    },
+    {
+      "asset": "Timber-Framed House",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-timber-frame-house.glb",
+      "approximate_bytes": 2000000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://tevy.dev/models/timber-frame-house/",
+      "integration": "Candidate replacement Pinecrest hunting lodge with a walkable furnished ground-floor room"
     }
   ]
 }
