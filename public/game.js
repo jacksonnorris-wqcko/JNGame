@@ -125,6 +125,8 @@
   let heroConiferReady = false, heroBroadleafReady = false;
   let heroSpruceReady = false, heroOakReady = false, heroFernReady = false;
   let heroFernCount = 0;
+  let heroFernMaterialReady = false;
+  let heroBoulderCount = 0, heroBoulderMeshCount = 0;
   let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
   let sceneInitError = "";
@@ -741,11 +743,6 @@
     mat.leaf1 = makeFoliageMaterial("Broadleaf foliage dark", "#254b2f", "broadleaf");
     mat.leaf2 = makeFoliageMaterial("Broadleaf foliage mid", "#35633a", "broadleaf");
     mat.leaf3 = makeFoliageMaterial("Broadleaf foliage light", "#4c7943", "broadleaf");
-    mat.fern = makeFoliageMaterial("Pinecrest fern fronds", "#397044", "broadleaf");
-    mat.fern.backFaceCulling = false;
-    mat.fern.twoSidedLighting = true;
-    mat.fern.environmentIntensity = 0.28;
-    mat.fern.directIntensity = 0.9;
     mat.stone = makePbrSurface("Mossy fieldstone", "rock", 2.6, "#c9c7b2");
     mat.stoneDark = makePbrSurface("Shaded fieldstone", "rock", 2.1, "#8d9486");
     mat.mountain1 = makeMaterial("Distant forest mountain", "#526a5e", 0.98);
@@ -2609,8 +2606,13 @@
     for (const mesh of compactMeshes) {
       if (!mesh || mesh.isDisposed()) continue;
       mesh.isPickable = false;
+      // The scanned bracken uses alpha-cutout leaves and its own baked PBR maps.
+      // Preserve those authored materials; only opt it out of the shadow pass.
       mesh.receiveShadows = label !== "fern";
-      if (label === "fern") mesh.material = mat.fern;
+      if (label === "fern" && mesh.material?.getActiveTextures) {
+        heroFernMaterialReady = heroFernMaterialReady ||
+          mesh.material.getActiveTextures().some((texture) => texture && texture.isReady());
+      }
       mesh.metadata = { ...(mesh.metadata || {}), pinecrestHeroVegetation: label };
       if (label !== "fern" && lights.shadows && !mesh.material?.needAlphaBlending?.()) {
         try { lights.shadows.addShadowCaster(mesh, false); } catch (error) { /* leaf geometry may skip shadowing */ }
@@ -2623,6 +2625,42 @@
       obstacles.push({ x, z, radius: (label === "conifer" || label === "spruce") ? 3.8 : 3.2 });
       heroTreeModelCount++;
     }
+  }
+
+  function instantiatePinecrestBoulder(container, x, z, targetHeight, instanceIndex) {
+    const entries = container.instantiateModelsToScene(
+      (name) => "PINECREST_MOSSY_BOULDER_" + instanceIndex + "__" + name,
+      false
+    );
+    const wrapper = new BABYLON.TransformNode("Pinecrest scanned moss boulder " + instanceIndex, scene);
+    entries.rootNodes.forEach((node) => { node.parent = wrapper; });
+    wrapper.rotationQuaternion = null;
+    wrapper.computeWorldMatrix(true);
+    const sourceBounds = getImportedHierarchyBounds([wrapper]);
+    if (!sourceBounds) throw new Error("Mossy boulder asset contained no renderable geometry");
+    const size = sourceBounds.max.subtract(sourceBounds.min);
+    const scale = targetHeight / Math.max(0.01, size.y);
+    const centre = sourceBounds.min.add(sourceBounds.max).scale(0.5);
+    wrapper.rotation.y = rand(0, Math.PI * 2);
+    wrapper.scaling.setAll(scale);
+    wrapper.position.set(
+      x - centre.x * scale,
+      heightAt(x, z) - sourceBounds.min.y * scale,
+      z - centre.z * scale
+    );
+    wrapper.computeWorldMatrix(true);
+    const meshes = wrapper.getChildMeshes(false);
+    for (const mesh of meshes) {
+      mesh.isPickable = false;
+      mesh.receiveShadows = true;
+      mesh.metadata = { ...(mesh.metadata || {}), pinecrestScannedMossBoulder: true };
+      if (lights.shadows) {
+        try { lights.shadows.addShadowCaster(mesh, false); } catch (error) { /* high-detail rock may skip shadows */ }
+      }
+      heroBoulderMeshCount++;
+    }
+    heroBoulderCount++;
+    obstacles.push({ x, z, radius: Math.max(0.8, size.x * scale * 0.42) });
   }
 
   function loadPinecrestHeroVegetation() {
@@ -2703,12 +2741,12 @@
       });
 
     const fernPlacements = [
-      { x: -23.55, z: 42.05, height: 0.68 },
-      { x: -22.85, z: 42.35, height: 0.62 },
-      { x: -5.05, z: 43.85, height: 0.65 },
-      { x: -4.35, z: 44.15, height: 0.68 }
+      { x: -24.15, z: 42.15, height: 0.30 },
+      { x: -22.55, z: 42.15, height: 0.30 },
+      { x: -5.45, z: 44.05, height: 0.30 },
+      { x: -3.85, z: 44.05, height: 0.30 }
     ];
-    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "fern-clump.glb", scene)
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "woodland-bracken-fern.glb", scene)
       .then((container) => {
         fernPlacements.forEach((point, index) =>
           instantiateHeroTree(container, "fern", point.x, point.z, point.height, index + 1)
@@ -2719,7 +2757,25 @@
         const message = error && error.message ? error.message : String(error);
         heroVegetationFailures.push("fern: " + message);
         modelLoadFailures.push("fern: " + message);
-        console.error("Pinecrest fern-clump assets unavailable:", error);
+        console.error("Pinecrest photogrammetry bracken ferns unavailable:", error);
+      });
+
+    const boulderPlacements = [
+      { x: -28.5, z: 36.8, height: 0.48 },
+      { x: -28.8, z: 47.2, height: 0.46 },
+      { x: 1.0, z: 46.6, height: 0.48 }
+    ];
+    BABYLON.SceneLoader.LoadAssetContainerAsync("./assets/vegetation/", "mossy-forest-boulders.glb", scene)
+      .then((container) => {
+        boulderPlacements.forEach((point, index) =>
+          instantiatePinecrestBoulder(container, point.x, point.z, point.height, index + 1)
+        );
+      })
+      .catch((error) => {
+        const message = error && error.message ? error.message : String(error);
+        heroVegetationFailures.push("mossy boulders: " + message);
+        modelLoadFailures.push("mossy boulders: " + message);
+        console.error("Pinecrest mossy boulder scans unavailable:", error);
       });
   }
 
@@ -5390,7 +5446,9 @@
     yardApronReady: Boolean(lights.yardApron && !lights.yardApron.isDisposed()),
     terrainVertexTinted: Boolean(scene && scene.getMeshByName("Pinecrest terrain")?.metadata?.vertexTinted),
     spawnGroundHeight: Number(heightAt(-14, 19).toFixed(3)),
-    fernMaterialReady: Boolean(mat.fern && mat.fern.albedoTexture && mat.fern.albedoTexture.isReady()),
+    fernMaterialReady: Boolean(heroFernReady && heroFernMaterialReady),
+    heroBoulderCount,
+    heroBoulderMeshCount,
     gateSignWorldWidth: gateSignFrontMesh
       ? Number((gateSignFrontMesh.getBoundingInfo().boundingBox.extendSizeWorld.x * 2).toFixed(2))
       : 0,
