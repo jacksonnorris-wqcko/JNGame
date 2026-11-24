@@ -47,7 +47,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.3&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.11.4&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -81,7 +81,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.3-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.4-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -112,9 +112,15 @@ try {
     const diagnostics = window.WildrangeDiagnostics?.();
     return diagnostics && (diagnostics.sceneReady || diagnostics.sceneInitError);
   }, null, { timeout: 45000 });
-  const startingCameraYaw = await page.evaluate(() => window.WildrangeQA.cameraYaw());
-  if (Math.abs(startingCameraYaw - Math.atan2(-14, 24)) > 0.03) {
-    throw new Error("New-hunter camera should start facing Pinecrest Lodge: " + startingCameraYaw);
+  const startingCamera = await page.evaluate(() => ({
+    yaw: window.WildrangeQA.cameraYaw(),
+    position: window.WildrangeQA.cameraPosition()
+  }));
+  if (Math.abs(startingCamera.yaw) > 0.03 ||
+      !startingCamera.position ||
+      Math.abs(startingCamera.position.x + 14) > 0.08 ||
+      Math.abs(startingCamera.position.z - 19) > 0.08) {
+    throw new Error("New-hunter camera must start centred on the Pinecrest gate opening: " + JSON.stringify(startingCamera));
   }
   const startupDiagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (!startupDiagnostics.pinecrestRoofShingleMaterialReady ||
@@ -217,7 +223,7 @@ try {
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.3-compound.png");
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.11.4-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 0) {
     throw new Error("The old raised lodge sign portal must be hidden after the Mountain Hut replacement: " + diagnostics.cabinSignSupportPostCount);
   }
