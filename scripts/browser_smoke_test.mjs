@@ -53,7 +53,7 @@ try {
     }
   });
 
-  await page.goto("http://127.0.0.1:8000/play.html?build=0.13.0&qa=1", {
+  await page.goto("http://127.0.0.1:8000/play.html?build=0.13.1&qa=1", {
     waitUntil: "domcontentloaded",
     timeout: 90000
   });
@@ -87,7 +87,7 @@ try {
       )
     };
   });
-  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.13.0-title-preflight.png");
+  const titleScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.13.1-title-preflight.png");
   if (!titleDom.startScreenFound || !titleDom.startButtonFound || !titleDom.playerNameFound) {
     throw new Error("Title screen DOM is incomplete: " + JSON.stringify({
       ...titleDom,
@@ -173,10 +173,29 @@ try {
       state.yardApronReady && state.terrainVertexTinted &&
       state.fernMaterialReady && state.gateSignWorldWidth > 0 && state.gateSignWorldWidth < 2.8 &&
       state.lodgeDoorwayOpen && state.lodgeNavigationBoxCount >= 15 &&
-      state.lodgeAuthoredInteriorReady && state.spawnGroundHeight > 0.75;
+      state.lodgeAuthoredInteriorReady &&
+      state.cedarwatchHiddenAccessoryCount >= 14 &&
+      state.cedarwatchFacadeWallMeshCount >= 8 &&
+      state.cedarwatchWindowGlassCount >= 4 &&
+      state.cedarwatchRoofTileCount >= 100 &&
+      state.cedarwatchTimberTrimCount >= 20 &&
+      state.spawnGroundHeight > 0.75;
   }, null, { timeout: 90000 });
 
   const diagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
+  if (diagnostics.cedarwatchHiddenAccessoryCount < 14 ||
+      diagnostics.cedarwatchFacadeWallMeshCount < 8 ||
+      diagnostics.cedarwatchWindowGlassCount < 4 ||
+      diagnostics.cedarwatchRoofTileCount < 100 ||
+      diagnostics.cedarwatchTimberTrimCount < 20) {
+    throw new Error("Cedarwatch exterior art finish is incomplete: " + JSON.stringify({
+      removedConeTreesAndBushes: diagnostics.cedarwatchHiddenAccessoryCount,
+      texturedWallPanels: diagnostics.cedarwatchFacadeWallMeshCount,
+      finishedAmberWindows: diagnostics.cedarwatchWindowGlassCount,
+      finishedRoofTiles: diagnostics.cedarwatchRoofTileCount,
+      finishedTimberTrim: diagnostics.cedarwatchTimberTrimCount
+    }));
+  }
   if (!diagnostics.lodgeAuthoredInteriorReady || diagnostics.lodgeNavigationBoxCount < 15) {
     throw new Error("The authored Cedarwatch interior/navigation package did not initialise: " + JSON.stringify({
       authoredInterior: diagnostics.lodgeAuthoredInteriorReady,
@@ -270,7 +289,7 @@ try {
     }));
   }
   await fs.promises.mkdir("artifacts", { recursive: true });
-  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.13.0-compound.png");
+  const compoundScreenshotCaptured = await safeScreenshot("artifacts/wildrange-0.13.1-compound.png");
   if (diagnostics.cabinSignSupportPostCount !== 0) {
     throw new Error("The old raised lodge sign portal must be hidden after the Mountain Hut replacement: " + diagnostics.cabinSignSupportPostCount);
   }
