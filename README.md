@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.11.5**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.12.0**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -233,6 +233,18 @@ The 0.11.4 screenshot review exposed two integration faults that made the new Mo
 - Browser QA now fails if the old door remains active, the imported door is not used, the wrong hinge axis is selected, or the actual building footprint falls below the integration target.
 
 The source asset is exterior-only, so this is an integration and traversal correction rather than a claim that a fully authored interior has been added. The existing grouped Wildrange interior remains aligned to the fitted building floor.
+
+## 0.12.0 Pinecrest environment-art overhaul
+
+This coordinated visual pass addresses the flat, empty foreground and repeated tree silhouettes visible in the 0.11.5 compound screenshot.
+
+- The outpost clearing now follows the actual camp footprint and gate approach, with a graded terrain blend instead of a 44 m radius of uniformly flat ground.
+- A single irregular compacted-gravel apron defines the working yard inside the compound fence. The foreground outside the yard receives dense, spatially weighted meadow grass clusters and varied terrain vertex tint.
+- Procedural conifer boughs change from stacked spheres to tapered branch tiers, and broadleaf crowns receive a less regular silhouette.
+- Four additional authored CC0 assets add Norway spruce, detailed oak and PBR fern clumps at separated forest-edge and yard positions. Existing detailed conifer and linden assets remain in use.
+- The first-person rifle presentation is reduced slightly in screen scale to give more of the world back to the player.
+
+All new models are downloaded during CI/Pages builds and have their source and CC0 license recorded in the asset manifest and attribution file. The next validation gate checks that all eight hero trees, four fern clumps, foreground grass, gravel apron and terrain tint load in headless Chrome before this build is called visually approved.
 
 ## Cost
 
