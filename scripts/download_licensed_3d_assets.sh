@@ -34,6 +34,23 @@ fetch_asset \
   "$BUILDINGS/pinecrest-timber-frame-house.glb" \
   "Timber-Framed House with furnished interior (CC0)"
 
+# Cedarwatch is a complete forest lodge scene: the standard GLB includes
+# the furnished interior and open doorway; keep its navigation/report data beside it.
+CEDAR_TMP="$(mktemp -d)"
+trap 'rm -rf "$CEDAR_TMP"' EXIT
+fetch_asset \
+  "https://scenecrate.com/worlds/buildings/forest-cabin/delivery.zip" \
+  "$CEDAR_TMP/cedarwatch-delivery.zip" \
+  "Cedarwatch Cabin scene pack (CC0)"
+unzip -q "$CEDAR_TMP/cedarwatch-delivery.zip" -d "$CEDAR_TMP/cedarwatch"
+test -s "$CEDAR_TMP/cedarwatch/models/standard.glb"
+test -s "$CEDAR_TMP/cedarwatch/scene.json"
+test -s "$CEDAR_TMP/cedarwatch/report.json"
+cp "$CEDAR_TMP/cedarwatch/models/standard.glb" "$BUILDINGS/pinecrest-cedarwatch-cabin.glb"
+cp "$CEDAR_TMP/cedarwatch/scene.json" "$BUILDINGS/pinecrest-cedarwatch-scene.json"
+cp "$CEDAR_TMP/cedarwatch/report.json" "$BUILDINGS/pinecrest-cedarwatch-report.json"
+echo "Fetched Cedarwatch Cabin: standard GLB plus scene navigation and measured report"
+
 fetch_asset \
   "https://www.innerscene.com/api/library/conifer-detailed-needles-ca8e7cef/download" \
   "$VEGETATION/conifer-detailed.glb" \
@@ -59,7 +76,7 @@ fetch_asset \
   "$VEGETATION/fern-clump.glb" \
   "Fern clumps (CC0)"
 
-python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$BUILDINGS/pinecrest-timber-frame-house.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" <<'PY'
+python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$BUILDINGS/pinecrest-timber-frame-house.glb" "$BUILDINGS/pinecrest-cedarwatch-cabin.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" <<'PY'
 import os
 import struct
 import sys
@@ -68,6 +85,7 @@ minimum_bytes = {
     "pinecrest-lodge.glb": 1_000_000,
     "pinecrest-mountain-hut.glb": 2_000_000,
     "pinecrest-timber-frame-house.glb": 1_800_000,
+    "pinecrest-cedarwatch-cabin.glb": 900_000,
     "conifer-detailed.glb": 1_000_000,
     "linden-detailed.glb": 1_000_000,
     "norway-spruce.glb": 1_000_000,
@@ -88,6 +106,15 @@ for path in sys.argv[1:]:
             f"Invalid GLB header: {path} (version={version}, declared={declared_length}, actual={size})"
         )
     print(f"Validated {os.path.basename(path)}: {size:,} bytes, glTF {version}")
+    if os.path.basename(path) == "pinecrest-cedarwatch-cabin.glb":
+        import json
+        report_path = os.path.join(os.path.dirname(path), "pinecrest-cedarwatch-report.json")
+        scene_path = os.path.join(os.path.dirname(path), "pinecrest-cedarwatch-scene.json")
+        report = json.load(open(report_path, encoding="utf-8"))
+        scene_data = json.load(open(scene_path, encoding="utf-8"))
+        print("Cedarwatch measured bounds:", report.get("bounds"))
+        print("Cedarwatch standard metrics:", report.get("variants", {}).get("standard"))
+        print("Cedarwatch navigation data:", json.dumps(scene_data.get("navigation", {}))[:7000])
     with open(path, "rb") as stream:
         stream.seek(12)
         json_length, json_type = struct.unpack("<II", stream.read(8))
