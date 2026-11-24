@@ -293,6 +293,15 @@
       "license": "CC0 1.0 Universal",
       "source": "https://tevy.dev/models/timber-frame-house/",
       "integration": "Candidate replacement Pinecrest hunting lodge with a walkable furnished ground-floor room"
+    },
+    {
+      "asset": "Cedarwatch Cabin",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-cedarwatch-cabin.glb",
+      "approximate_bytes": 956496,
+      "license": "CC0 1.0 Universal",
+      "source": "https://scenecrate.com/scenes/forest-cabin",
+      "integration": "Primary Pinecrest hunting lodge with cedar cladding, green shingle roof, amber windows, dressed-stone chimney, furnished interior and open 1.64 m front doorway"
     }
   ]
 }
