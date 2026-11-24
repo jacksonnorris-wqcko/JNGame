@@ -975,12 +975,24 @@
         [0.78, 5.15, -0.1, 1.18]
       ];
       clusters.forEach((entry, index) => {
-        const crown = BABYLON.MeshBuilder.CreateSphere("photographic broadleaf crown", {
-          diameter: entry[3] * scale * 2, segments: 20
+        const crown = BABYLON.MeshBuilder.CreateIcoSphere("photographic broadleaf crown", {
+          radius: entry[3] * scale, subdivisions: 2
         }, scene);
+        const crownPositions = crown.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+        for (let vertex = 0; vertex < crownPositions.length; vertex += 3) {
+          const px = crownPositions[vertex], py = crownPositions[vertex + 1], pz = crownPositions[vertex + 2];
+          const ripple = 1 +
+            0.075 * Math.sin(px * 2.7 + index * 1.8) * Math.cos(py * 2.2 - pz * 1.4) +
+            0.045 * Math.sin(pz * 4.1 + px * 1.3 + index);
+          crownPositions[vertex] *= ripple;
+          crownPositions[vertex + 1] *= ripple;
+          crownPositions[vertex + 2] *= ripple;
+        }
+        crown.updateVerticesData(BABYLON.VertexBuffer.PositionKind, crownPositions);
+        crown.refreshBoundingInfo();
         crown.parent = root;
         crown.position.set(entry[0] * scale, entry[1] * scale, entry[2] * scale);
-        crown.scaling.set(rand(0.82, 1.18), rand(0.78, 1.08), rand(0.86, 1.16));
+        crown.scaling.set(rand(0.88, 1.14), rand(0.82, 1.06), rand(0.86, 1.12));
         crown.rotation.set(rand(-0.12, 0.12), rand(0, Math.PI * 2), rand(-0.12, 0.12));
         crown.material = [mat.leaf1, mat.leaf2, mat.leaf3][index % 3];
         crown.isPickable = false;
@@ -993,13 +1005,20 @@
         { y: 6.22, r: 1.30, h: 1.55 }, { y: 7.02, r: 0.92, h: 1.35 }
       ];
       whorls.forEach((whorl, index) => {
-        const crown = BABYLON.MeshBuilder.CreateSphere("pine needle bough cluster", {
-          diameter: whorl.r * scale * 2, segments: 18
+        const crown = BABYLON.MeshBuilder.CreateCylinder("pine needle bough cluster", {
+          height: whorl.h * scale,
+          diameterTop: 0.09 * scale,
+          diameterBottom: whorl.r * scale * 2,
+          tessellation: 14
         }, scene);
         crown.parent = root;
-        crown.position.set(rand(-0.15, 0.15) * scale, whorl.y * scale, rand(-0.15, 0.15) * scale);
-        crown.scaling.set(rand(0.9, 1.14), (whorl.h / whorl.r) * rand(0.94, 1.1), rand(0.9, 1.12));
-        crown.rotation.y = rand(0, Math.PI * 2);
+        crown.position.set(
+          rand(-0.12, 0.12) * scale,
+          whorl.y * scale,
+          rand(-0.12, 0.12) * scale
+        );
+        crown.scaling.set(rand(0.92, 1.10), 1, rand(0.92, 1.10));
+        crown.rotation.set(rand(-0.025, 0.025), rand(0, Math.PI * 2), rand(-0.025, 0.025));
         crown.material = [mat.pine1, mat.pine2, mat.pine3, mat.pine2][index % 4];
         crown.isPickable = false;
         crown.receiveShadows = false;
@@ -2825,7 +2844,6 @@
       const z = rand(-124, 125);
       if (flatArea(x, z)) continue;
       if (isPinecrestCompoundClearance(x, z)) continue;
-      if (Math.hypot(x, z - 31) < 21) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 27) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 7 && z > 25 && z < 108) continue;
@@ -2861,12 +2879,12 @@
 
   function setupLighting() {
     const hemi = new BABYLON.HemisphericLight("sky-fill", new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.intensity = 0.62;
+    hemi.intensity = 0.52;
     hemi.groundColor = hex("#465541");
     hemi.diffuse = hex("#e5e8d6");
     const sun = new BABYLON.DirectionalLight("morning-sun", new BABYLON.Vector3(-0.38, -1, 0.24), scene);
     sun.position = new BABYLON.Vector3(65, 105, -70);
-    sun.intensity = 1.0;
+    sun.intensity = 1.08;
     sun.diffuse = hex("#ffe1b2");
     sun.specular = hex("#fff0d3");
     lights.hemi = hemi;
@@ -2888,7 +2906,8 @@
   function createWeapon() {
     weaponRoot = new BABYLON.TransformNode("Wildrange scoped marksman rifle", scene);
     weaponRoot.parent = camera;
-    weaponRoot.position.set(0.34, -0.34, 0.76);
+    weaponRoot.position.set(0.40, -0.42, 0.78);
+    weaponRoot.scaling.setAll(0.84);
     weaponRoot.rotation.set(0, 0, 0);
 
     // Small visual effect only; both rifle silhouettes and optic hardware are imported GLB meshes.
@@ -3436,8 +3455,8 @@
       pipeline.bloomWeight = 0.045;
       pipeline.bloomKernel = 48;
       pipeline.imageProcessingEnabled = true;
-      pipeline.imageProcessing.exposure = 0.94;
-      pipeline.imageProcessing.contrast = 1.10;
+      pipeline.imageProcessing.exposure = 1.0;
+      pipeline.imageProcessing.contrast = 1.16;
       pipeline.imageProcessing.toneMappingEnabled = true;
       pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
       lights.pipeline = pipeline;
@@ -3451,28 +3470,44 @@
   function createGroundCover() {
     const positions = [], indices = [], colors = [];
     let placed = 0, attempts = 0;
-    while (placed < 1480 && attempts < 5200) {
+    while (placed < 4600 && attempts < 18000) {
       attempts++;
-      const x = rand(-132, 132), z = rand(-132, 132);
-      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) || Math.hypot(x, z - 31) < 24) continue;
+      let x, z;
+      if (placed < 3200) {
+        const angle = rand(0, Math.PI * 2);
+        const radius = Math.sqrt(rand(0, 1)) * 92;
+        x = -14 + Math.cos(angle) * radius;
+        z = 19 + Math.sin(angle) * radius;
+      } else {
+        x = rand(-132, 132);
+        z = rand(-132, 132);
+      }
+      if (flatArea(x, z) || isPinecrestCompoundClearance(x, z)) continue;
       if (Math.hypot((x - 55) / 1.3, (z + 44) / 0.8) < 25) continue;
       const roadX = 0.003 * z * z - 0.12 * z - 1;
       if (Math.abs(x - roadX) < 5.2 && z > 25 && z < 108) continue;
       if (obstacles.some((item) => Math.hypot(x - item.x, z - item.z) < item.radius + 1.6)) continue;
-      const y = heightAt(x, z) + 0.06;
-      const shade = rand(0.82, 1.13);
-      for (let blade = 0; blade < 4; blade++) {
+      const y = heightAt(x, z) + 0.055;
+      const shade = rand(0.78, 1.16);
+      const blades = 5 + (rand(0, 1) > 0.58 ? 1 : 0);
+      for (let blade = 0; blade < blades; blade++) {
         const angle = rand(0, Math.PI * 2);
-        const half = rand(0.03, 0.082);
-        const height = rand(0.28, 0.72);
-        const lean = rand(0.025, 0.16);
+        const half = rand(0.035, 0.095);
+        const height = rand(0.26, 0.78);
+        const lean = rand(0.035, 0.18);
         const sideX = Math.cos(angle) * half, sideZ = Math.sin(angle) * half;
         const tipX = x + Math.cos(angle + 0.9) * lean;
         const tipZ = z + Math.sin(angle + 0.9) * lean;
         const base = positions.length / 3;
-        positions.push(x - sideX, y, z - sideZ, x + sideX, y, z + sideZ, tipX, y + height, tipZ);
-        const green = clamp(0.42 * shade + rand(-0.035, 0.035), 0.32, 0.58);
-        for (let v = 0; v < 3; v++) colors.push(0.27 * shade, green, 0.13 * shade, 1);
+        positions.push(
+          x - sideX, y, z - sideZ,
+          x + sideX, y, z + sideZ,
+          tipX, y + height, tipZ
+        );
+        const green = clamp(0.39 * shade + rand(-0.045, 0.045), 0.28, 0.60);
+        const red = clamp(0.22 * shade + rand(-0.025, 0.025), 0.16, 0.32);
+        const blue = clamp(0.105 * shade + rand(-0.018, 0.018), 0.06, 0.16);
+        for (let v = 0; v < 3; v++) colors.push(red, green, blue, 1);
         indices.push(base, base + 1, base + 2);
       }
       placed++;
@@ -3491,6 +3526,7 @@
     grass.receiveShadows = false;
     grass.hasVertexAlpha = false;
     lights.grassMesh = grass;
+    lights.grassClusterCount = placed;
   }
 
   function createBush(x, z, scale) {
@@ -3511,7 +3547,7 @@
 
   function scatterUndergrowth() {
     let placed = 0, attempts = 0;
-    while (placed < 34 && attempts < 280) {
+    while (placed < 58 && attempts < 620) {
       attempts++;
       const x = rand(-120, 120), z = rand(-120, 120);
       if (flatArea(x, z) || isPinecrestCompoundClearance(x, z) || Math.hypot(x, z - 31) < 24) continue;
@@ -3643,13 +3679,14 @@
     scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color4(0.67, 0.79, 0.82, 1);
     scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    scene.fogDensity = 0.0021;
+    scene.fogDensity = 0.00175;
     scene.fogColor = hex("#b5c5ae");
     scene.collisionsEnabled = false;
     createMaterials();
     setupLighting();
     createSkyDome();
     makeTerrain();
+    createPinecrestYardApron();
     createDistantRidgeBands();
     buildTrail();
     createPinecrestLake();
