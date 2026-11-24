@@ -2,8 +2,8 @@
 
 **Updated:** 24 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
-**Working branch:** `art/pinecrest-world-visual-overhaul`  
-**Current source build:** `0.13.0 candidate (review branch; browser QA pending)`  
+**Working branch:** `art/pinecrest-visual-upgrade-0131`  
+**Current source build:** `0.13.1 candidate (visual review branch; browser QA pending)`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -22,7 +22,19 @@ Wildrange is a stylised first-person hunting adventure. The priority is a stable
 
 Progress is currently stored in browser `localStorage`. There is no account system, cloud save service or multiplayer backend.
 
-## 0.13.0 Cedarwatch lodge and woodland replacement — candidate
+## 0.13.1 exterior art upgrade — candidate
+
+**Status:** Review branch only. Do not merge until the browser screenshot confirms the cabin finish and the walk-through remains intact.
+
+- Cedarwatch's actual GLB hierarchy was inspected. Its source pack includes two decorative cone trees (four stacked crown meshes per tree) and four low-faceted sage bushes. These 14 meshes are removed from the cabin's bundled scene; the two matching tree-trunk walk blockers are removed from the navigation boxes.
+- Side and rear wall meshes use weathered vertical cedar-board albedo and bump/normal detail, with visible board seams and grain.
+- Layered roof tiles are reassigned across three deeper evergreen PBR finishes; the plane beneath them is darkened.
+- Amber window inserts use warmer glazing; existing corner posts, exposed gable beams and cedar plank edges use a lighter structural trim finish.
+- The scanned fern material is brightened under the Pinecrest daylight rig.
+- Imported hero conifer, broadleaf, spruce and oak models are moved closer to the compound to create a higher-detail visible forest frame.
+- Browser QA requires the expected bundled props removed, at least eight textured wall panels, four warm windows, 100 roof tiles and 20 trim meshes.
+
+## 0.13.1 Cedarwatch lodge and woodland replacement — candidate
 
 **Status:** Static validation passed on commit `5d8762719e8f60f7796f5c84903fe9992eb5c42c`. Chrome gameplay validation is still running; do not merge or call this live yet.
 
@@ -43,7 +55,7 @@ Progress is currently stored in browser `localStorage`. There is no account syst
 ### Candidate QA gates
 - Static JS syntax, HTML/cache version consistency, asset presence/provenance and Cedarwatch walk-data validation: passed.
 - Browser smoke test must verify Cedarwatch loads, the nameplate is readable, the doorway and furnished interior are walkable, compound signs and collision remain correct, scanned ferns/boulders load, and the scene renders without browser errors.
-- A composited compound screenshot is required for visual approval. The previous 0.13.0 run timed out while using Playwright's standard screenshot path; the current test uses Chrome DevTools capture instead.
+- A composited compound screenshot is required for visual approval. The previous 0.13.1 run timed out while using Playwright's standard screenshot path; the current test uses Chrome DevTools capture instead.
 - PR 2 remains open against `main`. No merge or Pages deployment has been performed.
 
 ## 0.8.21 visual finish
