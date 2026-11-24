@@ -3,7 +3,7 @@
 **Updated:** 18 November 2026  
 **Repository:** https://github.com/jacksonnorris-wqcko/JNGame  
 **Working branch:** `main`  
-**Current source build:** `0.11.2`  
+**Current source build:** `0.11.3`  
 **Game:** https://jacksonnorris-wqcko.github.io/JNGame/
 
 ## Product direction
@@ -163,6 +163,31 @@ This follow-up makes the existing player and lodge interaction systems follow th
 - New-game spawn retains the existing position but sets its yaw toward the Pinecrest Lodge centre.
 - Untouched saved games at the original spawn coordinates/yaw are migrated to the same heading. Other saved player positions and view directions are preserved.
 - Browser QA checks the initial camera heading, the imported doorway when closed/open, the interaction target distance, interior floor, terrace, steps and entry path.
+
+## 0.11.3 screenshot-driven removal of duplicate Pinecrest cabin geometry
+
+The 24 November gameplay screenshot showed the imported Mountain Hut and the previous procedural lodge rendering simultaneously. The old cleanup patterns were incomplete: notably `Pinecrest continuous cedar shingle roof surface`, the old chimney, the entire old lodge sign portal, outpost flag and several entry/porch objects were not hidden.
+
+### Cleanup
+
+- `LEGACY_LODGE_SHELL_PATTERN` now includes the old continuous cedar roof panels, roof fascia/ridge/rafters, gable details, chimney blocks/cap/flue, log courses/end-grain, old window components, full lodge sign assembly, old gutters/downpipes and outpost flag/pole/stripe.
+- `LEGACY_LODGE_PORCH_PATTERN` now includes old platform/deck, porch posts/caps/braces/rails, steps/nosings, entry stair handrails, door jamb/recess/lintel, porch lanterns and the simple cube-bodied entrance lanterns.
+- `hideLegacyCabinExterior()` and `hideLegacyLodgePorch()` unfreeze affected meshes where necessary, set `isVisible=false` and disable them.
+- The old porch/entry/compound light sources are disabled with their old housings for the Mountain Hut; they must not illuminate empty fixture positions.
+- The outpost gate sign, outfitter signage, harvest signage, firewood shelter, trough, fence, compound board and independent lodge interior are retained.
+
+### Replacement nameplate
+
+`createMountainHutNameplate()` creates a smaller wall-mounted, brass-edged Pinecrest Lodge plaque. Its placement is computed from the imported door leaf's actual world-space bounds, then converted into the Mountain Hut's local coordinates. It is no longer carried by the previous cabin's tall sign portal.
+
+### Diagnostics and QA
+
+- `lodgeModelLegacyVisualStats` reports remaining visible legacy roof, sign, chimney, porch, flag and lantern meshes. Browser QA requires all counts to equal zero after the Mountain Hut loads.
+- `lodgeModelHiddenLegacyMeshCount` and `lodgeModelHiddenLegacyPorchCount` record the number of old meshes disabled.
+- QA checks the new mounted nameplate is ready and visibly renderable, and that no old raised sign posts remain enabled.
+- The browser smoke screenshot is `artifacts/wildrange-0.11.3-compound.png`.
+
+This pass is a corrective cleanup for the visibly mixed architecture in the supplied screenshot. It does not certify the remaining outfitter, woodshed, terrain or wildlife as final-quality assets; those need their own coherent art passes.
 
 ## Validation status
 
