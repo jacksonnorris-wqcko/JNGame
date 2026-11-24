@@ -4659,12 +4659,18 @@
     }
     if (useSave) {
       loadSave();
-      // Migrate untouched first-spawn saves so the player faces the new lodge entry.
-      if (Math.abs(state.x) < 0.1 && Math.abs(state.z - 19) < 0.1 && Math.abs(state.yaw) < 0.05) {
-        state.yaw = Math.atan2(-14, 24);
+      // Migrate untouched first-spawn saves into the centre of the gate opening.
+      // Both the original straight-ahead spawn and the previous angled lodge view
+      // are recognised; saves where the hunter has actually moved are untouched.
+      const previousSpawnYaw = Math.atan2(-14, 24);
+      const stillAtOriginalSpawn = Math.abs(state.x) < 0.1 && Math.abs(state.z - 19) < 0.1 &&
+        (Math.abs(state.yaw) < 0.05 || Math.abs(state.yaw - previousSpawnYaw) < 0.05);
+      if (stillAtOriginalSpawn) {
+        state.x = -14;
+        state.yaw = 0;
       }
     } else {
-      state = { ...defaults, name, x: 0, z: 19, yaw: Math.atan2(-14, 24) };
+      state = { ...defaults, name, x: -14, z: 19, yaw: 0 };
       localStorage.removeItem(SAVE_KEY);
     }
     state.name = name;
@@ -5083,6 +5089,7 @@
         return target ? { x: target.x, z: target.z } : { x: -14, z: 38.7 };
       },
       cameraYaw: () => camera ? camera.rotation.y : null,
+      cameraPosition: () => camera ? { x: camera.position.x, z: camera.position.z } : null,
       lodgeFloorHeight: () => lodgeInteriorFloorHeight,
       lodgeDeckHeight: () => lodgeDeckSurfaceHeight,
       bearingFor: (degrees) => bearingName(Number(degrees))
