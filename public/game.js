@@ -1952,7 +1952,7 @@
   }
 
   const LEGACY_LODGE_SHELL_PATTERN = /^(lodge stone foundation|lodge timber floor|front log course|rear log course|side log course|Pinecrest (front|rear|side) log cut end|lodge corner timber|lodge front cross beam|lodge rear cross beam|lodge timber gable|lodge pitched roof|Pinecrest continuous cedar shingle roof surface|roof fascia|roof ridge cap|exposed roof rafter|Pinecrest gable (diagonal king timber|collar tie|king post|timber vent|vent brass rim|vent louver)|Pinecrest lodge front wall opaque backing|lodge interior (left wall|right wall|rear wall|front lintel)|rear interior wall timber batten|side interior wall timber batten|window recess|window glazed pane|window upright|window sill|window cross rail|window mullion|window transom|window shutter backing|window shutter vertical slat|window shutter cross brace|window shutter iron hinge strap|window shutter brass hinge pin|Pinecrest window flower box body|Pinecrest window flower box front board|Pinecrest window flower box iron bracket|Pinecrest window box foliage|Pinecrest window box flower|chimney stone|chimney flue|chimney cap|Pinecrest lodge sign backing|Pinecrest lodge sign face|Pinecrest lodge sign iron bracket|Pinecrest lodge sign iron post strap|Pinecrest lodge sign lower support|Pinecrest lodge sign mounting cleat|Pinecrest lodge sign portal knee brace|Pinecrest lodge sign post brass bolt|Pinecrest lodge sign post cap|Pinecrest lodge sign post stone shoe|Pinecrest lodge sign structural header|Pinecrest lodge sign structural timber post|lodge sign brass fixing|Pinecrest lodge copper rain downpipe|Pinecrest lodge metal rain gutter|Pinecrest gutter forged bracket|Pinecrest downpipe outlet shoe|outpost flag pole|Pinecrest outpost flag|outpost flag gold stripe)$/i;
-  const LEGACY_LODGE_PORCH_PATTERN = /^(lodge porch platform|porch deck board|solid lodge entry stair \d+|stair front nosing \d+|porch support post|porch post cap|Pinecrest porch timber knee brace|Pinecrest porch brass brace bolt|porch canopy|porch handrail|porch baluster|porch footing|porch bearer|entry stair handrail post|entry stair left handrail|entry stair right handrail|lodge door recess|door jamb|door lintel|door header|cabin stove flue|porch lantern|Pinecrest porch companion lantern|Pinecrest porch companion lantern glass)$/i;
+  const LEGACY_LODGE_PORCH_PATTERN = /^(lodge porch platform|porch deck board|solid lodge entry stair \d+|stair front nosing \d+|porch support post|porch post cap|Pinecrest porch timber knee brace|Pinecrest porch brass brace bolt|porch canopy|porch handrail|porch baluster|porch footing|porch bearer|entry stair handrail post|entry stair left handrail|entry stair right handrail|lodge door recess|door jamb|door lintel|door header|cabin stove flue|porch lantern|Pinecrest porch companion lantern|Pinecrest porch companion lantern glass|compound entrance lantern post|compound lantern backplate|compound lantern glass)$/i;
 
   function isLegacyLodgeVisualName(name) {
     return LEGACY_LODGE_SHELL_PATTERN.test(String(name || "")) ||
@@ -1960,7 +1960,7 @@
   }
 
   function countLegacyLodgeVisuals(root) {
-    const stats = { visible: 0, roof: 0, sign: 0, chimney: 0, porch: 0 };
+    const stats = { visible: 0, roof: 0, sign: 0, chimney: 0, porch: 0, flag: 0, lantern: 0 };
     if (!root) return stats;
     for (const mesh of root.getChildMeshes(false)) {
       if (!mesh || mesh.isDisposed() || !mesh.isEnabled() || !mesh.isVisible) continue;
@@ -1971,6 +1971,8 @@
       if (/lodge sign|lodge sign brass/i.test(name)) stats.sign++;
       if (/chimney/i.test(name)) stats.chimney++;
       if (LEGACY_LODGE_PORCH_PATTERN.test(name)) stats.porch++;
+      if (/outpost flag/i.test(name)) stats.flag++;
+      if (/compound (entrance lantern|lantern backplate|lantern glass)/i.test(name)) stats.lantern++;
     }
     return stats;
   }
@@ -1992,7 +1994,16 @@
   }
 
   function hideLegacyLodgePorch(root) {
-    return disableLegacyLodgeMeshes(root, LEGACY_LODGE_PORCH_PATTERN);
+    const hidden = disableLegacyLodgeMeshes(root, LEGACY_LODGE_PORCH_PATTERN);
+    // The old box lanterns and porch fixtures were built for the log cabin.
+    // Their light sources must not keep illuminating empty positions after
+    // their mismatched housings are removed from the Mountain Hut.
+    for (const light of scene.lights) {
+      if (/compound gate warm light|Pinecrest porch companion warm light|warm porch lantern light/i.test(light.name)) {
+        light.setEnabled(false);
+      }
+    }
+    return hidden;
   }
 
   function createMountainHutNameplate(importedRoot, doorPivot, uniformScale) {
