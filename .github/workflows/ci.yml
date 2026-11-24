@@ -59,7 +59,7 @@ jobs:
             if (!js.includes("Pinecrest gate structural timber support post") || !js.includes("Pinecrest gate stone post footing")) throw new Error("Pinecrest outpost sign must have grounded structural posts and footings");
             if (!js.includes("createMountainHutNameplate") || !js.includes("Pinecrest mountain lodge sign backing") || !js.includes("Pinecrest mountain lodge sign face")) throw new Error("The Pinecrest Lodge nameplate must be mounted to the authored Mountain Hut doorway");
             if (!js.includes("Pinecrest lodge front wall opaque backing") || !js.includes("Pinecrest lodge opaque timber wall backing")) throw new Error("Pinecrest lodge front log courses must be backed by opaque timber panels");
-            for (const compoundFeature of ["buildPinecrestCompoundLife", "Pinecrest gable diagonal king timber", "Pinecrest lodge metal rain gutter", "Pinecrest window flower box body", "Pinecrest firewood shelter structural post", "Pinecrest yard water trough body", "Pinecrest walkway edge fieldstone", "createWeatheredRoofMaterial", "createLogEndgrainMaterial", "registerCompoundShadowCasters", "Pinecrest continuous cedar shingle roof surface", "compound fence steel rail bracket", "instantiateHeroTree", "heroTreeSourceMeshCount", "pinecrest-mountain-hut.glb", "Mountain Hut", "lodgeModelWorldDimensions", "lodgeInteriorRoot", "lodgeInteriorFloorHeight", "lodgeDoorwayContains", "lodgeDoorWorldPosition", "lodgeInteriorAdjustedMeshCount", "LEGACY_LODGE_SHELL_PATTERN", "LEGACY_LODGE_PORCH_PATTERN", "lodgeModelLegacyVisualStats", "lodgeModelHiddenLegacyMeshCount", "createMountainHutNameplate", "Pinecrest mountain lodge sign brass edge", "compound lantern backplate", "cameraPosition"]) {
+            for (const compoundFeature of ["buildPinecrestCompoundLife", "Pinecrest gable diagonal king timber", "Pinecrest lodge metal rain gutter", "Pinecrest window flower box body", "Pinecrest firewood shelter structural post", "Pinecrest yard water trough body", "Pinecrest walkway edge fieldstone", "createWeatheredRoofMaterial", "createLogEndgrainMaterial", "registerCompoundShadowCasters", "Pinecrest continuous cedar shingle roof surface", "compound fence steel rail bracket", "instantiateHeroTree", "heroTreeSourceMeshCount", "createPinecrestYardApron", "Pinecrest compacted gravel clearing", "rawTerrainHeight", "terrainVertexTinted", "groundCoverClusterCount", "norway-spruce.glb", "oak-detailed.glb", "fern-clump.glb", "heroSpruceReady", "heroOakReady", "heroFernReady", "pinecrest-mountain-hut.glb", "Mountain Hut", "lodgeModelWorldDimensions", "lodgeInteriorRoot", "lodgeInteriorFloorHeight", "lodgeDoorwayContains", "lodgeDoorWorldPosition", "lodgeInteriorAdjustedMeshCount", "LEGACY_LODGE_SHELL_PATTERN", "LEGACY_LODGE_PORCH_PATTERN", "lodgeModelLegacyVisualStats", "lodgeModelHiddenLegacyMeshCount", "createMountainHutNameplate", "Pinecrest mountain lodge sign brass edge", "compound lantern backplate", "cameraPosition"]) {
               if (!js.includes(compoundFeature)) throw new Error("Pinecrest compound visual dressing is missing: " + compoundFeature);
             }
             if (!js.includes("Pinecrest gate nameplate") || !js.includes("Pinecrest outpost access road")) throw new Error("Outpost gate sign or access road is missing");
@@ -93,6 +93,9 @@ jobs:
               "public/assets/models/ATTRIBUTION.md",
               "public/assets/buildings/pinecrest-lodge.glb",
               "public/assets/buildings/pinecrest-mountain-hut.glb",
+              "public/assets/vegetation/norway-spruce.glb",
+              "public/assets/vegetation/oak-detailed.glb",
+              "public/assets/vegetation/fern-clump.glb",
               "public/assets/asset-manifest.json"
             ];
             for (const file of requiredAssets) {
@@ -104,6 +107,17 @@ jobs:
             if (!mountainHutRecord || mountainHutRecord.license !== "CC0 1.0 Universal" ||
                 mountainHutRecord.source !== "https://grab3d.com/models/buildings/mountain-hut/") {
               throw new Error("The primary Pinecrest Mountain Hut GLB must have its CC0 source/license record");
+            }
+            const newVegetation = [
+              ["vegetation/norway-spruce.glb", "https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f"],
+              ["vegetation/oak-detailed.glb", "https://www.innerscene.com/tools/library/3d-parts/oak-street-tree-detailed-leaves-a273fef9"],
+              ["vegetation/fern-clump.glb", "https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea"]
+            ];
+            for (const [path, source] of newVegetation) {
+              const record = models.get(path);
+              if (!record || record.license !== "CC0 1.0 Universal" || record.source !== source) {
+                throw new Error("New Pinecrest vegetation must carry its CC0 source/license record: " + path);
+              }
             }
             const modelChecks = [
               { path: "animals/deer-base.glb", minBytes: 100000, meshes: 1, skins: 1, nodes: ["Head", "Neck", "LeftFrontUpLeg", "RightHindUpLeg"], clips: ["Idle", "Walk", "Run"] },
@@ -173,7 +187,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wildrange-0.11.5-gate-centred-lodge-cleanup
+          name: wildrange-0.12.0-gate-centred-lodge-cleanup
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
