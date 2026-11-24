@@ -112,6 +112,10 @@ try {
     const diagnostics = window.WildrangeDiagnostics?.();
     return diagnostics && (diagnostics.sceneReady || diagnostics.sceneInitError);
   }, null, { timeout: 45000 });
+  const startingCameraYaw = await page.evaluate(() => window.WildrangeQA.cameraYaw());
+  if (Math.abs(startingCameraYaw - Math.atan2(-14, 24)) > 0.03) {
+    throw new Error("New-hunter camera should start facing Pinecrest Lodge: " + startingCameraYaw);
+  }
   const startupDiagnostics = await page.evaluate(() => window.WildrangeDiagnostics());
   if (startupDiagnostics.pinecrestRoofSurfaceCount !== 2 ||
       !startupDiagnostics.pinecrestRoofShingleMaterialReady ||
