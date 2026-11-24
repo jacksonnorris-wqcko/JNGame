@@ -59,7 +59,7 @@ jobs:
             if (!js.includes("Pinecrest gate structural timber support post") || !js.includes("Pinecrest gate stone post footing")) throw new Error("Pinecrest outpost sign must have grounded structural posts and footings");
             if (!js.includes("Pinecrest lodge sign structural timber post") || !js.includes("Pinecrest lodge sign structural header")) throw new Error("Pinecrest Lodge plaque must have its own timber support portal");
             if (!js.includes("Pinecrest lodge front wall opaque backing") || !js.includes("Pinecrest lodge opaque timber wall backing")) throw new Error("Pinecrest lodge front log courses must be backed by opaque timber panels");
-            for (const compoundFeature of ["buildPinecrestCompoundLife", "Pinecrest gable diagonal king timber", "Pinecrest lodge metal rain gutter", "Pinecrest window flower box body", "Pinecrest firewood shelter structural post", "Pinecrest yard water trough body", "Pinecrest walkway edge fieldstone", "createWeatheredRoofMaterial", "createLogEndgrainMaterial", "registerCompoundShadowCasters", "Pinecrest continuous cedar shingle roof surface", "compound fence steel rail bracket", "instantiateHeroTree", "heroTreeSourceMeshCount", "pinecrest-mountain-hut.glb", "Mountain Hut", "lodgeModelWorldDimensions"]) {
+            for (const compoundFeature of ["buildPinecrestCompoundLife", "Pinecrest gable diagonal king timber", "Pinecrest lodge metal rain gutter", "Pinecrest window flower box body", "Pinecrest firewood shelter structural post", "Pinecrest yard water trough body", "Pinecrest walkway edge fieldstone", "createWeatheredRoofMaterial", "createLogEndgrainMaterial", "registerCompoundShadowCasters", "Pinecrest continuous cedar shingle roof surface", "compound fence steel rail bracket", "instantiateHeroTree", "heroTreeSourceMeshCount", "pinecrest-mountain-hut.glb", "Mountain Hut", "lodgeModelWorldDimensions", "lodgeInteriorRoot", "lodgeInteriorFloorHeight", "lodgeDoorwayContains", "lodgeDoorWorldPosition"]) {
               if (!js.includes(compoundFeature)) throw new Error("Pinecrest compound visual dressing is missing: " + compoundFeature);
             }
             if (!js.includes("Pinecrest gate nameplate") || !js.includes("Pinecrest outpost access road")) throw new Error("Outpost gate sign or access road is missing");
@@ -173,7 +173,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wildrange-0.11.0-lodge-redesign-visual
+          name: wildrange-0.11.1-lodge-entry-alignment
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
