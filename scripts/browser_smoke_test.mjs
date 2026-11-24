@@ -20,17 +20,23 @@ try {
   const visualCaptureNotes = [];
   const safeScreenshot = async (path) => {
     try {
-      await page.screenshot({
-        path,
-        fullPage: false,
-        timeout: 90000,
-        animations: "disabled",
-        scale: "css"
+      // Capture the composited scene directly through Chrome DevTools. This avoids
+      // Playwright's font/animation preflight stalling on a continuously-rendered WebGL canvas.
+      const client = await page.context().newCDPSession(page);
+      const shot = await client.send("Page.captureScreenshot", {
+        format: "jpeg",
+        quality: 82,
+        fromSurface: true,
+        captureBeyondViewport: false,
+        optimizeForSpeed: true
       });
+      const outputPath = path.replace(/\\.png$/i, ".jpg");
+      await fs.promises.writeFile(outputPath, Buffer.from(shot.data, "base64"));
+      await client.detach();
       return true;
     } catch (error) {
       visualCaptureNotes.push(path + ": " + (error && error.message ? error.message : String(error)));
-      console.warn("Wildrange visual screenshot skipped; continuing functional QA:", path, error);
+      console.warn("Wildrange DevTools visual capture skipped; continuing functional QA:", path, error);
       return false;
     }
   };
@@ -306,7 +312,21 @@ try {
     throw new Error("Gate sign posts must block foot traffic without closing the central entrance: " + JSON.stringify(gatePostCollision));
   }
   if (!diagnostics.environmentReady) throw new Error("Forest HDR environment did not finish loading");
-  if (!diagnostics.cabinDoorReady || !diagnostics.contractBoardReady) throw new Error("Pinecrest lodge door or live contract board did not initialise");
+  if (!diagnostics.cabinDoorReady || !diagnostics.lodgeDoorwayOpen ||
+      !diagnostics.lodgeAuthoredInteriorReady || diagnostics.lodgeNavigationBoxCount < 15 ||
+      !diagnostics.contractBoardReady) {
+    throw new Error("Cedarwatch open entrance, furnished interior/navigation or live contract board did not initialise: " + JSON.stringify({
+      cabinDoorReady: diagnostics.cabinDoorReady,
+      doorwayOpen: diagnostics.lodgeDoorwayOpen,
+      doorwayWidth: diagnostics.lodgeDoorwayWidth,
+      authoredInterior: diagnostics.lodgeAuthoredInteriorReady,
+      navigationBoxes: diagnostics.lodgeNavigationBoxCount,
+      contractBoardReady: diagnostics.contractBoardReady,
+      model: diagnostics.lodgeModelAssetName,
+      modelFailed: diagnostics.lodgeModelFailed,
+      modelError: diagnostics.lodgeModelError
+    }));
+  }
   if (!diagnostics.gateSignReady || !diagnostics.outpostApproachReady) {
     throw new Error("Pinecrest entrance sign or access road did not initialise: " + JSON.stringify(diagnostics));
   }
