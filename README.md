@@ -37,7 +37,7 @@ The first load needs an internet connection because the prototype loads Babylon.
 
 ## Controls
 
-Current browser build: **0.11.1**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
+Current browser build: **0.11.2**. Base game assets are stored under `public/assets/`; three high-detail CC0 environment models are fetched by the build workflow.
 
 
 | Action | Control |
@@ -188,7 +188,7 @@ At runtime the model is fitted with one uniform scale so the architecture keeps 
 
 The model is downloaded at build time by `scripts/download_licensed_3d_assets.sh`, checked as a glTF 2.0 binary and included in the GitHub Pages package. Its CC0 source and license are kept in the generated asset manifest and attribution file.
 
-## 0.11.1 Pinecrest Lodge integration refinement
+## 0.11.2 Pinecrest Lodge integration refinement
 
 The first Mountain Hut implementation passed its GLB import and rendering tests, but it retained several old log-cabin assumptions around the entrance and interior. This refinement makes the existing game systems follow the imported architecture:
 
@@ -198,7 +198,7 @@ The first Mountain Hut implementation passed its GLB import and rendering tests,
 - The room floor and raised terrace use the imported model's scale-derived height. The approach stair surface transitions from the path to the terrace rather than keeping the old cabin's fixed 1.335 m deck.
 - New hunters, plus untouched saves still at the original spawn coordinates, start facing Pinecrest Lodge rather than looking beside it.
 
-The Playwright suite now checks the physical imported doorway when closed/open, the interaction target's proximity to the pivot, the new interior and terrace heights, the walkable approach, and the opening camera heading. The 0.11.1 build keeps the Mountain Hut as the primary architecture and the original log cabin as a load fallback.
+The Playwright suite now checks the physical imported doorway when closed/open, the interaction target's proximity to the pivot, the new interior and terrace heights, the walkable approach, and the opening camera heading. It also verifies that all interior child meshes are unfrozen and recomputed after the asynchronous height alignment, preventing stale transforms from leaving the furniture at the previous floor level. The 0.11.1 build keeps the Mountain Hut as the primary architecture and the original log cabin as a load fallback.
 
 ## Cost
 
