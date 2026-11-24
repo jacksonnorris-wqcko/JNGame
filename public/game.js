@@ -126,6 +126,7 @@
   let heroSpruceReady = false, heroOakReady = false, heroFernReady = false;
   let heroFernCount = 0;
   let heroFernMaterialReady = false;
+  let heroFernRenderMaterial = null;
   let heroBoulderCount = 0, heroBoulderMeshCount = 0;
   let heroTreeModelCount = 0, heroTreeMeshCount = 0, heroTreeSourceMeshCount = 0;
   let heroVegetationFailures = [];
@@ -2502,7 +2503,7 @@
         continue;
       }
       if (!isMesh) continue;
-      if (/^(rear wall|door-side solid wall|side wall panel|side window (lower|upper) wall)/i.test(rawName)) {
+      if (/^(rear wall|door-side solid wall|side wall panel|side window (lower|upper) wall|triangular cedar gable)/i.test(rawName)) {
         node.material = siding;
         wallCount++;
         continue;
@@ -2926,26 +2927,43 @@
     for (const mesh of compactMeshes) {
       if (!mesh || mesh.isDisposed()) continue;
       mesh.isPickable = false;
-      // The scanned bracken uses alpha-cutout leaves and its own baked PBR maps.
-      // Preserve those authored materials; only opt it out of the shadow pass.
+      // Rebuild the photogrammetry fern shader explicitly. The source GLB uses
+      // a masked diffuse-alpha leaf atlas; the old imported PBR preset rendered
+      // almost black under the valley lighting even after a small albedo tint.
       mesh.receiveShadows = label !== "fern";
       if (label === "fern" && mesh.material) {
-        if (mesh.material instanceof BABYLON.PBRMaterial) {
-          mesh.material.albedoColor = BABYLON.Color3.Lerp(
-            mesh.material.albedoColor || BABYLON.Color3.White(),
-            hex("#8aa46b"),
-            0.28
-          );
-          mesh.material.emissiveColor = hex("#22351c");
-          mesh.material.emissiveIntensity = 0.26;
-          mesh.material.environmentIntensity = Math.max(0.72, mesh.material.environmentIntensity || 0);
-          mesh.material.directIntensity = Math.max(1.15, mesh.material.directIntensity || 0);
-          mesh.material.roughness = 0.92;
+        const sourceMaterial = mesh.material;
+        if (!heroFernRenderMaterial) {
+          const baseTexture = sourceMaterial.albedoTexture || sourceMaterial.diffuseTexture || null;
+          const normalTexture = sourceMaterial.bumpTexture || sourceMaterial.normalTexture || null;
+          const opacityTexture = sourceMaterial.opacityTexture || null;
+          if (baseTexture) baseTexture.hasAlpha = true;
+          heroFernRenderMaterial = new BABYLON.PBRMaterial("Pinecrest sunlit bracken leaf cutout", scene);
+          heroFernRenderMaterial.albedoTexture = baseTexture;
+          heroFernRenderMaterial.bumpTexture = normalTexture;
+          heroFernRenderMaterial.opacityTexture = opacityTexture;
+          heroFernRenderMaterial.useAlphaFromAlbedoTexture = Boolean(baseTexture);
+          heroFernRenderMaterial.useAlphaFromDiffuseTexture = Boolean(baseTexture);
+          heroFernRenderMaterial.transparencyMode =
+            BABYLON.PBRMaterial.PBRMATERIAL_ALPHATEST ??
+            BABYLON.Material.MATERIAL_ALPHATEST;
+          heroFernRenderMaterial.alphaCutOff = 0.36;
+          heroFernRenderMaterial.albedoColor = hex("#a4c57b");
+          heroFernRenderMaterial.emissiveColor = hex("#5b8040");
+          heroFernRenderMaterial.emissiveIntensity = 0.58;
+          heroFernRenderMaterial.metallic = 0;
+          heroFernRenderMaterial.roughness = 0.94;
+          heroFernRenderMaterial.environmentIntensity = 0.82;
+          heroFernRenderMaterial.directIntensity = 1.25;
+          heroFernRenderMaterial.backFaceCulling = false;
+          heroFernRenderMaterial.twoSidedLighting = true;
         }
-        if (mesh.material.getActiveTextures) {
-          heroFernMaterialReady = heroFernMaterialReady ||
-            mesh.material.getActiveTextures().some((texture) => texture && texture.isReady());
-        }
+        mesh.material = heroFernRenderMaterial;
+        const textures = heroFernRenderMaterial.getActiveTextures
+          ? heroFernRenderMaterial.getActiveTextures()
+          : [];
+        heroFernMaterialReady = heroFernMaterialReady ||
+          (textures.length === 0 || textures.some((texture) => texture && texture.isReady()));
       }
       mesh.metadata = { ...(mesh.metadata || {}), pinecrestHeroVegetation: label };
       if (label !== "fern" && lights.shadows && !mesh.material?.needAlphaBlending?.()) {
