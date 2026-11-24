@@ -241,6 +241,24 @@
       "integration": "Primary Pinecrest Lodge architecture: stone lower level, dark timber upper level, weighted shingle roof, chimney and terrace"
     },
     {
+      "asset": "Timber-Framed House",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-timber-frame-house.glb",
+      "approximate_bytes": 2000000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://tevy.dev/models/timber-frame-house/",
+      "integration": "Candidate primary Pinecrest hunting lodge: two-storey dark oak framing, stone chimney, thatched roof, lean-to woodshed and walkable furnished ground-floor room"
+    },
+    {
+      "asset": "Cedarwatch Cabin",
+      "status": "downloaded-at-build",
+      "path": "buildings/pinecrest-cedarwatch-cabin.glb",
+      "approximate_bytes": 956496,
+      "license": "CC0 1.0 Universal",
+      "source": "https://scenecrate.com/scenes/forest-cabin",
+      "integration": "Primary Pinecrest hunting lodge: cedar cladding, layered green shingles, amber windows, dressed-stone chimney, furnished interior and open 1.64 m front doorway"
+    },
+    {
       "asset": "Conifer, detailed needles",
       "status": "downloaded-at-build",
       "path": "vegetation/conifer-detailed.glb",
@@ -277,31 +295,13 @@
       "integration": "Two broadleaf hero trees add a different canopy silhouette around Pinecrest"
     },
     {
-      "asset": "Timber-Framed House",
-      "status": "downloaded-at-build",
-      "path": "buildings/pinecrest-timber-frame-house.glb",
-      "approximate_bytes": 2000000,
-      "license": "CC0 1.0 Universal",
-      "source": "https://tevy.dev/models/timber-frame-house/",
-      "integration": "Candidate replacement Pinecrest hunting lodge with a walkable furnished ground-floor room"
-    },
-    {
-      "asset": "Cedarwatch Cabin",
-      "status": "downloaded-at-build",
-      "path": "buildings/pinecrest-cedarwatch-cabin.glb",
-      "approximate_bytes": 956496,
-      "license": "CC0 1.0 Universal",
-      "source": "https://scenecrate.com/scenes/forest-cabin",
-      "integration": "Primary Pinecrest hunting lodge with cedar cladding, green shingle roof, amber windows, dressed-stone chimney, furnished interior and open 1.64 m front doorway"
-    },
-    {
       "asset": "Photoreal Woodland Bracken Fern",
       "status": "downloaded-at-build",
       "path": "vegetation/woodland-bracken-fern.glb",
       "approximate_bytes": 393625,
       "license": "CC0 1.0 Universal",
       "source": "https://scenecrate.com/free-3d-game-assets",
-      "integration": "Photogrammetry-scanned bracken fern with alpha-cutout fronds and embedded PBR maps"
+      "integration": "Four photogrammetry-scanned bracken fern clumps with alpha-cutout fronds and embedded PBR maps in Pinecrest garden beds"
     },
     {
       "asset": "Photoreal Mossy Forest Boulders",
@@ -310,7 +310,7 @@
       "approximate_bytes": 1425000,
       "license": "CC0 1.0 Universal",
       "source": "https://scenecrate.com/free-3d-game-assets",
-      "integration": "Photogrammetry-scanned moss and lichen boulder cluster"
+      "integration": "Photogrammetry-scanned moss and lichen boulders replacing low-detail compound-edge stones"
     }
   ]
 }
