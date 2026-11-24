@@ -30,6 +30,11 @@ fetch_asset \
   "Mountain Hut architectural lodge model (CC0)"
 
 fetch_asset \
+  "https://tevy.dev/models/timber-frame-house/v1/lod0.glb" \
+  "$BUILDINGS/pinecrest-timber-frame-house.glb" \
+  "Timber-Framed House with furnished interior (CC0)"
+
+fetch_asset \
   "https://www.innerscene.com/api/library/conifer-detailed-needles-ca8e7cef/download" \
   "$VEGETATION/conifer-detailed.glb" \
   "Conifer, detailed needles (CC0)"
@@ -54,7 +59,7 @@ fetch_asset \
   "$VEGETATION/fern-clump.glb" \
   "Fern clumps (CC0)"
 
-python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" <<'PY'
+python3 - "$BUILDINGS/pinecrest-lodge.glb" "$BUILDINGS/pinecrest-mountain-hut.glb" "$BUILDINGS/pinecrest-timber-frame-house.glb" "$VEGETATION/conifer-detailed.glb" "$VEGETATION/linden-detailed.glb" "$VEGETATION/norway-spruce.glb" "$VEGETATION/oak-detailed.glb" "$VEGETATION/fern-clump.glb" <<'PY'
 import os
 import struct
 import sys
@@ -62,6 +67,7 @@ import sys
 minimum_bytes = {
     "pinecrest-lodge.glb": 1_000_000,
     "pinecrest-mountain-hut.glb": 2_000_000,
+    "pinecrest-timber-frame-house.glb": 1_800_000,
     "conifer-detailed.glb": 1_000_000,
     "linden-detailed.glb": 1_000_000,
     "norway-spruce.glb": 1_000_000,
@@ -82,4 +88,13 @@ for path in sys.argv[1:]:
             f"Invalid GLB header: {path} (version={version}, declared={declared_length}, actual={size})"
         )
     print(f"Validated {os.path.basename(path)}: {size:,} bytes, glTF {version}")
+    with open(path, "rb") as stream:
+        stream.seek(12)
+        json_length, json_type = struct.unpack("<II", stream.read(8))
+        json_bytes = stream.read(json_length) if json_type == 0x4E4F534A else b""
+    if json_bytes and os.path.basename(path) == "pinecrest-timber-frame-house.glb":
+        document = __import__("json").loads(json_bytes.decode("utf-8").rstrip("\\x00 \\t\\r\\n"))
+        print("Timber lodge GLB nodes:", ", ".join(node.get("name", "") for node in document.get("nodes", []) if node.get("name")))
+        print("Timber lodge GLB animations:", ", ".join(animation.get("name", "") for animation in document.get("animations", [])))
+        print("Timber lodge GLB mesh/material counts:", len(document.get("meshes", [])), len(document.get("materials", [])))
 PY
