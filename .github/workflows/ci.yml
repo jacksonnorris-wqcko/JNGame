@@ -173,7 +173,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wildrange-0.11.4-gate-centred-lodge-cleanup
+          name: wildrange-0.11.5-gate-centred-lodge-cleanup
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
