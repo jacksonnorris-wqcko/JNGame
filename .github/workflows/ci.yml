@@ -99,7 +99,8 @@ jobs:
               "public/assets/buildings/pinecrest-cedarwatch-report.json",
               "public/assets/vegetation/norway-spruce.glb",
               "public/assets/vegetation/oak-detailed.glb",
-              "public/assets/vegetation/fern-clump.glb",
+              "public/assets/vegetation/woodland-bracken-fern.glb",
+              "public/assets/vegetation/mossy-forest-boulders.glb",
               "public/assets/asset-manifest.json"
             ];
             for (const file of requiredAssets) {
@@ -135,7 +136,8 @@ jobs:
             const newVegetation = [
               ["vegetation/norway-spruce.glb", "https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f"],
               ["vegetation/oak-detailed.glb", "https://www.innerscene.com/tools/library/3d-parts/oak-street-tree-detailed-leaves-a273fef9"],
-              ["vegetation/fern-clump.glb", "https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea"]
+              ["vegetation/woodland-bracken-fern.glb", "https://scenecrate.com/free-3d-game-assets"],
+              ["vegetation/mossy-forest-boulders.glb", "https://scenecrate.com/free-3d-game-assets"]
             ];
             for (const [path, source] of newVegetation) {
               const record = models.get(path);
