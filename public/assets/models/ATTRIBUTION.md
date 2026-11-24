@@ -21,4 +21,5 @@ The following models are downloaded by scripts/download_licensed_3d_assets.sh fo
 - Linden street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e), CC0 1.0 Universal. Used for high-detail hero broadleaf trees.
 - Mature Norway spruce tree (https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f), CC0 1.0 Universal. Used to introduce a tall, narrow forest silhouette.
 - Oak street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/oak-street-tree-detailed-leaves-a273fef9), CC0 1.0 Universal. Used for broadleaf hero trees with individually modelled leaves.
-- Fern clumps (https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea), CC0 1.0 Universal, sourced from Poly Haven. Used for photoreal PBR understorey planting.
+- Photoreal Woodland Bracken Fern (https://scenecrate.com/free-3d-game-assets), CC0 1.0. 3D-scanned bracken with alpha-cutout fronds and embedded PBR maps, used in Pinecrest garden beds.
+- Photoreal Mossy Forest Boulders (https://scenecrate.com/free-3d-game-assets), CC0 1.0. Photogrammetry-scanned woodland rocks with dense moss and forest lichen, used around the compound.
