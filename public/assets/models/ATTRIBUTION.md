@@ -16,6 +16,7 @@ The following models are downloaded by scripts/download_licensed_3d_assets.sh fo
 - Log cabin 3 x 3 m, apex roof (https://www.innerscene.com/tools/library/3d-parts/log-cabin-3-x-3-m-apex-roof-ed7532ac), CC0 1.0 Universal. Used as the authored Pinecrest Lodge exterior.
 - Mountain Hut by Grab3D (https://grab3d.com/models/buildings/mountain-hut/), CC0 1.0 Universal. Used as the primary Pinecrest Lodge architecture.
 - Timber-Framed House by tevy (https://tevy.dev/models/timber-frame-house/), CC0 1.0 Universal. Candidate replacement lodge with an authored furnished ground-floor room, separate door and shutters, thatched roof and stone chimney.
+- Cedarwatch Cabin by SceneCrate (https://scenecrate.com/scenes/forest-cabin), CC0 1.0 Universal. Primary Pinecrest hunting lodge with cedar finish, green shingle roof, dressed-stone chimney, furnished interior and open front entry.
 - Conifer, detailed needles (https://www.innerscene.com/tools/library/3d-parts/conifer-detailed-needles-ca8e7cef), CC0 1.0 Universal. Used for high-detail hero conifers.
 - Linden street tree, detailed leaves (https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e), CC0 1.0 Universal. Used for high-detail hero broadleaf trees.
 - Mature Norway spruce tree (https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f), CC0 1.0 Universal. Used to introduce a tall, narrow forest silhouette.
