@@ -257,6 +257,33 @@
       "license": "CC0 1.0 Universal",
       "source": "https://www.innerscene.com/tools/library/3d-parts/linden-street-tree-detailed-leaves-6300c26e",
       "integration": "Two high-detail hero broadleaf trees around Pinecrest compound"
+    },
+    {
+      "asset": "Mature Norway spruce tree",
+      "status": "downloaded-at-build",
+      "path": "vegetation/norway-spruce.glb",
+      "approximate_bytes": 2000000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/mature-norway-spruce-tree-48c2566f",
+      "integration": "Two tall spruce silhouettes frame the Pinecrest approach"
+    },
+    {
+      "asset": "Oak street tree, detailed leaves",
+      "status": "downloaded-at-build",
+      "path": "vegetation/oak-detailed.glb",
+      "approximate_bytes": 5900000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/oak-street-tree-detailed-leaves-a273fef9",
+      "integration": "Two broadleaf hero trees add a different canopy silhouette around Pinecrest"
+    },
+    {
+      "asset": "Fern clumps",
+      "status": "downloaded-at-build",
+      "path": "vegetation/fern-clump.glb",
+      "approximate_bytes": 3200000,
+      "license": "CC0 1.0 Universal",
+      "source": "https://www.innerscene.com/tools/library/3d-parts/fern-clumps-82a87bea",
+      "integration": "Four PBR fern clumps soften the Pinecrest fence and garden edges"
     }
   ]
 }
