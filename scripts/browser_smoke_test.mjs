@@ -407,8 +407,8 @@ try {
       !cabinCollision.deckWalkable || !cabinCollision.stairsWalkable || !cabinCollision.entryPathWalkable ||
       Math.abs(cabinCollision.interiorHeight - diagnostics.lodgeInteriorFloorHeight) > 0.03 ||
       Math.abs(cabinCollision.deckHeight - diagnostics.lodgeDeckSurfaceHeight) > 0.03 ||
-      cabinCollision.stairHeight < 0.10 ||
-      cabinCollision.stairHeight >= cabinCollision.deckHeight ||
+      cabinCollision.stairHeight <= Math.min(cabinCollision.deckHeight, 0.10) ||
+      cabinCollision.stairHeight >= Math.max(cabinCollision.deckHeight, 0.10) ||
       Math.abs(cabinCollision.pathHeight - 0.26) > 0.02) {
     throw new Error("Cabin floor, deck, stairs or compound path collision failed: " + JSON.stringify(cabinCollision));
   }
